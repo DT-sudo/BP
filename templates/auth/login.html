@@ -1,0 +1,99 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ShiftSync - Login</title>
+  <meta name="description" content="ShiftSync - Shift Management System Login">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/styles.css' %}?v={% now 'U' %}">
+</head>
+<body class="auth-body">
+  <div class="toast-container" id="toastContainer" aria-live="polite" aria-atomic="true"></div>
+  {% if messages %}
+    <ul id="djangoMessages" class="hidden">
+      {% for message in messages %}
+        <li data-level="{{ message.tags }}" data-text="{{ message|escape }}"></li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+
+  <div class="auth-container">
+    <div class="auth-card">
+      <!-- Logo -->
+      <div class="auth-logo">
+        <div class="auth-logo-icon" aria-hidden="true">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect width="18" height="18" x="3" y="4" rx="2" ry="2"/>
+            <line x1="16" x2="16" y1="2" y2="6"/>
+            <line x1="8" x2="8" y1="2" y2="6"/>
+            <line x1="3" x2="21" y1="10" y2="10"/>
+          </svg>
+        </div>
+        <h1 class="auth-logo-text">ShiftSync</h1>
+      </div>
+
+      <div class="auth-header">
+        <h2 class="auth-title">Welcome back</h2>
+        <p class="auth-subtitle">Sign in to your account</p>
+      </div>
+
+      <!-- Demo login buttons (for thesis/demo only) -->
+      <div class="demo-login-section">
+        <a class="btn btn-outline btn-full" href="{% url 'demo_login' 'manager' %}">
+          Demo: Manager login
+        </a>
+        <a class="btn btn-outline btn-full" href="{% url 'demo_login' 'employee' %}">
+          Demo: Employee login
+        </a>
+        <div class="divider">
+          <div class="divider-line"></div>
+          <span class="divider-text">or</span>
+          <div class="divider-line"></div>
+        </div>
+      </div>
+
+      {% if form.non_field_errors %}
+        <div class="card" style="margin-bottom: 1rem; padding: .75rem;">
+          <div class="text-sm" style="color: var(--danger-700);">
+            {{ form.non_field_errors|striptags }}
+          </div>
+        </div>
+      {% endif %}
+
+      <form class="auth-form" id="loginForm" method="post" action="{% url 'login' %}">
+        {% csrf_token %}
+        <div class="form-group">
+          <label for="username" class="form-label">Email / Username</label>
+          <input type="text" id="username" name="username" class="form-input" placeholder="Enter your email" required value="{{ form.username.value|default:'' }}">
+        </div>
+
+        <div class="form-group">
+          <label for="password" class="form-label">Password</label>
+          <input type="password" id="password" name="password" class="form-input" placeholder="Enter your password" required>
+        </div>
+
+        <div class="form-row">
+          <label class="checkbox-label">
+            <input type="checkbox" id="remember" name="remember">
+            <span>Remember me</span>
+          </label>
+          <a href="#" class="auth-link" onclick="forgotPassword(event)">Forgot password?</a>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-full">Sign in</button>
+      </form>
+
+      <div class="auth-footer">
+        <p class="text-sm text-muted">Demo accounts are for thesis presentation only.</p>
+      </div>
+    </div>
+  </div>
+
+  <script src="{% static 'js/app.js' %}?v={% now 'U' %}"></script>
+  <script src="{% static 'js/login.js' %}?v={% now 'U' %}"></script>
+</body>
+</html>

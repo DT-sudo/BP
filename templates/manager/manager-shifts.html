@@ -1,0 +1,648 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ShiftSync - Shift Management</title>
+  <meta name="description" content="ShiftSync - Manage employee shifts">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/styles.css' %}?v={% now 'U' %}">
+</head>
+<body class="has-bottom-legend">
+  <div class="toast-container" id="toastContainer" aria-live="polite" aria-atomic="true"></div>
+  {% if messages %}
+    <ul id="djangoMessages" class="hidden">
+      {% for message in messages %}
+        <li data-level="{{ message.tags }}" data-text="{{ message|escape }}"></li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header-brand">
+      <div class="header-logo" aria-hidden="true">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect width="18" height="18" x="3" y="4" rx="2" ry="2"/>
+          <line x1="16" x2="16" y1="2" y2="6"/>
+          <line x1="8" x2="8" y1="2" y2="6"/>
+          <line x1="3" x2="21" y1="10" y2="10"/>
+        </svg>
+      </div>
+      <span class="header-title">ShiftSync</span>
+    </div>
+
+    <nav class="header-nav" aria-label="Primary">
+      <a href="{% url 'manager_shifts' %}" class="nav-link active">Shifts</a>
+      <a href="{% url 'manager_employees' %}" class="nav-link">Team</a>
+    </nav>
+
+    <div class="dropdown header-user">
+      <button class="btn btn-ghost btn-sm header-user-trigger" type="button" onclick="toggleUserMenu(this)" aria-label="User menu">
+        <div class="header-avatar" aria-label="User avatar">{{ user_initials|default:"M" }}</div>
+      </button>
+      <div class="dropdown-menu">
+        <div class="dropdown-item dropdown-item-static dropdown-item-title">{{ user_display_name|default:"Manager" }}</div>
+        <div class="dropdown-item dropdown-item-static">{{ user_header_role|default:"Manager" }}</div>
+        <div class="dropdown-divider"></div>
+        <a class="dropdown-item dropdown-item-destructive" href="{% url 'logout' %}">Logout</a>
+      </div>
+    </div>
+  </header>
+
+	  <!-- Main Content -->
+	  <main class="main-content main-content-tight-top">
+	    <!-- Filter Bar (filters + navigation + actions) -->
+	    <div class="card page-toolbar-card">
+	      <div class="manager-shifts-toolbar">
+	        <div class="manager-shifts-toolbar-left">
+	          <form class="filters-row manager-shifts-filters" id="managerFiltersForm" method="get" action="{% url 'manager_shifts' %}">
+	            <input type="hidden" name="view" value="{{ view }}">
+	            <input type="hidden" name="date" value="{{ anchor|date:'Y-m-d' }}">
+	            <!-- Position multi-select -->
+	            <div class="filter-group">
+	              <label class="form-label" style="margin-bottom: 0;">Position:</label>
+	              <div class="multiselect" id="positionMulti">
+	                <button class="btn btn-outline btn-sm multiselect-trigger" type="button" onclick="toggleMulti('positionMulti')" aria-haspopup="true" aria-expanded="false">
+	                  <span id="positionMultiLabel">All positions</span>
+	                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+	                    <path d="m6 9 6 6 6-6"/>
+	                  </svg>
+	                </button>
+		                <div class="multiselect-menu" role="menu" aria-label="Select positions">
+		                  {% for p in positions %}
+		                    <label class="multiselect-item">
+		                      <input
+		                        type="checkbox"
+		                        value="{{ p.id }}"
+		                        name="positions"
+		                        {% if selected_positions %}
+		                          {% if p.id in selected_positions %}checked{% endif %}
+		                        {% else %}
+		                          checked
+		                        {% endif %}
+		                        onchange="updatePositionMulti(); markPositionMultiDirty()"
+		                      >
+		                      {{ p.name }}
+		                    </label>
+		                  {% empty %}
+		                    <div class="text-sm text-muted" style="padding: .5rem .75rem;">No positions yet. Add roles in Employees → Manage roles.</div>
+		                  {% endfor %}
+		                  <div class="multiselect-actions multiselect-actions-right">
+		                    <button class="btn btn-ghost btn-sm" type="button" onclick="selectAllPositions(false); markPositionMultiDirty(); updatePositionMulti()">Clear</button>
+		                    <button class="btn btn-ghost btn-sm" type="button" onclick="selectAllPositions(true); markPositionMultiDirty(); updatePositionMulti()">All</button>
+		                    <button class="btn btn-primary btn-sm" type="button" onclick="submitFilters()">Apply</button>
+		                  </div>
+		                </div>
+		              </div>
+		            </div>
+
+	            <div class="filter-group">
+	              <label class="form-label" style="margin-bottom: 0;">Status:</label>
+	              <div class="multiselect" id="statusMulti">
+	                <button class="btn btn-outline btn-sm multiselect-trigger" type="button" onclick="toggleMulti('statusMulti')" aria-haspopup="true" aria-expanded="false">
+	                  <span id="statusMultiLabel">{% if status %}{{ status|title }}{% else %}All{% endif %}</span>
+	                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+	                    <path d="m6 9 6 6 6-6"/>
+	                  </svg>
+	                </button>
+		                <div class="multiselect-menu" role="menu" aria-label="Status">
+		                  <label class="multiselect-item"><input type="radio" name="status" value="" {% if not status %}checked{% endif %} onchange="submitFilters()"> All</label>
+		                  <label class="multiselect-item"><input type="radio" name="status" value="draft" {% if status == 'draft' %}checked{% endif %} onchange="submitFilters()"> Draft</label>
+		                  <label class="multiselect-item"><input type="radio" name="status" value="published" {% if status == 'published' %}checked{% endif %} onchange="submitFilters()"> Published</label>
+		                  <div class="multiselect-actions">
+		                    <button class="btn btn-primary btn-sm" type="button" onclick="submitFilters()">Apply</button>
+		                  </div>
+		                </div>
+		              </div>
+		            </div>
+
+	            <div class="filter-group">
+	              <label class="form-label" style="margin-bottom: 0;">Show:</label>
+	              <div class="multiselect" id="showMulti">
+	                <button class="btn btn-outline btn-sm multiselect-trigger" type="button" onclick="toggleMulti('showMulti')" aria-haspopup="true" aria-expanded="false">
+	                  <span id="showMultiLabel">{% if understaffed %}Understaffed only{% else %}All{% endif %}</span>
+	                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+	                    <path d="m6 9 6 6 6-6"/>
+	                  </svg>
+	                </button>
+		                <div class="multiselect-menu" role="menu" aria-label="Show">
+		                  <label class="multiselect-item"><input type="radio" name="show" value="" {% if not understaffed %}checked{% endif %} onchange="submitFilters()"> All</label>
+		                  <label class="multiselect-item"><input type="radio" name="show" value="understaffed" {% if understaffed %}checked{% endif %} onchange="submitFilters()"> Understaffed only</label>
+		                  <div class="multiselect-actions">
+		                    <button class="btn btn-primary btn-sm" type="button" onclick="submitFilters()">Apply</button>
+		                  </div>
+		                </div>
+		              </div>
+		            </div>
+	          </form>
+	        </div>
+
+	        <div class="manager-shifts-toolbar-center">
+	          {% if view == 'month' %}
+	            <div class="multiselect" id="managerMonthPicker" style="min-width: 0;">
+	              <button class="btn btn-ghost btn-sm multiselect-trigger calendar-period-trigger" type="button" onclick="toggleMulti('managerMonthPicker')" aria-haspopup="true" aria-expanded="false">
+	                <span class="calendar-period" id="periodLabel" style="min-width: auto; text-align: center; white-space: nowrap; margin: 0;">{{ period_label }}</span>
+	                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+	                  <path d="m6 9 6 6 6-6"/>
+	                </svg>
+	              </button>
+	              <div class="multiselect-menu" role="menu" aria-label="Choose month" style="min-width: 260px;">
+	                <div class="month-picker-header">
+	                  <button class="btn btn-ghost btn-icon" type="button" onclick="managerMonthPickerPrevYear()" aria-label="Previous year">
+	                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+	                      <path d="m15 18-6-6 6-6"/>
+	                    </svg>
+	                  </button>
+	                  <div class="font-medium" id="managerMonthPickerYearLabel">—</div>
+	                  <button class="btn btn-ghost btn-icon" type="button" onclick="managerMonthPickerNextYear()" aria-label="Next year">
+	                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+	                      <path d="m9 18 6-6-6-6"/>
+	                    </svg>
+	                  </button>
+	                </div>
+	                <div class="month-picker-grid" id="managerMonthPickerGrid"></div>
+	              </div>
+	            </div>
+	          {% else %}
+	            <div class="calendar-period" id="periodLabel" style="min-width: auto; text-align: center; white-space: nowrap; margin: 0;">{{ period_label }}</div>
+	          {% endif %}
+	        </div>
+
+	        <div class="manager-shifts-toolbar-right">
+	          <div class="calendar-nav">
+	            <button class="btn btn-outline btn-icon" type="button" onclick="prevPeriod()" aria-label="Previous period">
+	              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+	                <path d="m15 18-6-6 6-6"/>
+	              </svg>
+	            </button>
+	            <button class="btn btn-outline btn-sm" type="button" onclick="goToToday()">Today</button>
+	            <button class="btn btn-outline btn-icon" type="button" onclick="nextPeriod()" aria-label="Next period">
+	              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+	                <path d="m9 18 6-6-6-6"/>
+	              </svg>
+	            </button>
+	          </div>
+
+            <div class="multiselect" id="viewMulti" style="min-width: 0;">
+              <button class="btn btn-outline btn-sm multiselect-trigger" type="button" onclick="toggleMulti('viewMulti')" aria-haspopup="true" aria-expanded="false">
+                <span id="viewMultiLabel">
+                  {% if view == 'day' %}Day{% elif view == 'week' %}Week{% else %}Month{% endif %}
+                </span>
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="m6 9 6 6 6-6"/>
+                </svg>
+              </button>
+              <div class="multiselect-menu" role="menu" aria-label="View">
+                <label class="multiselect-item"><input type="radio" name="viewChoice" value="day" {% if view == 'day' %}checked{% endif %} onchange="switchView(this.value)"> Day</label>
+                <label class="multiselect-item"><input type="radio" name="viewChoice" value="week" {% if view == 'week' %}checked{% endif %} onchange="switchView(this.value)"> Week</label>
+                <label class="multiselect-item"><input type="radio" name="viewChoice" value="month" {% if view == 'month' %}checked{% endif %} onchange="switchView(this.value)"> Month</label>
+              </div>
+            </div>
+
+            <button class="btn btn-outline btn-sm" type="button" id="selectModeBtn" onclick="toggleSelectMode()">Select</button>
+
+            <button class="btn btn-outline btn-icon" type="button" id="undoSelectBtn" onclick="undoToolbar()" aria-label="Undo">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M3 7v6h6"/>
+                <path d="M21 17a9 9 0 0 0-15-6l-3 3"/>
+              </svg>
+            </button>
+
+            <button class="btn btn-outline btn-icon" type="button" onclick="toolbarDelete()" aria-label="Delete">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M3 6h18"/>
+                <path d="M8 6V4h8v2"/>
+                <path d="M19 6l-1 14H6L5 6"/>
+                <path d="M10 11v6"/>
+                <path d="M14 11v6"/>
+              </svg>
+            </button>
+
+	          <button class="btn btn-primary" type="button" onclick="openCreateShiftModal()">
+	            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+	              <path d="M12 5v14"/>
+	              <path d="M5 12h14"/>
+	            </svg>
+	            Add
+	          </button>
+
+            <form id="deleteDraftsForm" method="post" action="{% url 'manager_shifts' %}?view={{ view }}&date={{ anchor|date:'Y-m-d' }}" class="hidden">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="delete_drafts">
+            </form>
+
+            <form id="publishAllDraftsForm" method="post" action="{% url 'manager_shifts' %}?view={{ view }}&date={{ anchor|date:'Y-m-d' }}" style="display: inline-flex;">
+	            {% csrf_token %}
+	            <input type="hidden" name="action" value="publish">
+	            <button class="btn btn-outline" type="button" id="publishToolbarBtn" onclick="toolbarPublish()" title="Publishes all Draft shifts in the currently visible period (Day/Week/Month), or selected shifts in Select mode.">
+	              Publish
+	            </button>
+	          </form>
+
+            <form id="publishSelectedForm" method="post" action="{% url 'manager_shifts' %}?view={{ view }}&date={{ anchor|date:'Y-m-d' }}" class="hidden">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="publish_selected">
+              <input type="hidden" name="shift_ids" id="publishSelectedIds" value="">
+            </form>
+
+            <form id="deleteSelectedForm" method="post" action="{% url 'manager_shifts' %}?view={{ view }}&date={{ anchor|date:'Y-m-d' }}" class="hidden">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="delete_selected">
+              <input type="hidden" name="shift_ids" id="deleteSelectedIds" value="">
+            </form>
+	        </div>
+	      </div>
+	    </div>
+
+    <!-- Week Calendar View -->
+    <div class="card{% if view != 'week' %} hidden{% endif %}" id="weekView" style="margin-top: 0.75rem;">
+      <div class="calendar-grid calendar-grid-week-transposed" id="weekGrid" aria-label="Week calendar"></div>
+    </div>
+
+    <!-- Month Calendar View -->
+    <div class="card{% if view != 'month' %} hidden{% endif %}" id="monthView" style="margin-top: 0.75rem;">
+      <div class="calendar-grid calendar-grid-month" id="monthGrid" aria-label="Month schedule"></div>
+    </div>
+
+    <!-- Day Calendar View -->
+    <div class="card{% if view != 'day' %} hidden{% endif %}" id="dayView" style="margin-top: 0.75rem;">
+      <div class="card-content card-content-no-padding">
+        <div id="dayGrid" class="day-view" aria-label="Day schedule"></div>
+      </div>
+    </div>
+
+    <!-- Role Color Legend -->
+    <div class="card" id="roleLegendCard" style="margin-top: 1rem;">
+      <div class="card-content card-content-compact">
+        <div class="role-legend" id="roleLegend" aria-label="Role color legend"></div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Create Shift Modal -->
+  <div class="modal-overlay hidden" id="createShiftModal">
+    <div class="modal" style="max-width: 720px;">
+      <div class="modal-header">
+        <h2 class="modal-title" id="createShiftTitle">Create Shift</h2>
+        <button class="modal-close" onclick="closeModal('createShiftModal')" aria-label="Close">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="18" x2="6" y1="6" y2="18"/>
+            <line x1="6" x2="18" y1="6" y2="18"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <form id="createShiftForm" method="post" action="{% url 'create_shift' %}" data-create-action="{% url 'create_shift' %}">
+          {% csrf_token %}
+          <div class="flex gap-4">
+            <div class="form-group" style="flex: 1;">
+              <label class="form-label" for="shiftDate">Date *</label>
+              <input type="date" class="form-input" id="shiftDate" name="date" required>
+            </div>
+            <div class="form-group" style="flex: 1;">
+              <label class="form-label" for="shiftCapacity">Capacity *</label>
+              <input type="number" class="form-input" id="shiftCapacity" name="capacity" value="1" min="1" required>
+              <div class="form-error-message hidden" id="capacityError"></div>
+            </div>
+          </div>
+
+          <div class="flex gap-4">
+            <div class="form-group" style="flex: 1;">
+              <label class="form-label" for="shiftStart">Start Time *</label>
+              <input type="time" class="form-input" id="shiftStart" name="start_time" value="09:00" required>
+            </div>
+            <div class="form-group" style="flex: 1;">
+              <label class="form-label" for="shiftEnd">End Time *</label>
+              <input type="time" class="form-input" id="shiftEnd" name="end_time" value="17:00" required>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="shiftPositionMulti">Position *</label>
+            <select class="hidden" id="shiftPosition" name="position_id" required onchange="filterEmployeePicker()" aria-hidden="true" tabindex="-1">
+              <option value="">Select position...</option>
+              {% for p in positions %}
+                <option value="{{ p.id }}">{{ p.name }}</option>
+              {% endfor %}
+            </select>
+            <div class="multiselect multiselect-full" id="shiftPositionMulti">
+              <button class="btn btn-outline btn-sm multiselect-trigger" id="shiftPositionMultiTrigger" type="button" onclick="toggleMulti('shiftPositionMulti')" aria-haspopup="true" aria-expanded="false">
+                <span id="shiftPositionMultiLabel">Select position...</span>
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="m6 9 6 6 6-6"/>
+                </svg>
+              </button>
+              <div class="multiselect-menu" role="menu" aria-label="Select position" id="shiftPositionMultiMenu">
+                <div class="text-sm text-muted" style="padding: .5rem .75rem;">No positions yet.</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="employeeMulti">Assign Employees</label>
+            <div class="multiselect multiselect-full" id="employeeMulti">
+              <button class="btn btn-outline btn-sm multiselect-trigger" id="employeeMultiTrigger" type="button" onclick="toggleMulti('employeeMulti')" aria-haspopup="true" aria-expanded="false">
+                <span class="multiselect-chips" id="employeeMultiChips">
+                  <span class="multiselect-placeholder" id="employeeMultiPlaceholder">Select role first</span>
+                </span>
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="m6 9 6 6 6-6"/>
+                </svg>
+              </button>
+              <div class="multiselect-menu" role="menu" aria-label="Select employees">
+                <div class="text-sm text-muted" id="employeeMultiEmpty" style="padding: .5rem .75rem;">Select role first</div>
+                <div id="employeeMultiList">
+                  {% for e in employees %}
+                    <label class="multiselect-item employee-item hidden" data-position-id="{{ e.position_id|default:'' }}" data-employee-name="{{ e.get_full_name|default:e.username|escape }}">
+                      <input type="checkbox" name="employee_ids" value="{{ e.id }}" onchange="updateEmployeeMulti()" disabled>
+                      {{ e.get_full_name|default:e.username }}
+                    </label>
+                  {% empty %}
+                    <div class="text-sm text-muted" style="padding: .5rem .75rem;">No employees yet</div>
+                  {% endfor %}
+                </div>
+                <div class="multiselect-actions">
+                  <button class="btn btn-ghost btn-sm" type="button" onclick="selectAllEmployees(true)">Select all</button>
+                  <button class="btn btn-ghost btn-sm" type="button" onclick="selectAllEmployees(false)">Clear</button>
+                </div>
+              </div>
+            </div>
+            <div class="form-error-message hidden" id="employeeAssignError"></div>
+          </div>
+
+          <label class="switch" style="margin-top: 0.75rem;">
+            <input type="checkbox" id="publishImmediatelyCustom" name="publish" value="1">
+            <span class="switch-slider" aria-hidden="true"></span>
+            <span class="text-sm">Publish</span>
+          </label>
+        </form>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeModal('createShiftModal')">Cancel</button>
+        <button class="btn btn-primary" id="createShiftSubmit" type="submit" form="createShiftForm">Create Shift</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete Drafts Confirm Modal -->
+  <div class="modal-overlay hidden" id="deleteDraftsModal">
+    <div class="modal" style="max-width: 520px;">
+      <div class="modal-header">
+        <h2 class="modal-title">Delete draft shifts</h2>
+        <button class="modal-close" type="button" onclick="closeModal('deleteDraftsModal')" aria-label="Close">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="18" x2="6" y1="6" y2="18"/>
+            <line x1="6" x2="18" y1="6" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p class="text-sm">Delete all draft shifts in the current period?</p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" type="button" onclick="closeModal('deleteDraftsModal')">No</button>
+        <button class="btn btn-destructive" type="submit" form="deleteDraftsForm">Yes, delete</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete Selected Confirm Modal -->
+  <div class="modal-overlay hidden" id="deleteSelectedModal">
+    <div class="modal" style="max-width: 520px;">
+      <div class="modal-header">
+        <h2 class="modal-title">Delete selected shifts</h2>
+        <button class="modal-close" type="button" onclick="closeModal('deleteSelectedModal')" aria-label="Close">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="18" x2="6" y1="6" y2="18"/>
+            <line x1="6" x2="18" y1="6" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p class="text-sm">Delete the selected shifts?</p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" type="button" onclick="closeModal('deleteSelectedModal')">No</button>
+        <button class="btn btn-destructive" type="submit" form="deleteSelectedForm">Yes, delete</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete Shift Confirm Modal -->
+  <div class="modal-overlay hidden" id="deleteShiftConfirmModal">
+    <div class="modal" style="max-width: 520px;">
+      <div class="modal-header">
+        <h2 class="modal-title">Delete shift</h2>
+        <button class="modal-close" type="button" onclick="cancelDeleteShift()" aria-label="Close">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="18" x2="6" y1="6" y2="18"/>
+            <line x1="6" x2="18" y1="6" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p class="text-sm">Delete this shift: <strong id="deleteShiftConfirmTitle">—</strong> ?</p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" type="button" onclick="cancelDeleteShift()">No</button>
+        <button class="btn btn-destructive" type="button" onclick="confirmDeleteShift()">Yes, delete</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Shift Details Modal -->
+  <div class="modal-overlay hidden" id="shiftDetailsModal">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="flex items-center gap-3">
+          <h2 class="modal-title" id="detailsTitle">Shift Details</h2>
+          <span class="badge badge-outline" id="detailsStatus">Draft</span>
+        </div>
+        <button class="modal-close" onclick="closeModal('shiftDetailsModal')" aria-label="Close">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="18" x2="6" y1="6" y2="18"/>
+            <line x1="6" x2="18" y1="6" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="flex items-center gap-3">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-muted" aria-hidden="true">
+            <path d="M8 7V3"/>
+            <path d="M16 7V3"/>
+            <path d="M4 11h16"/>
+            <path d="M4 21h16"/>
+            <path d="M4 7h16"/>
+            <path d="M4 11v10"/>
+          </svg>
+          <div>
+            <div class="font-medium" id="detailsDate">Monday, January 13, 2025</div>
+            <div class="text-sm text-muted" id="detailsTime">9:00 AM - 5:00 PM</div>
+            <div class="text-sm text-muted" id="detailsDuration">Duration: —</div>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3 mt-4">
+          <span class="badge badge-default" id="detailsPosition">Barista</span>
+          <span class="text-sm text-muted" id="detailsCapacity">Capacity: 2/3 filled</span>
+        </div>
+
+        <div style="margin-top: 1rem;">
+          <p class="font-medium mb-2">Assigned Employees:</p>
+          <div class="flex flex-col gap-2" id="detailsEmployees">
+            <!-- filled by JS -->
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-destructive" onclick="deleteShift()">Delete</button>
+        <button class="btn btn-primary hidden" id="publishShiftBtn" onclick="publishShift()">Publish</button>
+        <button class="btn btn-outline" onclick="editShift()">Edit</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Templates Modal -->
+  <div class="modal-overlay hidden" id="templatesModal">
+    <div class="modal" style="max-width: 720px;">
+      <div class="modal-header">
+        <h2 class="modal-title">Manage Shift Templates</h2>
+        <button class="modal-close" onclick="closeModal('templatesModal')" aria-label="Close">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="18" x2="6" y1="6" y2="18"/>
+            <line x1="6" x2="18" y1="6" y2="18"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <div class="flex items-center justify-between" style="margin-bottom: 0.75rem;">
+          <p class="text-sm text-muted">Templates speed up shift creation. You can still edit fields after selecting a template.</p>
+          <button class="btn btn-outline btn-sm" onclick="toggleTemplateForm(true)">+ Add Template</button>
+        </div>
+
+        <div id="templateForm" class="card hidden" style="padding: 1rem; margin-bottom: 1rem;">
+          <div class="flex gap-4">
+            <div class="form-group" style="flex: 1;">
+              <label class="form-label" for="tplName">Template name *</label>
+              <input class="form-input" id="tplName" placeholder="e.g., Morning Barista">
+            </div>
+            <div class="form-group" style="width: 140px;">
+              <label class="form-label" for="tplCapacity">Capacity *</label>
+              <input class="form-input" type="number" id="tplCapacity" min="1" value="1">
+            </div>
+          </div>
+
+          <div class="flex gap-4">
+            <div class="form-group" style="flex: 1;">
+              <label class="form-label" for="tplStart">Start *</label>
+              <input class="form-input" type="time" id="tplStart" value="06:00">
+            </div>
+            <div class="form-group" style="flex: 1;">
+              <label class="form-label" for="tplEnd">End *</label>
+              <input class="form-input" type="time" id="tplEnd" value="14:00">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="tplPosition">Position *</label>
+            <select class="form-select" id="tplPosition">
+              <option value="barista">Barista</option>
+              <option value="cashier">Cashier</option>
+              <option value="supervisor">Supervisor</option>
+              <option value="cleaner">Cleaner</option>
+            </select>
+          </div>
+
+          <div class="flex gap-2">
+            <button class="btn btn-primary btn-sm" onclick="saveTemplate()">Save</button>
+            <button class="btn btn-outline btn-sm" onclick="toggleTemplateForm(false)">Cancel</button>
+          </div>
+        </div>
+
+        <div class="table-container">
+          <table class="table" aria-label="Template list">
+            <thead>
+              <tr>
+                <th>Template name</th>
+                <th>Position</th>
+                <th>Time</th>
+                <th>Capacity</th>
+                <th style="width: 160px;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="templatesTbody">
+              <tr>
+                <td>Morning Barista</td>
+                <td><span class="badge badge-default">Barista</span></td>
+                <td>06:00 - 14:00</td>
+                <td>2</td>
+                <td>
+                  <div class="flex gap-1">
+                    <button class="btn btn-ghost btn-sm" onclick="editTemplateRow(this)">Edit</button>
+                    <button class="btn btn-ghost btn-sm" style="color: var(--destructive);" onclick="deleteTemplateRow(this)">Delete</button>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td>Evening Cashier</td>
+                <td><span class="badge badge-default">Cashier</span></td>
+                <td>14:00 - 22:00</td>
+                <td>1</td>
+                <td>
+                  <div class="flex gap-1">
+                    <button class="btn btn-ghost btn-sm" onclick="editTemplateRow(this)">Edit</button>
+                    <button class="btn btn-ghost btn-sm" style="color: var(--destructive);" onclick="deleteTemplateRow(this)">Delete</button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeModal('templatesModal')">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="application/json" id="managerShiftsData">{{ shifts_json|safe }}</script>
+  {% if shift_form_state_json %}
+    <script type="application/json" id="shiftFormState">{{ shift_form_state_json|safe }}</script>
+  {% endif %}
+  <div
+    id="managerShiftPage"
+    data-base-url="{% url 'manager_shifts' %}"
+    data-view="{{ view }}"
+    data-anchor="{{ anchor|date:'Y-m-d' }}"
+    data-start="{{ start|date:'Y-m-d' }}"
+    data-end="{{ end|date:'Y-m-d' }}"
+    data-today="{{ today|date:'Y-m-d' }}"
+    data-can-undo="{% if can_undo %}1{% else %}0{% endif %}"
+    data-shift-details-url-template="{% url 'shift_details' 0 %}"
+    data-shift-update-url-template="{% url 'update_shift' 0 %}"
+    data-shift-delete-url-template="{% url 'delete_shift' 0 %}"
+    data-shift-publish-url-template="{% url 'publish_shift' 0 %}"
+    data-positions-list-url="{% url 'positions_list' %}"
+  ></div>
+  <form id="deleteShiftForm" method="post">
+    {% csrf_token %}
+  </form>
+  <form id="publishShiftForm" method="post">
+    {% csrf_token %}
+  </form>
+  <form id="undoLastActionForm" method="post" action="{% url 'undo_last_action' %}" class="hidden">
+    {% csrf_token %}
+  </form>
+
+  <script src="{% static 'js/app.js' %}?v={% now 'U' %}"></script>
+  <script src="{% static 'js/manager-shifts.js' %}?v={% now 'U' %}"></script>
+</body>
+</html>

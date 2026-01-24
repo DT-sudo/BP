@@ -1,0 +1,89 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>{% block title %}ShiftSync{% endblock %}</title>
+  <meta name="description" content="{% block meta_description %}ShiftSync{% endblock %}" />
+
+  <!-- Fonts (same as your static prototype) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Main stylesheet -->
+  <link rel="stylesheet" href="{% static 'css/styles.css' %}?v={% now 'U' %}">
+
+  {% block extra_head %}{% endblock %}
+</head>
+
+<body class="{% block body_class %}{% endblock %}">
+  <div class="toast-container" id="toastContainer" aria-live="polite" aria-atomic="true"></div>
+  {% if messages %}
+    <ul id="djangoMessages" class="hidden">
+      {% for message in messages %}
+        <li data-level="{{ message.tags }}" data-text="{{ message|escape }}"></li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+  {% block header %}
+  <!-- Header (shared) -->
+  <header class="header">
+    <div class="header-brand">
+      <div class="header-logo" aria-hidden="true">
+        <!-- same calendar icon -->
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect width="18" height="18" x="3" y="4" rx="2" ry="2"/>
+          <line x1="16" x2="16" y1="2" y2="6"/>
+          <line x1="8" x2="8" y1="2" y2="6"/>
+          <line x1="3" x2="21" y1="10" y2="10"/>
+        </svg>
+      </div>
+      <span class="header-title">ShiftSync</span>
+    </div>
+
+    <!-- Navigation tabs -->
+    <nav class="header-nav" aria-label="Primary">
+      {% comment %}
+        You can control which tabs are visible using a context variable like user_role.
+        Example: user_role = "manager" or "employee"
+      {% endcomment %}
+
+      {% if user_role == "manager" %}
+        <a href="{% url 'manager_shifts' %}" class="nav-link {% block nav_shifts_active %}{% endblock %}">Shifts</a>
+        <a href="{% url 'manager_employees' %}" class="nav-link {% block nav_employees_active %}{% endblock %}">Team</a>
+      {% else %}
+        <a href="{% url 'employee_shifts' %}" class="nav-link {% block nav_myshifts_active %}{% endblock %}">My Shifts</a>
+      {% endif %}
+    </nav>
+
+    <!-- User area (top right) -->
+    <div class="dropdown header-user">
+      <button class="btn btn-ghost btn-sm header-user-trigger" type="button" onclick="toggleUserMenu(this)" aria-label="User menu">
+        <div class="header-avatar" aria-label="User avatar">{{ user_initials|default:"U" }}</div>
+      </button>
+      <div class="dropdown-menu">
+        <div class="dropdown-item dropdown-item-static dropdown-item-title">{{ user_display_name|default:"User" }}</div>
+        <div class="dropdown-item dropdown-item-static">{{ user_header_role|default:user_role|default:"User" }}</div>
+        <div class="dropdown-divider"></div>
+        {% block user_menu %}
+          <a href="{% url 'logout' %}" class="dropdown-item dropdown-item-destructive" aria-label="Log out">Logout</a>
+        {% endblock %}
+      </div>
+    </div>
+  </header>
+  {% endblock %}
+
+  <!-- Main content -->
+  <main class="main-content">
+    {% block content %}{% endblock %}
+  </main>
+
+  {% block scripts %}
+    <script src="{% static 'js/app.js' %}?v={% now 'U' %}"></script>
+  {% endblock %}
+</body>
+</html>
