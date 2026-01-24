@@ -62,6 +62,20 @@ function setMultiOpen(el, open) {
   el.classList.toggle('open', open);
   const trigger = el.querySelector('.multiselect-trigger');
   trigger?.setAttribute('aria-expanded', open ? 'true' : 'false');
+
+  if (!open && el.id === 'managerMonthPicker') {
+    const menu = el.querySelector('.multiselect-menu');
+    if (menu) {
+      menu.style.position = '';
+      menu.style.top = '';
+      menu.style.left = '';
+      menu.style.right = '';
+      menu.style.bottom = '';
+      menu.style.transform = '';
+      menu.style.maxWidth = '';
+      menu.style.width = '';
+    }
+  }
 }
 
 function closeAllMultiselects() {
@@ -85,6 +99,36 @@ function toggleMulti(id) {
   const willOpen = !el.classList.contains('open');
   closeAllMultiselects();
   setMultiOpen(el, willOpen);
+
+  if (id === 'managerMonthPicker' && willOpen) {
+    window.requestAnimationFrame(() => {
+      const trigger = el.querySelector('.multiselect-trigger');
+      const label = el.querySelector('#periodLabel');
+      const menu = el.querySelector('.multiselect-menu');
+      if (!trigger || !menu) return;
+
+      const triggerRect = trigger.getBoundingClientRect();
+      const labelRect = (label || trigger).getBoundingClientRect();
+
+      menu.style.position = 'fixed';
+      menu.style.transform = '';
+      menu.style.width = '';
+      menu.style.maxWidth = `calc(100vw - 16px)`;
+
+      const menuWidth = Math.max(0, menu.offsetWidth || 0);
+      const margin = 8;
+      const vw = window.innerWidth || document.documentElement.clientWidth || 0;
+
+      const centerX = labelRect.left + labelRect.width / 2;
+      let left = centerX - menuWidth / 2;
+      left = Math.min(Math.max(margin, left), Math.max(margin, vw - menuWidth - margin));
+
+      menu.style.top = `${Math.round(triggerRect.bottom + 6)}px`;
+      menu.style.left = `${Math.round(left)}px`;
+      menu.style.right = 'auto';
+      menu.style.bottom = 'auto';
+    });
+  }
 
   if (id === 'positionMulti' && !willOpen && el.dataset.dirty === '1') {
     el.dataset.dirty = '0';
@@ -898,6 +942,10 @@ function renderManagerMonthPicker() {
   yearLabel.textContent = String(managerMonthPickerYear || '');
   grid.innerHTML = '';
 
+  const now = new Date();
+  const nowYear = now.getFullYear();
+  const nowMonth = now.getMonth();
+
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   months.forEach((m, idx) => {
     const btn = document.createElement('button');
@@ -910,6 +958,9 @@ function renderManagerMonthPicker() {
       idx === managerMonthPickerAnchorMonth
     ) {
       btn.classList.add('active');
+    }
+    if (managerMonthPickerYear === nowYear && idx === nowMonth) {
+      btn.classList.add('current');
     }
     btn.addEventListener('click', () => {
       const mm = String(idx + 1).padStart(2, '0');
