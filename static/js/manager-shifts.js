@@ -1,5 +1,121 @@
+/**
+ * =============================================================================
+ * MANAGER SHIFTS PAGE - Main JavaScript Controller
+ * =============================================================================
+ * 
+ * This file handles all client-side functionality for the manager's shift
+ * scheduling interface. It manages:
+ * 
+ * 1. CALENDAR VIEWS (Week/Month/Day)
+ *    - Rendering shift chips on time grids
+ *    - Lane layout algorithm for overlapping shifts
+ *    - Navigation between dates/views
+ * 
+ * 2. SHIFT MANAGEMENT
+ *    - Create/Edit shift modal with form validation
+ *    - Position and employee multi-select dropdowns
+ *    - Shift details modal (view, edit, delete, publish)
+ * 
+ * 3. BULK OPERATIONS
+ *    - Selection mode for multi-shift selection
+ *    - Bulk publish/delete functionality
+ *    - Undo support
+ * 
+ * 4. EMPLOYEE SIDEBAR
+ *    - Employee list with search/filter/sort
+ *    - Shift highlighting per employee
+ *    - Hours worked statistics
+ * 
+ * 5. FILTERS & URL STATE
+ *    - Position filter (multiselect with checkboxes)
+ *    - Status filter (draft/published)
+ *    - Show filter (all/understaffed)
+ *    - URL-based state persistence
+ * 
+ * 6. ROLE LEGEND
+ *    - Color-coded position legend at bottom
+ *    - Dynamic palette generation based on position ID
+ * 
+ * Dependencies:
+ *   - app.js (openModal, closeModal, showToast, parseJsonScript, etc.)
+ *   - calendar-utils.js (toISODate, weekdayLabel, dayNumber, navigateWith, etc.)
+ * 
+ * =============================================================================
+ */
+
+// =============================================================================
+// SECTION 1: UTILITY HELPERS & SELECTORS
+// =============================================================================
+// Small reusable functions used throughout the file to reduce code duplication.
+
+/** Shorthand for document.getElementById - saves typing and bytes */
+const getEl = (id) => document.getElementById(id);
+
+/** Gets the dataset from the main page container (contains URLs, config, etc.) */
+const getPageData = () => getEl('managerShiftPage')?.dataset;
+
+/** Pads a number to 2 digits with leading zero (e.g., 9 → "09") */
+const pad2 = (n) => String(n).padStart(2, '0');
+
+// CSS selectors for commonly accessed checkbox groups
+const POSITION_CB_SEL = '#positionMulti input[type="checkbox"]';
+const EMPLOYEE_CB_SEL = '#employeeMulti input[type="checkbox"]';
+
+/** Returns NodeList of all position filter checkboxes */
+const getPositionCbs = () => document.querySelectorAll(POSITION_CB_SEL);
+
+/** Returns array of all employee picker checkboxes */
+const getEmployeeCbs = () => [...document.querySelectorAll(EMPLOYEE_CB_SEL)];
+
+/**
+ * Clears specified inline style properties from an element.
+ * Used to reset dropdown menu positioning after close.
+ */
+function clearStyles(el, ...props) {
+  if (!el) return;
+  for (const p of props) el.style[p] = '';
+}
+
+/**
+ * Creates a styled empty state message element.
+ * Used when lists have no items to display.
+ */
+function createEmptyMessage(text, className = 'text-sm text-muted') {
+  const el = document.createElement('div');
+  el.className = className;
+  el.style.padding = '.5rem .75rem';
+  el.textContent = text;
+  return el;
+}
+
+/**
+ * Gets the label text for a checked radio button in a container.
+ * Used to display current filter selection in dropdown triggers.
+ */
+function getRadioLabel(containerId, name, fallback = 'All') {
+  const checked = document.querySelector(`#${containerId} input[name="${name}"]:checked`);
+  if (!checked?.value) return fallback;
+  return checked.parentElement?.textContent?.trim() || fallback;
+}
+
+// =============================================================================
+// SECTION 2: FILTER URL BUILDER
+// =============================================================================
+// Builds URLs from the filter form state for navigation.
+// When user changes filters, the page reloads with new URL params.
+
+/**
+ * Constructs a URL with current filter selections as query parameters.
+ * Reads from the managerFiltersForm and builds a clean URL.
+ * 
+ * Special handling:
+ * - Removes 'positions' param if all or none are selected (means "show all")
+ * - Removes empty status/show params
+ * 
+ * @returns {string|null} The constructed URL or null if form not found
+ */
 function buildManagerFiltersUrl() {
-  const form = document.getElementById('managerFiltersForm');
+  const form = getEl('managerFiltersForm');
   if (!form) return null;
 
   const url = new URL(form.action || window.location.pathname, window.location.origin);
@@ -23,55 +139,69 @@ function buildManagerFiltersUrl() {
   return url.toString();
 }
 
+/** Navigates to the URL built from current filter state */
 function submitManagerFiltersForm() {
   const url = buildManagerFiltersUrl();
   if (!url) return;
   window.location.assign(url);
 }
 
+/** 
+ * Called from HTML onclick handlers on filter buttons.
+ * Closes any open dropdowns first, then submits filters.
+ */
 function submitFilters() {
   window.closeAllMultiselects?.('programmatic');
   submitManagerFiltersForm();
 }
 
-// ---------- Multi-select ----------
+// =============================================================================
+// SECTION 3: MULTI-SELECT DROPDOWN HANDLING
+// =============================================================================
+// Manages the custom multiselect dropdowns (position, status, show filters).
+// These are custom UI components, not native <select> elements.
+
+/**
+ * Updates the status filter dropdown trigger label.
+ * Capitalizes the selected value or shows "All" if none selected.
+ */
 function updateStatusMulti() {
-  const label = document.getElementById('statusMultiLabel');
+  const label = getEl('statusMultiLabel');
   if (!label) return;
-  const checked = document.querySelector('#statusMulti input[type="radio"][name="status"]:checked');
-  if (!checked || !checked.value) label.textContent = 'All';
-  else label.textContent = String(checked.value).charAt(0).toUpperCase() + String(checked.value).slice(1);
+  const value = document.querySelector('#statusMulti input[name="status"]:checked')?.value;
+  label.textContent = value ? value.charAt(0).toUpperCase() + value.slice(1) : 'All';
 }
 
+/** Updates the "show" filter dropdown trigger label */
 function updateShowMulti() {
-  const label = document.getElementById('showMultiLabel');
+  const label = getEl('showMultiLabel');
   if (!label) return;
-  const checked = document.querySelector('#showMulti input[type="radio"][name="show"]:checked');
-  if (!checked || !checked.value) label.textContent = 'All';
-  else label.textContent = checked.value === 'understaffed' ? 'Understaffed only' : String(checked.value);
+  const value = document.querySelector('#showMulti input[name="show"]:checked')?.value;
+  label.textContent = !value ? 'All' : value === 'understaffed' ? 'Understaffed only' : value;
 }
 
+/**
+ * Marks the position multiselect as "dirty" (changed).
+ * When the dropdown closes, dirty state triggers a filter submission.
+ */
 function markPositionMultiDirty() {
-  const ms = document.getElementById('positionMulti');
+  const ms = getEl('positionMulti');
   if (!ms) return;
   ms.dataset.dirty = '1';
 }
 
+// Flag to ensure hooks are only wired once
 let managerMultiselectHooksWired = false;
 
+/** Resets the month picker dropdown menu positioning styles */
 function resetManagerMonthPickerMenu(el) {
-  const menu = el?.querySelector?.('.multiselect-menu');
-  if (!menu) return;
-  menu.style.position = '';
-  menu.style.top = '';
-  menu.style.left = '';
-  menu.style.right = '';
-  menu.style.bottom = '';
-  menu.style.transform = '';
-  menu.style.maxWidth = '';
-  menu.style.width = '';
+  clearStyles(el?.querySelector?.('.multiselect-menu'), 'position', 'top', 'left', 'right', 'bottom', 'transform', 'maxWidth', 'width');
 }
 
+/**
+ * Positions the month picker dropdown menu.
+ * Calculates position to center under the trigger while staying in viewport.
+ */
 function positionManagerMonthPickerMenu(el) {
   const trigger = el?.querySelector?.('.multiselect-trigger');
   const label = el?.querySelector?.('#periodLabel');
@@ -100,6 +230,13 @@ function positionManagerMonthPickerMenu(el) {
   menu.style.bottom = 'auto';
 }
 
+/**
+ * Sets up global event listeners for multiselect dropdown events.
+ * Uses custom events dispatched by app.js multiselect system:
+ * - multiselect:willopen - before dropdown opens
+ * - multiselect:didopen - after dropdown opened
+ * - multiselect:didclose - after dropdown closed
+ */
 function wireManagerMultiselectHooks() {
   if (managerMultiselectHooksWired) return;
   managerMultiselectHooksWired = true;
@@ -135,16 +272,21 @@ function wireManagerMultiselectHooks() {
   });
 }
 
+/** Helper to check/uncheck all position filter checkboxes */
 function selectAllPositions(on) {
-  document.querySelectorAll('#positionMulti input[type="checkbox"]').forEach((cb) => (cb.checked = on));
+  getPositionCbs().forEach((cb) => (cb.checked = on));
   updatePositionMulti();
 }
 
+/**
+ * Updates the position filter dropdown trigger label.
+ * Shows "All positions", comma-separated names, or count based on selection.
+ */
 function updatePositionMulti() {
-  const cbs = Array.from(document.querySelectorAll('#positionMulti input[type="checkbox"]'));
+  const cbs = [...getPositionCbs()];
   const checked = cbs.filter((c) => c.checked).map((c) => c.parentElement.textContent.trim());
 
-  const label = document.getElementById('positionMultiLabel');
+  const label = getEl('positionMultiLabel');
   if (!label) return;
 
   if (checked.length === 0) label.textContent = 'All positions';
@@ -153,17 +295,19 @@ function updatePositionMulti() {
   else label.textContent = `${checked.length} positions`;
 }
 
+/**
+ * Rebuilds the position filter dropdown menu with current positions.
+ * Called after fetching fresh positions from server.
+ * 
+ * @param {Array} positions - Array of {id, name, is_active} objects
+ */
 function rebuildPositionFilterOptions(positions) {
   const menu = document.querySelector('#positionMulti .multiselect-menu');
   if (!menu) return;
-
   menu.innerHTML = '';
+
   if (!positions.length) {
-    const empty = document.createElement('div');
-    empty.className = 'text-sm text-muted';
-    empty.style.padding = '.5rem .75rem';
-    empty.textContent = 'No positions yet. Add roles in Employees → Manage roles.';
-    menu.appendChild(empty);
+    menu.appendChild(createEmptyMessage('No positions yet. Add roles in Employees → Manage roles.'));
     return;
   }
 
@@ -199,7 +343,7 @@ function rebuildPositionFilterOptions(positions) {
   clearBtn.type = 'button';
   clearBtn.textContent = 'Clear';
   clearBtn.addEventListener('click', () => {
-    document.querySelectorAll('#positionMulti input[type="checkbox"]').forEach((cb) => (cb.checked = false));
+    getPositionCbs().forEach((cb) => (cb.checked = false));
     updatePositionMulti();
     markPositionMultiDirty();
   });
@@ -209,7 +353,7 @@ function rebuildPositionFilterOptions(positions) {
   allBtn.type = 'button';
   allBtn.textContent = 'All';
   allBtn.addEventListener('click', () => {
-    document.querySelectorAll('#positionMulti input[type="checkbox"]').forEach((cb) => (cb.checked = true));
+    getPositionCbs().forEach((cb) => (cb.checked = true));
     updatePositionMulti();
     markPositionMultiDirty();
   });
@@ -219,7 +363,7 @@ function rebuildPositionFilterOptions(positions) {
   applyBtn.type = 'button';
   applyBtn.textContent = 'Apply';
   applyBtn.addEventListener('click', () => {
-    const ms = document.getElementById('positionMulti');
+    const ms = getEl('positionMulti');
     if (ms) ms.dataset.dirty = '0';
     submitManagerFiltersForm();
   });
@@ -230,8 +374,13 @@ function rebuildPositionFilterOptions(positions) {
   menu.appendChild(actions);
 }
 
+/**
+ * Rebuilds the hidden <select> element for shift position.
+ * This is the actual form field submitted with the create/edit form.
+ * The visible UI is a custom multiselect styled dropdown.
+ */
 function rebuildShiftPositionOptions(positions) {
-  const select = document.getElementById('shiftPosition');
+  const select = getEl('shiftPosition');
   if (!select) return;
 
   const prev = select.value;
@@ -252,38 +401,38 @@ function rebuildShiftPositionOptions(positions) {
   if (positions.some((p) => String(p.id) === String(prev))) select.value = String(prev);
 }
 
+/** Updates the shift position dropdown trigger to show selected position name */
 function updateShiftPositionMultiLabel() {
-  const label = document.getElementById('shiftPositionMultiLabel');
+  const label = getEl('shiftPositionMultiLabel');
   if (!label) return;
-  const select = document.getElementById('shiftPosition');
-  const selectedValue = select?.value || '';
-  if (!selectedValue) {
-    label.textContent = 'Select position...';
-    return;
-  }
-  const opt = Array.from(select.options).find((o) => String(o.value) === String(selectedValue));
-  label.textContent = opt?.textContent?.trim() || 'Select position...';
+  const select = getEl('shiftPosition');
+  const opt = select?.selectedOptions?.[0];
+  label.textContent = opt?.value ? opt.textContent?.trim() || 'Select position...' : 'Select position...';
 }
 
+/**
+ * Sets the shift position when user clicks a radio in the dropdown.
+ * Updates hidden select, closes dropdown, and triggers change event.
+ */
 function setShiftPosition(value) {
-  const select = document.getElementById('shiftPosition');
+  const select = getEl('shiftPosition');
   if (select) select.value = String(value || '');
   updateShiftPositionMultiLabel();
   select?.dispatchEvent(new Event('change', { bubbles: true }));
   window.closeAllMultiselects?.();
 }
 
+/**
+ * Rebuilds the shift position dropdown menu (radio buttons).
+ * Used in the create/edit shift modal.
+ */
 function rebuildShiftPositionMultiOptions(positions) {
-  const menu = document.getElementById('shiftPositionMultiMenu');
+  const menu = getEl('shiftPositionMultiMenu');
   if (!menu) return;
   menu.innerHTML = '';
 
   if (!positions.length) {
-    const empty = document.createElement('div');
-    empty.className = 'text-sm text-muted';
-    empty.style.padding = '.5rem .75rem';
-    empty.textContent = 'No positions yet.';
-    menu.appendChild(empty);
+    menu.appendChild(createEmptyMessage('No positions yet.'));
     return;
   }
 
@@ -295,7 +444,7 @@ function rebuildShiftPositionMultiOptions(positions) {
     radio.type = 'radio';
     radio.name = 'shiftPositionChoice';
     radio.value = String(p.id);
-    radio.checked = String(document.getElementById('shiftPosition')?.value || '') === String(p.id);
+    radio.checked = String(getEl('shiftPosition')?.value || '') === String(p.id);
     radio.addEventListener('change', () => setShiftPosition(radio.value));
 
     item.appendChild(radio);
@@ -304,18 +453,22 @@ function rebuildShiftPositionMultiOptions(positions) {
   });
 }
 
+/**
+ * Fetches fresh position data from the server via AJAX.
+ * Called when opening position dropdown or create shift modal.
+ * Rebuilds all position-related UI components with fresh data.
+ */
 async function refreshPositionsFromServer() {
-  const page = document.getElementById('managerShiftPage');
-  const url = page?.dataset.positionsListUrl;
+  const url = getPageData()?.positionsListUrl;
   if (!url) return;
 
   try {
     const res = await fetch(url, { headers: { Accept: 'application/json' } });
     if (!res.ok) return;
-    const payload = await res.json().catch(() => ({}));
-    const positions = (payload.positions || [])
-      .filter((p) => p && p.is_active)
-      .map((p) => ({ id: p.id, name: p.name, is_active: p.is_active }))
+    const { positions: raw = [] } = await res.json().catch(() => ({}));
+    const positions = raw
+      .filter((p) => p?.is_active)
+      .map(({ id, name, is_active }) => ({ id, name, is_active }))
       .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
 
     rebuildPositionFilterOptions(positions);
@@ -331,19 +484,23 @@ async function refreshPositionsFromServer() {
   }
 }
 
+/**
+ * Updates the employee multiselect to show chips for selected employees.
+ * Creates removable chips or shows placeholder text.
+ */
 function updateEmployeeMulti() {
-  const boxes = Array.from(document.querySelectorAll('#employeeMulti input[type="checkbox"]'));
+  const boxes = getEmployeeCbs();
   const checked = boxes.filter((b) => b.checked);
-  const chips = document.getElementById('employeeMultiChips');
+  const chips = getEl('employeeMultiChips');
   if (!chips) return;
 
   chips.innerHTML = '';
 
-  if (checked.length === 0) {
+  if (!checked.length) {
     const ph = document.createElement('span');
     ph.className = 'multiselect-placeholder';
     ph.id = 'employeeMultiPlaceholder';
-    ph.textContent = document.getElementById('shiftPosition')?.value ? 'Select employees' : 'Select role first';
+    ph.textContent = getEl('shiftPosition')?.value ? 'Select employees' : 'Select role first';
     chips.appendChild(ph);
     return;
   }
@@ -373,36 +530,55 @@ function updateEmployeeMulti() {
   });
 }
 
+/** Helper to check/uncheck all visible employee checkboxes */
 function selectAllEmployees(on) {
   document.querySelectorAll('#employeeMulti .employee-item input[type="checkbox"]').forEach((cb) => {
+    // Only affect visible employees (hidden ones are for other positions)
     if (cb.closest('.employee-item')?.classList.contains('hidden')) return;
     cb.checked = on;
   });
   updateEmployeeMulti();
 }
 
+// =============================================================================
+// SECTION 4: EMPLOYEE PICKER OPTIMIZATION
+// =============================================================================
+// Employee list is pre-grouped by position and dynamically shown/hidden
+// based on selected shift position. This avoids re-rendering on every change.
+
+/** Cache of employee DOM elements grouped by position ID */
 let employeeBuckets = null;
+
+/** Last selected position ID - used to detect position changes */
 let lastShiftPositionId = null;
 
+/**
+ * Initializes the employee bucket cache on first call.
+ * Groups employee items by their position_id and removes them from DOM.
+ * Items are re-added when their position is selected.
+ * 
+ * @returns {Map} Map of positionId → array of DOM elements
+ */
 function initEmployeeBuckets() {
   if (employeeBuckets) return employeeBuckets;
 
-  const list = document.getElementById('employeeMultiList');
+  const list = getEl('employeeMultiList');
   employeeBuckets = new Map();
   if (!list) return employeeBuckets;
 
-  Array.from(list.querySelectorAll('.employee-item')).forEach((row) => {
+  for (const row of list.querySelectorAll('.employee-item')) {
     const pos = row.dataset.positionId || '';
     if (!employeeBuckets.has(pos)) employeeBuckets.set(pos, []);
     employeeBuckets.get(pos).push(row);
-  });
+  }
 
   // Remove all items from DOM; only append matching position when selected.
-  Array.from(list.children).forEach((c) => c.remove());
+  for (const c of [...list.children]) c.remove();
 
   return employeeBuckets;
 }
 
+/** Unchecks all employee checkboxes across all position buckets */
 function clearAllEmployeeSelections() {
   initEmployeeBuckets();
   employeeBuckets.forEach((rows) => {
@@ -413,16 +589,20 @@ function clearAllEmployeeSelections() {
   });
 }
 
+/**
+ * Wires up click handlers for the "×" buttons on employee chips.
+ * Uses event delegation on the chips container for efficiency.
+ */
 function wireEmployeeChipRemovals() {
-  const chips = document.getElementById('employeeMultiChips');
+  const chips = getEl('employeeMultiChips');
   if (!chips) return;
 
   const removeById = (employeeId) => {
-    const boxes = Array.from(document.querySelectorAll('#employeeMulti input[type="checkbox"]'));
-    const cb = boxes.find((b) => String(b.value) === String(employeeId));
-    if (!cb) return;
-    cb.checked = false;
-    updateEmployeeMulti();
+    const cb = getEmployeeCbs().find((b) => String(b.value) === String(employeeId));
+    if (cb) {
+      cb.checked = false;
+      updateEmployeeMulti();
+    }
   };
 
   chips.addEventListener('click', (e) => {
@@ -443,67 +623,81 @@ function wireEmployeeChipRemovals() {
   });
 }
 
+/**
+ * Prevents clicks inside filter multiselects from bubbling up.
+ * Needed because the filters are inside a form that might submit on click.
+ */
 function wireManagerFiltersMultiselectClickThrough() {
-  const form = document.getElementById('managerFiltersForm');
+  const form = getEl('managerFiltersForm');
   if (!form) return;
 
-  form.querySelectorAll('.multiselect-trigger').forEach((btn) => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-    });
-  });
-
-  form.querySelectorAll('.multiselect-menu').forEach((menu) => {
-    menu.addEventListener('click', (e) => {
-      e.stopPropagation();
-    });
-  });
+  for (const btn of form.querySelectorAll('.multiselect-trigger')) {
+    btn.addEventListener('click', (e) => e.stopPropagation());
+  }
+  for (const menu of form.querySelectorAll('.multiselect-menu')) {
+    menu.addEventListener('click', (e) => e.stopPropagation());
+  }
 }
 
-// ---------- Create Shift Modal ----------
-function resetCreateShiftModal() {
-  document.getElementById('createShiftTitle').textContent = 'Create Shift';
-  document.getElementById('createShiftSubmit').textContent = 'Create Shift';
+// =============================================================================
+// SECTION 5: CREATE/EDIT SHIFT MODAL
+// =============================================================================
+// Handles the modal form for creating new shifts or editing existing ones.
+// The same modal is reused for both operations with different titles/actions.
 
-  const form = document.getElementById('createShiftForm');
+/**
+ * Resets the create shift modal to its default "create" state.
+ * Clears all form fields and sets default values.
+ */
+function resetCreateShiftModal() {
+  getEl('createShiftTitle').textContent = 'Create Shift';
+  getEl('createShiftSubmit').textContent = 'Create Shift';
+
+  const form = getEl('createShiftForm');
   if (form?.dataset.createAction) form.action = form.dataset.createAction;
 
-  const dateInput = document.getElementById('shiftDate');
+  const dateInput = getEl('shiftDate');
   if (dateInput) dateInput.value = '';
-  const startInput = document.getElementById('shiftStart');
+  const startInput = getEl('shiftStart');
   if (startInput) startInput.value = '09:00';
-  const endInput = document.getElementById('shiftEnd');
+  const endInput = getEl('shiftEnd');
   if (endInput) endInput.value = '17:00';
-  const capInput = document.getElementById('shiftCapacity');
+  const capInput = getEl('shiftCapacity');
   if (capInput) capInput.value = '1';
-  const positionSelect = document.getElementById('shiftPosition');
+  const positionSelect = getEl('shiftPosition');
   if (positionSelect) positionSelect.value = '';
   updateShiftPositionMultiLabel();
 
-  const publish = document.getElementById('publishImmediatelyCustom');
+  const publish = getEl('publishImmediatelyCustom');
   if (publish) publish.checked = false;
 
   clearAllEmployeeSelections();
   updateEmployeeMulti();
 }
 
+/**
+ * Opens the create shift modal with optional pre-filled values.
+ * Called when clicking on a calendar cell.
+ * 
+ * @param {string} dateStr - ISO date string (YYYY-MM-DD)
+ * @param {string} startTime - Start time (HH:MM) or undefined
+ * @param {string} endTime - End time (HH:MM) or undefined (defaults to start+1h)
+ */
 function openCreateShiftModal(dateStr, startTime, endTime) {
   refreshPositionsFromServer();
   resetCreateShiftModal();
-  const dateInput = document.getElementById('shiftDate');
+  const dateInput = getEl('shiftDate');
   if (dateInput && dateStr) dateInput.value = dateStr;
 
-  const startInput = document.getElementById('shiftStart');
+  const startInput = getEl('shiftStart');
   if (startInput && startTime) startInput.value = startTime;
 
-  const endInput = document.getElementById('shiftEnd');
+  const endInput = getEl('shiftEnd');
   if (endInput) {
     if (endTime) endInput.value = endTime;
     else if (startTime) {
-      const [h, m] = String(startTime).split(':').map((x) => parseInt(x, 10));
-      const nextH = Number.isFinite(h) ? (h + 1) % 24 : 0;
-      const mm = Number.isFinite(m) ? m : 0;
-      endInput.value = `${String(nextH).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
+      const [h, m] = startTime.split(':').map((x) => parseInt(x, 10));
+      endInput.value = `${pad2((Number.isFinite(h) ? h + 1 : 1) % 24)}:${pad2(Number.isFinite(m) ? m : 0)}`;
     }
   }
 
@@ -512,12 +706,21 @@ function openCreateShiftModal(dateStr, startTime, endTime) {
   openModal('createShiftModal');
 }
 
+/**
+ * Filters the employee picker to show only employees for the selected position.
+ * Uses the bucket system for efficient DOM manipulation.
+ * 
+ * When position changes:
+ * 1. Clears previous selections
+ * 2. Removes old position's employees from DOM
+ * 3. Adds new position's employees to DOM
+ */
 function filterEmployeePicker() {
   initEmployeeBuckets();
-  const positionId = document.getElementById('shiftPosition')?.value;
-  const trigger = document.getElementById('employeeMultiTrigger');
-  const empty = document.getElementById('employeeMultiEmpty');
-  const list = document.getElementById('employeeMultiList');
+  const positionId = getEl('shiftPosition')?.value;
+  const trigger = getEl('employeeMultiTrigger');
+  const empty = getEl('employeeMultiEmpty');
+  const list = getEl('employeeMultiList');
 
   const hasPosition = !!positionId;
   if (trigger) trigger.disabled = false;
@@ -531,7 +734,7 @@ function filterEmployeePicker() {
       empty.textContent = 'Select role first';
       empty.classList.remove('hidden');
     }
-    document.getElementById('employeeMulti')?.classList.remove('open');
+    getEl('employeeMulti')?.classList.remove('open');
     updateEmployeeMulti();
     return;
   }
@@ -562,67 +765,71 @@ function filterEmployeePicker() {
   updateEmployeeMulti();
 }
 
+/** Clears validation error styling from capacity and employee fields */
 function clearCreateShiftErrors() {
-  document.getElementById('shiftCapacity')?.classList.remove('form-error');
-  document.getElementById('employeeMulti')?.classList.remove('form-error');
-  const capErr = document.getElementById('capacityError');
-  const empErr = document.getElementById('employeeAssignError');
-  if (capErr) {
-    capErr.classList.add('hidden');
-    capErr.textContent = '';
-  }
-  if (empErr) {
-    empErr.classList.add('hidden');
-    empErr.textContent = '';
-  }
+  getEl('shiftCapacity')?.classList.remove('form-error');
+  getEl('employeeMulti')?.classList.remove('form-error');
+  const capErr = getEl('capacityError');
+  const empErr = getEl('employeeAssignError');
+  if (capErr) { capErr.classList.add('hidden'); capErr.textContent = ''; }
+  if (empErr) { empErr.classList.add('hidden'); empErr.textContent = ''; }
 }
 
+/**
+ * Wires up client-side validation for the create/edit shift form.
+ * 
+ * Validates:
+ * - End time must be after start time
+ * - Cannot assign more employees than capacity allows
+ */
 function wireCreateShiftValidation() {
-  const form = document.getElementById('createShiftForm');
+  const form = getEl('createShiftForm');
   if (!form) return;
 
   form.addEventListener('submit', (e) => {
     clearCreateShiftErrors();
 
-    const start = document.getElementById('shiftStart')?.value;
-    const end = document.getElementById('shiftEnd')?.value;
+    const start = getEl('shiftStart')?.value;
+    const end = getEl('shiftEnd')?.value;
     if (start && end && start >= end) {
       e.preventDefault();
       showToast('error', 'Invalid time range', 'End time must be after start time.');
       return;
     }
 
-    const capEl = document.getElementById('shiftCapacity');
+    const capEl = getEl('shiftCapacity');
     const capacity = parseInt(capEl?.value || '0', 10);
-    const selected = Array.from(document.querySelectorAll('#employeeMulti input[type="checkbox"]')).filter(
-      (cb) => cb.checked
-    ).length;
+    const selected = getEmployeeCbs().filter((cb) => cb.checked).length;
     if (Number.isFinite(capacity) && capacity > 0 && selected > capacity) {
       e.preventDefault();
-
       capEl?.classList.add('form-error');
-      document.getElementById('employeeMulti')?.classList.add('form-error');
+      getEl('employeeMulti')?.classList.add('form-error');
 
       const msg = 'Cannot assign more employees than shift capacity.';
-      const capErr = document.getElementById('capacityError');
-      const empErr = document.getElementById('employeeAssignError');
-      if (capErr) {
-        capErr.textContent = msg;
-        capErr.classList.remove('hidden');
-      }
-      if (empErr) {
-        empErr.textContent = msg;
-        empErr.classList.remove('hidden');
-      }
+      const capErr = getEl('capacityError');
+      const empErr = getEl('employeeAssignError');
+      if (capErr) { capErr.textContent = msg; capErr.classList.remove('hidden'); }
+      if (empErr) { empErr.textContent = msg; empErr.classList.remove('hidden'); }
     }
   });
 
-  document.getElementById('shiftCapacity')?.addEventListener('input', clearCreateShiftErrors);
-  document.getElementById('shiftPosition')?.addEventListener('change', clearCreateShiftErrors);
-  document.getElementById('employeeMulti')?.addEventListener('change', clearCreateShiftErrors);
+  getEl('shiftCapacity')?.addEventListener('input', clearCreateShiftErrors);
+  getEl('shiftPosition')?.addEventListener('change', clearCreateShiftErrors);
+  getEl('employeeMulti')?.addEventListener('change', clearCreateShiftErrors);
 }
 
-// ---------- Time helpers ----------
+// =============================================================================
+// SECTION 6: TIME HELPERS & LAYOUT CONSTANTS
+// =============================================================================
+// Functions and constants for time calculations and grid layout.
+
+/**
+ * Converts a time string (HH:MM) to total minutes from midnight.
+ * Used for positioning shift chips on the time grid.
+ * 
+ * @param {string} value - Time string like "09:30"
+ * @returns {number} Minutes from midnight (e.g., 570 for 09:30)
+ */
 function parseTimeToMinutes(value) {
   const [h, m] = String(value || '00:00')
     .split(':')
@@ -633,11 +840,25 @@ function parseTimeToMinutes(value) {
   return hh * 60 + mm;
 }
 
-const TIME_GRID_HOUR_WIDTH_PX = 72;
-const TIME_GRID_HOUR_HEIGHT_PX = 56;
-const SHIFT_LANE_HEIGHT_PX = 60;
-const SHIFT_LANE_GAP_PX = 4;
+// Grid layout constants for the time-based views
+const TIME_GRID_HOUR_WIDTH_PX = 72;    // Width per hour in day view (horizontal)
+const TIME_GRID_HOUR_HEIGHT_PX = 56;   // Height per hour in week view (vertical)
+const SHIFT_LANE_HEIGHT_PX = 60;       // Height of each shift lane in day view
+const SHIFT_LANE_GAP_PX = 4;           // Gap between shift lanes
 
+// =============================================================================
+// SECTION 7: ROLE COLOR PALETTE SYSTEM
+// =============================================================================
+// Generates consistent colors for each position/role based on their ID.
+// Uses HSL color space to ensure readable, distinct colors.
+
+/**
+ * Generates a color palette for a position based on its ID.
+ * Uses modular arithmetic to spread hues across the spectrum.
+ * 
+ * @param {number|string} positionId - The position's unique ID
+ * @returns {Object|null} {bg, border, fg} color values or null
+ */
 function computeRolePalette(positionId) {
   const n = parseInt(positionId, 10);
   if (!Number.isFinite(n)) return null;
@@ -649,6 +870,10 @@ function computeRolePalette(positionId) {
   return { bg, border, fg };
 }
 
+/**
+ * Applies role-specific CSS custom properties to an element.
+ * The element can then use these variables for consistent styling.
+ */
 function applyRolePaletteToElement(el, positionId) {
   const palette = computeRolePalette(positionId);
   if (!el || !palette) return;
@@ -658,6 +883,7 @@ function applyRolePaletteToElement(el, positionId) {
   el.style.setProperty('--role-fg', palette.fg);
 }
 
+/** Extracts position data from the filter dropdown DOM for rendering legend */
 function collectPositionsFromDom() {
   const menu = document.querySelector('#positionMulti .multiselect-menu');
   if (!menu) return [];
@@ -670,9 +896,17 @@ function collectPositionsFromDom() {
     .filter((p) => p.id && p.name);
 }
 
+/**
+ * Renders the color legend at the bottom of the page.
+ * Shows all positions that have published shifts in the current view.
+ * Also shows "Draft" indicator if any draft shifts exist.
+ * 
+ * @param {Array} positions - All available positions
+ * @param {Array} shifts - Current shifts being displayed
+ */
 function renderRoleLegend(positions, shifts) {
-  const card = document.getElementById('roleLegendCard');
-  const root = document.getElementById('roleLegend');
+  const card = getEl('roleLegendCard');
+  const root = getEl('roleLegend');
   if (!root) return;
   root.innerHTML = '';
 
@@ -739,12 +973,27 @@ function renderRoleLegend(positions, shifts) {
   window.requestAnimationFrame(() => window.managerSyncStickyOffsets?.());
 }
 
-// ---------- Employees Sidebar ----------
-let managerEmployees = [];
-let managerEmployeePeriodStats = { minutesByEmployeeId: new Map(), shiftIdsByEmployeeId: new Map() };
-let activeEmployeeHighlightId = null;
-let employeeSidebarControlsWired = false;
+// =============================================================================
+// SECTION 8: EMPLOYEE SIDEBAR
+// =============================================================================
+// The right sidebar showing employees with their hours and highlighting controls.
 
+// Module-level state for sidebar
+let managerEmployees = [];                // All employees from server
+let managerEmployeePeriodStats = {        // Computed stats for current period
+  minutesByEmployeeId: new Map(),         // Total work minutes per employee
+  shiftIdsByEmployeeId: new Map()         // Set of shift IDs per employee
+};
+let activeEmployeeHighlightId = null;     // Currently highlighted employee ID
+let employeeSidebarControlsWired = false; // Prevent duplicate event binding
+
+/**
+ * Computes work statistics for each employee from shift data.
+ * Calculates total minutes worked and collects shift IDs per employee.
+ * 
+ * @param {Array} shifts - Array of shift objects
+ * @returns {Object} {minutesByEmployeeId, shiftIdsByEmployeeId} Maps
+ */
 function computeEmployeePeriodStats(shifts) {
   const minutesByEmployeeId = new Map();
   const shiftIdsByEmployeeId = new Map();
@@ -770,6 +1019,10 @@ function computeEmployeePeriodStats(shifts) {
   return { minutesByEmployeeId, shiftIdsByEmployeeId };
 }
 
+/**
+ * Extracts initials from a person's name.
+ * "John Doe" → "JD", "Alice" → "AL"
+ */
 function initialsFromName(name) {
   const parts = String(name || '')
     .trim()
@@ -780,29 +1033,38 @@ function initialsFromName(name) {
   return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
 }
 
+/**
+ * Formats minutes as compact hours display.
+ * 90 → "1.5h", 60 → "1h", 30 → "0.5h"
+ */
 function formatHoursCompact(minutes) {
   const total = Math.max(0, parseInt(minutes, 10) || 0);
   const rounded = Math.round((total / 60) * 10) / 10;
   return `${String(rounded).replace(/\.0$/, '')}h`;
 }
 
+/** Updates the active/pressed state of sidebar items based on highlight selection */
 function syncEmployeeSidebarActiveState() {
-  const list = document.getElementById('employeeSidebarList');
+  const list = getEl('employeeSidebarList');
   if (!list) return;
 
-  list.querySelectorAll('.employee-sidebar-item').forEach((row) => {
-    const id = String(row.dataset.employeeId || '');
+  for (const row of list.querySelectorAll('.employee-sidebar-item')) {
+    const id = row.dataset.employeeId || '';
     const active = !!activeEmployeeHighlightId && id === String(activeEmployeeHighlightId);
     row.classList.toggle('active', active);
 
     const btn = row.querySelector('.employee-highlight-btn');
     if (btn) {
       btn.classList.toggle('active', active);
-      btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+      btn.setAttribute('aria-pressed', String(active));
     }
-  });
+  }
 }
 
+/**
+ * Applies highlight styling to shift chips for the selected employee.
+ * Adds 'shift-chip-employee-highlight' class to matching chips.
+ */
 function applyEmployeeShiftHighlight() {
   document.querySelectorAll('.shift-chip.shift-chip-employee-highlight').forEach((el) => {
     el.classList.remove('shift-chip-employee-highlight');
@@ -821,6 +1083,7 @@ function applyEmployeeShiftHighlight() {
   });
 }
 
+/** Toggles highlight state for an employee (click handler for sidebar button) */
 function toggleEmployeeHighlight(employeeId) {
   const id = String(employeeId || '');
   if (!id) return;
@@ -829,27 +1092,34 @@ function toggleEmployeeHighlight(employeeId) {
   syncEmployeeSidebarActiveState();
 }
 
+/** Wires up search/filter/sort controls for the sidebar (once only) */
 function wireEmployeeSidebarControls() {
   if (employeeSidebarControlsWired) return;
   employeeSidebarControlsWired = true;
 
-  const search = document.getElementById('employeeSidebarSearch');
-  const position = document.getElementById('employeeSidebarPosition');
-  const sort = document.getElementById('employeeSidebarSort');
-  search?.addEventListener('input', renderEmployeeSidebar);
-  position?.addEventListener('change', renderEmployeeSidebar);
-  sort?.addEventListener('change', renderEmployeeSidebar);
+  getEl('employeeSidebarSearch')?.addEventListener('input', renderEmployeeSidebar);
+  getEl('employeeSidebarPosition')?.addEventListener('change', renderEmployeeSidebar);
+  getEl('employeeSidebarSort')?.addEventListener('change', renderEmployeeSidebar);
 }
 
+/**
+ * Renders the employee sidebar list with filtering, searching, and sorting.
+ * 
+ * Features:
+ * - Search by name or position
+ * - Filter by position
+ * - Sort by hours worked or name
+ * - Shows hours per employee for current period
+ * - Highlight button to emphasize employee's shifts
+ */
 function renderEmployeeSidebar() {
-  const sidebar = document.getElementById('managerEmployeeSidebar');
-  const list = document.getElementById('employeeSidebarList');
+  const sidebar = getEl('managerEmployeeSidebar');
+  const list = getEl('employeeSidebarList');
   if (!sidebar || !list) return;
 
-  const queryRaw = document.getElementById('employeeSidebarSearch')?.value || '';
-  const query = String(queryRaw).trim().toLowerCase();
-  const filterPosition = document.getElementById('employeeSidebarPosition')?.value || '';
-  const sortMode = document.getElementById('employeeSidebarSort')?.value || 'hours_asc';
+  const query = (getEl('employeeSidebarSearch')?.value || '').trim().toLowerCase();
+  const filterPosition = getEl('employeeSidebarPosition')?.value || '';
+  const sortMode = getEl('employeeSidebarSort')?.value || 'hours_asc';
 
   const minutesById = managerEmployeePeriodStats?.minutesByEmployeeId || new Map();
 
@@ -889,7 +1159,7 @@ function renderEmployeeSidebar() {
     enriched.sort((a, b) => a._name.localeCompare(b._name) || String(a._id).localeCompare(String(b._id)));
   }
 
-  const meta = document.getElementById('employeeSidebarMeta');
+  const meta = getEl('employeeSidebarMeta');
   if (meta) {
     const total = Array.isArray(managerEmployees) ? managerEmployees.length : 0;
     meta.textContent = total ? `${enriched.length}/${total}` : '';
@@ -970,6 +1240,23 @@ function renderEmployeeSidebar() {
   syncEmployeeSidebarActiveState();
 }
 
+// =============================================================================
+// SECTION 9: SHIFT LANE LAYOUT ALGORITHM
+// =============================================================================
+// When multiple shifts overlap in time, they need to be displayed in separate
+// "lanes" (columns in week view, rows in day view) to avoid visual overlap.
+
+/**
+ * Computes lane assignments for overlapping shifts using a greedy algorithm.
+ * 
+ * Algorithm:
+ * 1. Sort shifts by start time
+ * 2. For each shift, find the first lane where it fits (no overlap)
+ * 3. If no lane available, create a new one
+ * 
+ * @param {Array} shifts - Array of shift objects with start_time, end_time, id
+ * @returns {Object} {laneById: Map<id, laneIndex>, laneCount: number}
+ */
 function computeShiftLaneLayout(shifts) {
   const items = (shifts || [])
     .map((s) => ({
@@ -1002,6 +1289,16 @@ function computeShiftLaneLayout(shifts) {
   return { laneById, laneCount: Math.max(1, laneEnds.length) };
 }
 
+/**
+ * Positions a shift chip vertically on the week grid (time flows top-to-bottom).
+ * Sets top position based on start time and height based on duration.
+ * 
+ * @param {HTMLElement} chip - The shift chip element
+ * @param {Object} shift - Shift data with start_time, end_time
+ * @param {number} laneIndex - Which lane (column) the chip is in
+ * @param {number} laneCount - Total number of lanes for the day
+ * @param {number} hourHeightPx - Pixels per hour for positioning
+ */
 function applyTimedShiftChipVertical(chip, shift, laneIndex, laneCount, hourHeightPx) {
   if (!chip || !shift) return;
 
@@ -1022,6 +1319,10 @@ function applyTimedShiftChipVertical(chip, shift, laneIndex, laneCount, hourHeig
   chip.style.width = `calc(${pct}% - ${gap * 2}px)`;
 }
 
+/**
+ * Auto-scrolls the week grid to show the earliest shift.
+ * Improves UX by not starting at midnight when shifts are later in the day.
+ */
 function autoScrollWeekGridToEarliestShift(gridEl, shifts, hourHeightPx) {
   const grid = gridEl;
   if (!grid) return;
@@ -1044,6 +1345,19 @@ function autoScrollWeekGridToEarliestShift(gridEl, shifts, hourHeightPx) {
   });
 }
 
+/**
+ * Positions a shift chip horizontally on the day grid (time flows left-to-right).
+ * Sets left position based on start time and width based on duration.
+ * 
+ * @param {HTMLElement} chip - The shift chip element
+ * @param {Object} shift - Shift data with start_time, end_time
+ * @param {number} hourStartMinutes - Minutes offset for the grid start
+ * @param {number} laneIndex - Which lane (row) the chip is in
+ * @param {number} laneCount - Total number of lanes for the day
+ * @param {number} hourWidthPx - Pixels per hour for horizontal positioning
+ * @param {number} laneHeightPx - Height of each lane in pixels
+ * @param {number} laneGapPx - Gap between lanes in pixels
+ */
 function applyTimedShiftChipHorizontalDynamic(
   chip,
   shift,
@@ -1074,38 +1388,55 @@ function applyTimedShiftChipHorizontalDynamic(
   chip.style.height = `${laneHeight}px`;
 }
 
+// =============================================================================
+// SECTION 10: CALENDAR NAVIGATION
+// =============================================================================
+// Functions for navigating between views and time periods.
+
+/** Configuration for period navigation steps per view */
 const MANAGER_PERIOD_NAV = {
   defaultView: 'week',
   viewSteps: {
-    day: { days: 1, view: 'day' },
-    week: { days: 7, view: 'week' },
-    month: { months: 1, view: 'month' },
+    day: { days: 1, view: 'day' },      // Day view: +/- 1 day
+    week: { days: 7, view: 'week' },    // Week view: +/- 7 days
+    month: { months: 1, view: 'month' }, // Month view: +/- 1 month
   },
 };
 
+/** Switches to a different calendar view (day/week/month) */
 function switchView(view) {
   window.calendarSwitchView?.('managerShiftPage', view);
 }
 
+/** Navigates to the previous period (day/week/month depending on view) */
 function prevPeriod() {
   window.calendarPrevPeriod?.('managerShiftPage', MANAGER_PERIOD_NAV);
 }
 
+/** Navigates to the next period */
 function nextPeriod() {
   window.calendarNextPeriod?.('managerShiftPage', MANAGER_PERIOD_NAV);
 }
 
+/** Navigates to today in week view */
 function goToToday() {
   window.calendarGoToToday?.('managerShiftPage', 'week');
 }
 
-let managerMonthPickerYear = null;
-let managerMonthPickerAnchorYear = null;
-let managerMonthPickerAnchorMonth = null;
+// =============================================================================
+// SECTION 11: MONTH PICKER WIDGET
+// =============================================================================
+// A grid of months for quick navigation to specific month views.
 
+// State for the month picker
+let managerMonthPickerYear = null;       // Currently displayed year in picker
+let managerMonthPickerAnchorYear = null; // Year of the current view anchor
+let managerMonthPickerAnchorMonth = null; // Month of the current view anchor
+
+/** Renders the month picker grid with Jan-Dec buttons */
 function renderManagerMonthPicker() {
-  const yearLabel = document.getElementById('managerMonthPickerYearLabel');
-  const grid = document.getElementById('managerMonthPickerGrid');
+  const yearLabel = getEl('managerMonthPickerYearLabel');
+  const grid = getEl('managerMonthPickerGrid');
   if (!yearLabel || !grid) return;
 
   yearLabel.textContent = String(managerMonthPickerYear || '');
@@ -1141,16 +1472,19 @@ function renderManagerMonthPicker() {
   });
 }
 
+/** Shows previous year in month picker */
 function managerMonthPickerPrevYear() {
   managerMonthPickerYear = (managerMonthPickerYear || new Date().getFullYear()) - 1;
   renderManagerMonthPicker();
 }
 
+/** Shows next year in month picker */
 function managerMonthPickerNextYear() {
   managerMonthPickerYear = (managerMonthPickerYear || new Date().getFullYear()) + 1;
   renderManagerMonthPicker();
 }
 
+/** Initializes month picker state from calendar config */
 function initManagerMonthPicker(config) {
   const anchor = new Date(`${config.anchor}T00:00:00`);
   if (Number.isNaN(anchor.getTime())) {
@@ -1166,46 +1500,61 @@ function initManagerMonthPicker(config) {
   renderManagerMonthPicker();
 }
 
+// =============================================================================
+// SECTION 12: STICKY HEADER LAYOUT
+// =============================================================================
+// Manages sticky positioning of header, toolbar, and legend.
+// Calculates available height for the calendar grid.
+
+/**
+ * Sets up CSS custom properties for sticky element heights.
+ * These are used by CSS to position sticky elements and size the calendar.
+ * 
+ * Runs on init and window resize to adapt to layout changes.
+ */
 function wireStickyOffsets() {
-  const root = document.documentElement;
   const header = document.querySelector('.header');
-  if (!root || !header) return;
+  if (!header) return;
 
   const sync = () => {
+    const root = document.documentElement;
     const headerHeight = header.getBoundingClientRect().height;
     root.style.setProperty('--header-sticky-height', `${headerHeight}px`);
 
     const toolbar = document.querySelector('.card.page-toolbar-card');
-    const toolbarHeight = toolbar ? toolbar.getBoundingClientRect().height : 0;
+    const toolbarHeight = toolbar?.getBoundingClientRect().height || 0;
     root.style.setProperty('--toolbar-sticky-height', `${toolbarHeight}px`);
 
-    const legend = document.getElementById('roleLegendCard');
-    const legendHeight = legend ? legend.getBoundingClientRect().height : 0;
+    const legend = getEl('roleLegendCard');
+    const legendHeight = legend?.getBoundingClientRect().height || 0;
     root.style.setProperty('--bottom-legend-height', `${legendHeight}px`);
 
-    const activeView =
-      document.querySelector('#weekView.card:not(.hidden)') ||
-      document.querySelector('#monthView.card:not(.hidden)') ||
-      document.querySelector('#dayView.card:not(.hidden)');
-    const viewMarginTop = activeView ? parseFloat(window.getComputedStyle(activeView).marginTop) || 0 : 0;
-    const viewMarginBottom = viewMarginTop;
+    const activeView = document.querySelector('#weekView.card:not(.hidden), #monthView.card:not(.hidden), #dayView.card:not(.hidden)');
+    const viewMargin = activeView ? parseFloat(getComputedStyle(activeView).marginTop) || 0 : 0;
 
-    const available =
-      window.innerHeight - headerHeight - toolbarHeight - legendHeight - viewMarginTop - viewMarginBottom;
+    const available = innerHeight - headerHeight - toolbarHeight - legendHeight - viewMargin * 2;
     root.style.setProperty('--manager-calendar-fill-height', `${Math.max(320, Math.floor(available))}px`);
   };
 
   sync();
   window.managerSyncStickyOffsets = sync;
 
-  let resizeTimer = null;
-  window.addEventListener('resize', () => {
-    if (resizeTimer) window.clearTimeout(resizeTimer);
-    resizeTimer = window.setTimeout(sync, 50);
+  let resizeTimer;
+  addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(sync, 50);
   });
 }
 
-// ---------- Rendering helpers ----------
+// =============================================================================
+// SECTION 13: RENDERING UTILITIES
+// =============================================================================
+// Helper functions for rendering shift chips and formatting data.
+
+/**
+ * Escapes HTML special characters to prevent XSS.
+ * Used when inserting user data into innerHTML.
+ */
 function escapeHtml(value) {
   return String(value ?? '').replace(/[&<>"']/g, (ch) => {
     switch (ch) {
@@ -1225,6 +1574,10 @@ function escapeHtml(value) {
   });
 }
 
+/**
+ * Formats minutes as human-readable duration.
+ * 90 → "1h 30m", 60 → "1h", 30 → "30m"
+ */
 function formatDurationMinutes(minutes) {
   const total = Math.max(0, parseInt(minutes, 10) || 0);
   const h = Math.floor(total / 60);
@@ -1234,22 +1587,26 @@ function formatDurationMinutes(minutes) {
   return `${m}m`;
 }
 
+/** Formats ISO date as DD/MM/YYYY for display */
 function formatDateDMY(iso) {
   if (!iso) return '';
   const d = new Date(`${iso}T00:00:00`);
   if (Number.isNaN(d.getTime())) return String(iso);
-  const dd = String(d.getDate()).padStart(2, '0');
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const yyyy = String(d.getFullYear());
-  return `${dd}/${mm}/${yyyy}`;
+  return `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()}`;
 }
 
-// ---------- Shift selection (bulk publish/delete) ----------
-let selectionMode = false;
-const selectedShiftIds = new Set();
-let selectionHistory = [];
-let serverCanUndo = false;
+// =============================================================================
+// SECTION 14: BULK SHIFT SELECTION
+// =============================================================================
+// Allows selecting multiple shifts for bulk publish/delete operations.
+// Selection mode is toggled via toolbar button.
 
+let selectionMode = false;              // Whether selection mode is active
+const selectedShiftIds = new Set();     // Currently selected shift IDs
+let selectionHistory = [];              // Stack for undo functionality
+let serverCanUndo = false;              // Whether server has undo available
+
+/** Enables or disables selection mode, clearing selection when turning off */
 function setSelectMode(on) {
   selectionMode = !!on;
   if (!selectionMode) {
@@ -1259,8 +1616,15 @@ function setSelectMode(on) {
   updateSelectionUI();
 }
 
+/**
+ * Updates all selection-related UI elements.
+ * - Toggles button text (Select/Cancel)
+ * - Updates body class for selection mode styling
+ * - Enables/disables undo button
+ * - Adds/removes selected class from shift chips
+ */
 function updateSelectionUI() {
-  const btn = document.getElementById('selectModeBtn');
+  const btn = getEl('selectModeBtn');
   if (btn) {
     btn.textContent = selectionMode ? 'Cancel' : 'Select';
     btn.classList.toggle('btn-primary', selectionMode);
@@ -1269,7 +1633,7 @@ function updateSelectionUI() {
 
   document.body?.classList?.toggle('selection-mode', selectionMode);
 
-  const undoBtn = document.getElementById('undoSelectBtn');
+  const undoBtn = getEl('undoSelectBtn');
   if (undoBtn) {
     const canUndoNow = selectionMode ? selectionHistory.length > 0 || serverCanUndo : serverCanUndo;
     undoBtn.disabled = !canUndoNow;
@@ -1294,6 +1658,7 @@ function updateSelectionUI() {
   });
 }
 
+/** Toggles selection state for a single shift chip when clicked */
 function toggleChipSelected(chipEl) {
   const id = chipEl?.dataset?.shiftId;
   if (!id) return;
@@ -1305,14 +1670,17 @@ function toggleChipSelected(chipEl) {
   updateSelectionUI();
 }
 
+/** Returns selected shift IDs as comma-separated string for form submission */
 function selectedIdsCsv() {
   return Array.from(selectedShiftIds).join(',');
 }
 
+// Global functions exposed on window for use in HTML onclick handlers
 window.toggleSelectMode = function toggleSelectMode() {
   setSelectMode(!selectionMode);
 };
 
+/** Undoes the last selection change (restores previous selection state) */
 window.undoSelection = function undoSelection() {
   if (!selectionMode) return;
   const prev = selectionHistory.pop();
@@ -1325,37 +1693,52 @@ window.undoSelection = function undoSelection() {
   updateSelectionUI();
 };
 
+/** 
+ * Handles undo button in toolbar.
+ * If in selection mode with history, undoes selection.
+ * Otherwise, submits undo form to server.
+ */
 window.undoToolbar = function undoToolbar() {
   if (selectionMode && selectionHistory.length > 0) {
     window.undoSelection?.();
     return;
   }
-  document.getElementById('undoLastActionForm')?.submit();
+  getEl('undoLastActionForm')?.submit();
 };
 
+/**
+ * Handles publish button in toolbar.
+ * If in selection mode, publishes selected shifts.
+ * Otherwise, publishes all draft shifts.
+ */
 window.toolbarPublish = function toolbarPublish() {
   if (selectionMode) {
     if (!selectedShiftIds.size) {
       showToast('error', 'Select shifts', 'Select one or more shifts first.');
       return;
     }
-    const input = document.getElementById('publishSelectedIds');
-    const form = document.getElementById('publishSelectedForm');
+    const input = getEl('publishSelectedIds');
+    const form = getEl('publishSelectedForm');
     if (!input || !form) return;
     input.value = selectedIdsCsv();
     form.submit();
     return;
   }
-  document.getElementById('publishAllDraftsForm')?.submit();
+  getEl('publishAllDraftsForm')?.submit();
 };
 
+/**
+ * Handles delete button in toolbar.
+ * If in selection mode, opens delete confirmation for selected shifts.
+ * Otherwise, opens delete confirmation for all drafts.
+ */
 window.toolbarDelete = function toolbarDelete() {
   if (selectionMode) {
     if (!selectedShiftIds.size) {
       showToast('error', 'Select shifts', 'Select one or more shifts first.');
       return;
     }
-    const input = document.getElementById('deleteSelectedIds');
+    const input = getEl('deleteSelectedIds');
     if (input) input.value = selectedIdsCsv();
     openModal('deleteSelectedModal');
     return;
@@ -1363,6 +1746,7 @@ window.toolbarDelete = function toolbarDelete() {
   openModal('deleteDraftsModal');
 };
 
+/** Wires up Escape key to cancel selection mode */
 function wireSelectionEscapeCancel() {
   if (window._managerShiftsSelectionEscapeBound) return;
   window._managerShiftsSelectionEscapeBound = true;
@@ -1374,6 +1758,7 @@ function wireSelectionEscapeCancel() {
   });
 }
 
+/** Wires up window resize handler to reflow day view grid */
 function wireDayViewResizeReflow(config) {
   if (window._managerDayViewResizeBound) return;
   window._managerDayViewResizeBound = true;
@@ -1388,6 +1773,18 @@ function wireDayViewResizeReflow(config) {
   });
 }
 
+// =============================================================================
+// SECTION 15: SHIFT CHIP RENDERING
+// =============================================================================
+// Creates the DOM elements for individual shift chips on the calendar.
+
+/**
+ * Creates a shift chip element for week/day views.
+ * Shows position name, time, duration, and capacity fill status.
+ * 
+ * @param {Object} shift - Shift data object
+ * @returns {HTMLElement} The shift chip element
+ */
 function renderShiftChip(shift) {
   const chip = document.createElement('div');
   chip.className = `shift-chip ${shift.is_past ? 'shift-chip-past' : 'shift-chip-future'} ${
@@ -1419,6 +1816,10 @@ function renderShiftChip(shift) {
   return chip;
 }
 
+/**
+ * Creates a compact shift chip for month view.
+ * Shows only essential info in a single row to fit in small cells.
+ */
 function renderMonthShiftChip(shift) {
   const chip = document.createElement('div');
   chip.className = `shift-chip manager-month-shift-chip ${shift.is_past ? 'shift-chip-past' : 'shift-chip-future'} ${
@@ -1453,9 +1854,20 @@ function renderMonthShiftChip(shift) {
   return chip;
 }
 
+// =============================================================================
+// SECTION 16: SHIFT DETAILS MODAL
+// =============================================================================
+// Modal that shows when clicking on a shift chip (not in selection mode).
+// Displays shift info and provides edit/delete/publish actions.
+
+/**
+ * Opens the shift details modal by fetching shift data from server.
+ * Populates the modal with shift information and assigned employees.
+ * 
+ * @param {number|string} shiftId - The shift ID to display
+ */
 function openShiftDetails(shiftId) {
-  const page = document.getElementById('managerShiftPage');
-  const template = page?.dataset.shiftDetailsUrlTemplate;
+  const template = getPageData()?.shiftDetailsUrlTemplate;
   if (!template) return;
   const url = urlFromTemplate(template, shiftId);
 
@@ -1472,33 +1884,30 @@ function openShiftDetails(shiftId) {
       activeShiftId = shiftId;
       activeShiftData = data;
 
-      const detailsDate = document.getElementById('detailsDate');
+      const detailsDate = getEl('detailsDate');
       if (detailsDate) detailsDate.textContent = formatDateDMY(data.date || '');
-      const detailsTime = document.getElementById('detailsTime');
+      const detailsTime = getEl('detailsTime');
       if (detailsTime) detailsTime.textContent = `${data.start_time || ''}–${data.end_time || ''}`;
       const durationMinutes = parseTimeToMinutes(data.end_time) - parseTimeToMinutes(data.start_time);
-      const detailsDuration = document.getElementById('detailsDuration');
+      const detailsDuration = getEl('detailsDuration');
       if (detailsDuration) detailsDuration.textContent = `Duration: ${formatDurationMinutes(durationMinutes)}`;
-      const detailsPosition = document.getElementById('detailsPosition');
+      const detailsPosition = getEl('detailsPosition');
       if (detailsPosition) detailsPosition.textContent = data.position || '';
-      const detailsCapacity = document.getElementById('detailsCapacity');
+      const detailsCapacity = getEl('detailsCapacity');
       if (detailsCapacity) {
         detailsCapacity.textContent = `Capacity: ${data.assigned_count ?? 0}/${data.capacity ?? 0} filled`;
       }
 
-      const statusEl = document.getElementById('detailsStatus');
+      const statusEl = getEl('detailsStatus');
       if (statusEl) {
         statusEl.textContent = data.status === 'draft' ? 'Draft' : 'Published';
         statusEl.className = 'badge ' + (data.status === 'draft' ? 'badge-outline' : 'badge-success');
       }
 
-      const publishBtn = document.getElementById('publishShiftBtn');
-      if (publishBtn) {
-        if (data.status === 'draft') publishBtn.classList.remove('hidden');
-        else publishBtn.classList.add('hidden');
-      }
+      const publishBtn = getEl('publishShiftBtn');
+      publishBtn?.classList.toggle('hidden', data.status !== 'draft');
 
-      const list = document.getElementById('detailsEmployees');
+      const list = getEl('detailsEmployees');
       if (list) {
         const assignedEmployees = Array.isArray(data.assigned_employees) ? data.assigned_employees : [];
         list.innerHTML = '';
@@ -1508,19 +1917,13 @@ function openShiftDetails(shiftId) {
           empty.textContent = 'No employees assigned.';
           list.appendChild(empty);
         } else {
-          assignedEmployees.forEach((e) => {
+          for (const e of assignedEmployees) {
             const row = document.createElement('div');
             row.className = 'flex items-center gap-2';
-            const initials = (e.name || 'E')
-              .split(' ')
-              .filter(Boolean)
-              .slice(0, 2)
-              .map((p) => p[0])
-              .join('')
-              .toUpperCase();
+            const initials = initialsFromName(e.name);
             row.innerHTML = `<div class="header-avatar" style="width: 1.5rem; height: 1.5rem; font-size: 0.625rem;">${initials}</div><span class="text-sm">${e.name}</span>`;
             list.appendChild(row);
-          });
+          }
         }
       }
 
@@ -1531,8 +1934,12 @@ function openShiftDetails(shiftId) {
     });
 }
 
+/**
+ * Wires up click handler on calendar containers.
+ * Handles clicks on cells (open create modal) and other-month cells (navigate).
+ */
 function wireCalendarClicks(containerId) {
-  const el = document.getElementById(containerId);
+  const el = getEl(containerId);
   if (!el) return;
   el.addEventListener('click', (e) => {
     if (e.target.closest('.shift-chip')) return;
@@ -1547,18 +1954,35 @@ function wireCalendarClicks(containerId) {
   });
 }
 
+/** Publishes the currently viewed shift via form submission */
 function publishShift() {
   if (!activeShiftId) return;
-  const page = document.getElementById('managerShiftPage');
-  const tpl = page?.dataset.shiftPublishUrlTemplate;
-  const form = document.getElementById('publishShiftForm');
+  const tpl = getPageData()?.shiftPublishUrlTemplate;
+  const form = getEl('publishShiftForm');
   if (!tpl || !form) return;
   form.action = urlFromTemplate(tpl, activeShiftId);
   form.submit();
 }
 
+// =============================================================================
+// SECTION 17: CALENDAR GRID RENDERING
+// =============================================================================
+// Functions that build the actual calendar grids (week/month/day views).
+
+/**
+ * Renders the week view grid.
+ * 
+ * Structure:
+ * - 7 columns (one per day) + time labels column
+ * - 24 rows (one per hour)
+ * - Shift chips positioned absolutely based on time
+ * - Uses lane layout for overlapping shifts
+ * 
+ * @param {Object} config - Calendar config (start, end, today, etc.)
+ * @param {Array} shifts - Shifts to display
+ */
 function renderWeekGrid(config, shifts) {
-  const grid = document.getElementById('weekGrid');
+  const grid = getEl('weekGrid');
   if (!grid) return;
   grid.innerHTML = '';
 
@@ -1652,8 +2076,19 @@ function renderWeekGrid(config, shifts) {
   autoScrollWeekGridToEarliestShift(grid, shifts, hourHeightPx);
 }
 
+/**
+ * Renders the month view grid.
+ * 
+ * Structure:
+ * - 7 columns (days of week)
+ * - 6 rows (weeks, some may show prev/next month days)
+ * - Compact shift chips stacked in each cell
+ * 
+ * @param {Object} config - Calendar config
+ * @param {Array} shifts - Shifts to display
+ */
 function renderMonthGrid(config, shifts) {
-  const grid = document.getElementById('monthGrid');
+  const grid = getEl('monthGrid');
   if (!grid) return;
   grid.innerHTML = '';
 
@@ -1721,8 +2156,19 @@ function renderMonthGrid(config, shifts) {
   applyEmployeeShiftHighlight();
 }
 
+/**
+ * Renders the day view grid.
+ * 
+ * Structure:
+ * - 24 columns (one per hour), time flows left-to-right
+ * - Shift chips positioned horizontally based on time
+ * - Uses lane layout for overlapping shifts (stacked vertically)
+ * 
+ * @param {Object} config - Calendar config
+ * @param {Array} shifts - Shifts to display
+ */
 function renderDayGrid(config, shifts) {
-  const grid = document.getElementById('dayGrid');
+  const grid = getEl('dayGrid');
   if (!grid) return;
   grid.innerHTML = '';
 
@@ -1796,81 +2242,102 @@ function renderDayGrid(config, shifts) {
   applyEmployeeShiftHighlight();
 }
 
-let activeShiftId = null;
-let activeShiftData = null;
-let managerCurrentShifts = [];
+// =============================================================================
+// SECTION 18: SHIFT EDIT/DELETE FROM DETAILS MODAL
+// =============================================================================
+// Actions available from the shift details modal.
 
+// State for currently viewed/edited shift
+let activeShiftId = null;     // ID of shift shown in details modal
+let activeShiftData = null;   // Full data of that shift
+let managerCurrentShifts = []; // All shifts for current view period
+
+/**
+ * Opens the create/edit modal in edit mode for the current shift.
+ * Pre-fills all form fields with the shift's current values.
+ */
 function editShift() {
   if (!activeShiftData || !activeShiftId) return;
 
   closeModal('shiftDetailsModal');
-  document.getElementById('createShiftTitle').textContent = 'Edit Shift';
-  document.getElementById('createShiftSubmit').textContent = 'Save';
+  getEl('createShiftTitle').textContent = 'Edit Shift';
+  getEl('createShiftSubmit').textContent = 'Save';
 
-  const form = document.getElementById('createShiftForm');
-  const page = document.getElementById('managerShiftPage');
-  const updateTpl = page?.dataset.shiftUpdateUrlTemplate;
+  const form = getEl('createShiftForm');
+  const updateTpl = getPageData()?.shiftUpdateUrlTemplate;
   if (form && updateTpl) form.action = urlFromTemplate(updateTpl, activeShiftId);
 
-  document.getElementById('shiftDate').value = activeShiftData.date;
-  document.getElementById('shiftStart').value = activeShiftData.start_time;
-  document.getElementById('shiftEnd').value = activeShiftData.end_time;
-  document.getElementById('shiftCapacity').value = String(activeShiftData.capacity);
+  getEl('shiftDate').value = activeShiftData.date;
+  getEl('shiftStart').value = activeShiftData.start_time;
+  getEl('shiftEnd').value = activeShiftData.end_time;
+  getEl('shiftCapacity').value = String(activeShiftData.capacity);
 
-  const positionSelect = document.getElementById('shiftPosition');
+  const positionSelect = getEl('shiftPosition');
   if (positionSelect) {
     const positionId = activeShiftData.position_id ?? activeShiftData.positionId ?? '';
-    Array.from(positionSelect.options).forEach((o) => {
-      o.selected = String(o.value) === String(positionId);
-    });
+    for (const o of positionSelect.options) o.selected = String(o.value) === String(positionId);
   }
   updateShiftPositionMultiLabel();
 
-  document.getElementById('publishImmediatelyCustom').checked = activeShiftData.status === 'published';
+  getEl('publishImmediatelyCustom').checked = activeShiftData.status === 'published';
 
   filterEmployeePicker();
   // set employees (after list is filtered to the selected position)
   const selectedIds = new Set((activeShiftData.assigned_employees || []).map((e) => String(e.id)));
-  document.querySelectorAll('#employeeMulti input[type="checkbox"]').forEach((cb) => {
-    cb.checked = selectedIds.has(String(cb.value));
-  });
+  for (const cb of getEmployeeCbs()) cb.checked = selectedIds.has(String(cb.value));
   updateEmployeeMulti();
   openModal('createShiftModal');
 }
 
+/** Opens the delete confirmation modal for the current shift */
 function deleteShift() {
   if (!activeShiftId) return;
-  const titleEl = document.getElementById('deleteShiftConfirmTitle');
+  const titleEl = getEl('deleteShiftConfirmTitle');
   if (titleEl) {
     const role = activeShiftData?.position || '';
-    const time =
-      activeShiftData?.start_time && activeShiftData?.end_time ? `${activeShiftData.start_time}–${activeShiftData.end_time}` : '';
-    const date = activeShiftData?.date || '';
-    titleEl.textContent = [role, time, date].filter(Boolean).join(' • ') || `#${activeShiftId}`;
+    const time = activeShiftData?.start_time && activeShiftData?.end_time
+      ? `${activeShiftData.start_time}–${activeShiftData.end_time}` : '';
+    titleEl.textContent = [role, time, activeShiftData?.date].filter(Boolean).join(' • ') || `#${activeShiftId}`;
   }
   openModal('deleteShiftConfirmModal');
 }
 
+/** Closes the delete confirmation modal without deleting */
 function cancelDeleteShift() {
   closeModal('deleteShiftConfirmModal');
 }
 
+/** Confirms deletion and submits the delete form */
 function confirmDeleteShift() {
   if (!activeShiftId) return;
-
-  const form = document.getElementById('deleteShiftForm');
-  const page = document.getElementById('managerShiftPage');
-  const delTpl = page?.dataset.shiftDeleteUrlTemplate;
+  const form = getEl('deleteShiftForm');
+  const delTpl = getPageData()?.shiftDeleteUrlTemplate;
   if (!form || !delTpl) return;
   form.action = urlFromTemplate(delTpl, activeShiftId);
   form.submit();
 }
 
+// =============================================================================
+// SECTION 19: PAGE INITIALIZATION
+// =============================================================================
+// Main entry point that sets up everything when the page loads.
+
+/**
+ * Main initialization function for the manager shifts page.
+ * 
+ * This function:
+ * 1. Reads configuration from the page's data attributes
+ * 2. Parses JSON data (shifts, employees) from script tags
+ * 3. Wires up all event handlers
+ * 4. Renders the appropriate calendar view
+ * 5. Restores form state if returning from validation error
+ */
 function initManagerShifts() {
-  const page = document.getElementById('managerShiftPage');
+  const page = getEl('managerShiftPage');
   if (!page) return;
 
-  serverCanUndo = (page.dataset.canUndo || '') === '1';
+  const pageData = page.dataset;
+  serverCanUndo = pageData.canUndo === '1';
 
   wireStickyOffsets();
   wireSelectionEscapeCancel();
@@ -1882,13 +2349,13 @@ function initManagerShifts() {
   });
 
   const config = {
-    baseUrl: page.dataset.baseUrl,
-    view: page.dataset.view,
-    anchor: page.dataset.anchor,
-    start: page.dataset.start,
-    end: page.dataset.end,
-    today: page.dataset.today,
-    shiftDetailsUrlTemplate: page.dataset.shiftDetailsUrlTemplate,
+    baseUrl: pageData.baseUrl,
+    view: pageData.view,
+    anchor: pageData.anchor,
+    start: pageData.start,
+    end: pageData.end,
+    today: pageData.today,
+    shiftDetailsUrlTemplate: pageData.shiftDetailsUrlTemplate,
   };
 
   const shifts = parseJsonScript('managerShiftsData', []);
@@ -1910,7 +2377,7 @@ function initManagerShifts() {
   updateShowMulti();
   updateEmployeeMulti();
   wireCreateShiftValidation();
-  document.getElementById('shiftPosition')?.addEventListener('change', filterEmployeePicker);
+  getEl('shiftPosition')?.addEventListener('change', filterEmployeePicker);
   renderRoleLegend(collectPositionsFromDom(), managerCurrentShifts);
   refreshPositionsFromServer();
   renderEmployeeSidebar();
@@ -1930,47 +2397,40 @@ function initManagerShifts() {
 
     const mode = formState.mode || 'create';
     const shiftId = formState.shift_id;
-    const dateInput = document.getElementById('shiftDate');
-    if (dateInput && formState.date) dateInput.value = formState.date;
-    const startInput = document.getElementById('shiftStart');
-    if (startInput && formState.start_time) startInput.value = formState.start_time;
-    const endInput = document.getElementById('shiftEnd');
-    if (endInput && formState.end_time) endInput.value = formState.end_time;
-    const capInput = document.getElementById('shiftCapacity');
-    if (capInput && formState.capacity) capInput.value = String(formState.capacity);
-    const positionSelect = document.getElementById('shiftPosition');
-    if (positionSelect && formState.position_id) positionSelect.value = String(formState.position_id);
-    const publish = document.getElementById('publishImmediatelyCustom');
-    if (publish) publish.checked = !!formState.publish;
+    if (formState.date) getEl('shiftDate').value = formState.date;
+    if (formState.start_time) getEl('shiftStart').value = formState.start_time;
+    if (formState.end_time) getEl('shiftEnd').value = formState.end_time;
+    if (formState.capacity) getEl('shiftCapacity').value = String(formState.capacity);
+    if (formState.position_id) getEl('shiftPosition').value = String(formState.position_id);
+    getEl('publishImmediatelyCustom').checked = !!formState.publish;
 
     filterEmployeePicker();
-    const selectedIds = new Set((formState.employee_ids || []).map((x) => String(x)));
-    document.querySelectorAll('#employeeMulti input[type="checkbox"]').forEach((cb) => {
-      cb.checked = selectedIds.has(String(cb.value));
-    });
+    const selectedIds = new Set((formState.employee_ids || []).map(String));
+    for (const cb of getEmployeeCbs()) cb.checked = selectedIds.has(String(cb.value));
 
     if (mode === 'update' && shiftId) {
-      document.getElementById('createShiftTitle').textContent = 'Edit Shift';
-      document.getElementById('createShiftSubmit').textContent = 'Save';
-      const updateTpl = page.dataset.shiftUpdateUrlTemplate;
-      const form = document.getElementById('createShiftForm');
+      getEl('createShiftTitle').textContent = 'Edit Shift';
+      getEl('createShiftSubmit').textContent = 'Save';
+      const updateTpl = pageData.shiftUpdateUrlTemplate;
+      const form = getEl('createShiftForm');
       if (form && updateTpl) form.action = urlFromTemplate(updateTpl, shiftId);
     }
 
     updateEmployeeMulti();
 
     const errorField = formState.error_field;
-    if (errorField === 'capacity') {
-      document.getElementById('shiftCapacity')?.classList.add('form-error');
-    } else if (errorField === 'employee_ids') {
-      document.getElementById('employeeMulti')?.classList.add('form-error');
-    }
+    if (errorField === 'capacity') getEl('shiftCapacity')?.classList.add('form-error');
+    else if (errorField === 'employee_ids') getEl('employeeMulti')?.classList.add('form-error');
     openModal('createShiftModal');
   }
 }
 
+// =============================================================================
+// BOOTSTRAP: Run initialization when DOM is ready
+// =============================================================================
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initManagerShifts);
 } else {
+  // DOM already loaded (script was deferred or at end of body)
   initManagerShifts();
 }

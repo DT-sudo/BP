@@ -1,0 +1,45 @@
+{# 
+  Modal Wrapper Partial
+  
+  Usage:
+    {% include "partials/modal_wrapper.html" with modal_id="myModal" modal_title="Title" modal_size="520px" close_action="closeModal('myModal')" %}
+  
+  Parameters:
+    - modal_id: Required. The ID for the modal overlay div
+    - modal_title: Required. The modal header title
+    - modal_size: Optional. Max-width (default: 500px). Use "720px" for wide modals
+    - close_action: Optional. JS function for close button (default: closeModal('<modal_id>'))
+    - modal_body: Content block - pass via 'with' or use slots
+    - modal_footer: Footer buttons block
+    - header_extra: Extra content in header (e.g., badge)
+    - hide_close: Set to hide the X button
+#}
+<div class="modal-overlay hidden" id="{{ modal_id }}">
+  <div class="modal"{% if modal_size %} style="max-width: {{ modal_size }};"{% endif %}>
+    <div class="modal-header">
+      {% if header_extra %}
+        <div class="flex items-center gap-3">
+          <h2 class="modal-title">{{ modal_title }}</h2>
+          {{ header_extra }}
+        </div>
+      {% else %}
+        <h2 class="modal-title">{{ modal_title }}</h2>
+      {% endif %}
+      {% if not hide_close %}
+        <button class="modal-close" type="button" onclick="{{ close_action|default_if_none:'' }}{% if not close_action %}closeModal('{{ modal_id }}'){% endif %}" aria-label="Close">
+          {% include "partials/icons/x.html" %}
+        </button>
+      {% endif %}
+    </div>
+    {% if modal_body %}
+      <div class="modal-body">
+        {{ modal_body|safe }}
+      </div>
+    {% endif %}
+    {% if modal_footer %}
+      <div class="modal-footer">
+        {{ modal_footer|safe }}
+      </div>
+    {% endif %}
+  </div>
+</div>

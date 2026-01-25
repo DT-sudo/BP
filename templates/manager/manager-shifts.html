@@ -341,61 +341,13 @@
   </div>
 
   <!-- Delete Drafts Confirm Modal -->
-  <div class="modal-overlay hidden" id="deleteDraftsModal">
-    <div class="modal" style="max-width: 520px;">
-      <div class="modal-header">
-        <h2 class="modal-title">Delete draft shifts</h2>
-        <button class="modal-close" type="button" onclick="closeModal('deleteDraftsModal')" aria-label="Close">
-          {% include "partials/icons/x.html" %}
-        </button>
-      </div>
-      <div class="modal-body">
-        <p class="text-sm">Delete all draft shifts in the current period?</p>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-outline" type="button" onclick="closeModal('deleteDraftsModal')">No</button>
-        <button class="btn btn-destructive" type="submit" form="deleteDraftsForm">Yes, delete</button>
-      </div>
-    </div>
-  </div>
+  {% include "partials/confirm_modal.html" with modal_id="deleteDraftsModal" title="Delete draft shifts" message="Delete all draft shifts in the current period?" confirm_text="Yes, delete" confirm_form="deleteDraftsForm" destructive=True %}
 
   <!-- Delete Selected Confirm Modal -->
-  <div class="modal-overlay hidden" id="deleteSelectedModal">
-    <div class="modal" style="max-width: 520px;">
-      <div class="modal-header">
-        <h2 class="modal-title">Delete selected shifts</h2>
-        <button class="modal-close" type="button" onclick="closeModal('deleteSelectedModal')" aria-label="Close">
-          {% include "partials/icons/x.html" %}
-        </button>
-      </div>
-      <div class="modal-body">
-        <p class="text-sm">Delete the selected shifts?</p>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-outline" type="button" onclick="closeModal('deleteSelectedModal')">No</button>
-        <button class="btn btn-destructive" type="submit" form="deleteSelectedForm">Yes, delete</button>
-      </div>
-    </div>
-  </div>
+  {% include "partials/confirm_modal.html" with modal_id="deleteSelectedModal" title="Delete selected shifts" message="Delete the selected shifts?" confirm_text="Yes, delete" confirm_form="deleteSelectedForm" destructive=True %}
 
   <!-- Delete Shift Confirm Modal -->
-  <div class="modal-overlay hidden" id="deleteShiftConfirmModal">
-    <div class="modal" style="max-width: 520px;">
-      <div class="modal-header">
-        <h2 class="modal-title">Delete shift</h2>
-        <button class="modal-close" type="button" onclick="cancelDeleteShift()" aria-label="Close">
-          {% include "partials/icons/x.html" %}
-        </button>
-      </div>
-      <div class="modal-body">
-        <p class="text-sm">Delete this shift: <strong id="deleteShiftConfirmTitle">—</strong> ?</p>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-outline" type="button" onclick="cancelDeleteShift()">No</button>
-        <button class="btn btn-destructive" type="button" onclick="confirmDeleteShift()">Yes, delete</button>
-      </div>
-    </div>
-  </div>
+  {% include "partials/confirm_modal.html" with modal_id="deleteShiftConfirmModal" title="Delete shift" message="Delete this shift: <strong id='deleteShiftConfirmTitle'>—</strong> ?" confirm_text="Yes, delete" cancel_action="cancelDeleteShift()" confirm_action="confirmDeleteShift()" destructive=True %}
 
   <!-- Shift Details Modal -->
   <div class="modal-overlay hidden" id="shiftDetailsModal">

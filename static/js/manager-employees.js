@@ -1,26 +1,47 @@
-// ---------- Filtering (client-side) ----------
+// === Constants ===
+const ROLE_SELECT_IDS = ['roleFilter', 'addRole', 'editRole'];
+
+// === Helpers ===
+function getPageData() {
+  return document.getElementById('managerEmployeesPage')?.dataset;
+}
+
+function closeDropdowns() {
+  for (const m of document.querySelectorAll('.dropdown-menu')) m.classList.remove('open');
+}
+
+function openModalWithDropdownClose(modalId) {
+  closeDropdowns();
+  openModal(modalId);
+}
+
+function cancelModal(modalId, clearFn) {
+  clearFn?.();
+  closeModal(modalId);
+}
+
+// === Filtering (client-side) ===
 function applyEmployeeFilters() {
-  const q = document.getElementById('employeeSearch')?.value.trim().toLowerCase() || '';
+  const q = (document.getElementById('employeeSearch')?.value || '').trim().toLowerCase();
   const role = document.getElementById('roleFilter')?.value || 'all';
 
-  document.querySelectorAll('.employee-row').forEach((row) => {
-    const text = row.innerText.toLowerCase();
-    const roleOk = role === 'all' || String(row.dataset.role) === String(role);
-    const qOk = !q || text.includes(q);
+  for (const row of document.querySelectorAll('.employee-row')) {
+    const roleOk = role === 'all' || row.dataset.role === role;
+    const qOk = !q || row.innerText.toLowerCase().includes(q);
     row.style.display = roleOk && qOk ? '' : 'none';
-  });
+  }
 }
 
 function updateRoleFilterMultiLabel() {
   const label = document.getElementById('roleFilterMultiLabel');
   if (!label) return;
-  const checked = document.querySelector('#roleFilterMulti input[type="radio"][name="employeeRoleChoice"]:checked');
-  if (!checked) {
+
+  const checked = document.querySelector('#roleFilterMulti input[name="employeeRoleChoice"]:checked');
+  if (!checked || checked.value === 'all' || checked.value === '') {
     label.textContent = 'All';
-    return;
+  } else {
+    label.textContent = checked.parentElement?.textContent?.trim() || 'Role';
   }
-  if (checked.value === 'all' || checked.value === '') label.textContent = 'All';
-  else label.textContent = (checked.parentElement?.textContent || '').trim() || 'Role';
 }
 
 function setEmployeeRoleFilter(value) {
@@ -31,119 +52,68 @@ function setEmployeeRoleFilter(value) {
   window.closeAllMultiselects?.();
 }
 
-function getEmployeeConfig() {
-  const el = document.getElementById('managerEmployeesPage');
-  if (!el) return null;
-  return {
-    detailsUrlTemplate: el.dataset.employeeDetailsUrlTemplate,
-    updateUrlTemplate: el.dataset.employeeUpdateUrlTemplate,
-    resetPasswordUrlTemplate: el.dataset.employeeResetPasswordUrlTemplate,
-    deleteUrlTemplate: el.dataset.employeeDeleteUrlTemplate,
-  };
-}
-
 let editTargetUserId = null;
-let editTargetEmployeeMeta = null;
 let pendingEmployeeDelete = null;
-
-function closeAllRowDropdownMenus() {
-  document.querySelectorAll('.dropdown-menu').forEach((m) => m.classList.remove('open'));
-}
 
 function digitsCount(value) {
   return (String(value || '').match(/\d/g) || []).length;
 }
 
-function clearFieldError(inputId, errorId) {
-  const input = document.getElementById(inputId);
-  const err = document.getElementById(errorId);
-  input?.classList.remove('form-error');
-  if (err) {
-    err.classList.add('hidden');
-    err.textContent = '';
-  }
-}
-
 function setFieldError(inputId, errorId, message) {
   const input = document.getElementById(inputId);
   const err = document.getElementById(errorId);
-  input?.classList.add('form-error');
+  const hasError = !!message;
+  input?.classList.toggle('form-error', hasError);
   if (err) {
-    err.textContent = message || 'Required';
-    err.classList.remove('hidden');
+    err.textContent = message || '';
+    err.classList.toggle('hidden', !hasError);
   }
 }
 
 function validateEmployeeFields(prefix) {
-  const fullNameId = `${prefix}FullName`;
-  const emailId = `${prefix}Email`;
-  const phoneId = `${prefix}Phone`;
-  const roleId = `${prefix}Role`;
+  const fields = ['FullName', 'Email', 'Phone', 'Role'];
+  const errors = {};
 
-  clearFieldError(fullNameId, `${fullNameId}Error`);
-  clearFieldError(emailId, `${emailId}Error`);
-  clearFieldError(phoneId, `${phoneId}Error`);
-  clearFieldError(roleId, `${roleId}Error`);
+  // Clear all first
+  for (const f of fields) setFieldError(`${prefix}${f}`, `${prefix}${f}Error`, null);
 
-  const fullName = document.getElementById(fullNameId)?.value.trim() || '';
-  const emailEl = document.getElementById(emailId);
-  const email = emailEl?.value.trim() || '';
-  const phone = document.getElementById(phoneId)?.value.trim() || '';
-  const role = document.getElementById(roleId)?.value || '';
+  const fullName = document.getElementById(`${prefix}FullName`)?.value.trim();
+  const emailEl = document.getElementById(`${prefix}Email`);
+  const email = emailEl?.value.trim();
+  const phone = document.getElementById(`${prefix}Phone`)?.value.trim();
+  const role = document.getElementById(`${prefix}Role`)?.value;
 
-  let ok = true;
-  if (!fullName) {
-    setFieldError(fullNameId, `${fullNameId}Error`, 'Full name is required.');
-    ok = false;
+  if (!fullName) errors.FullName = 'Full name is required.';
+  if (!email) errors.Email = 'Email is required.';
+  else if (emailEl && !emailEl.checkValidity()) errors.Email = 'Enter a valid email address.';
+  if (!phone) errors.Phone = 'Phone is required.';
+  else if (digitsCount(phone) < 7) errors.Phone = 'Enter a valid phone number.';
+  if (!role) errors.Role = 'Role is required.';
+
+  for (const [f, msg] of Object.entries(errors)) {
+    setFieldError(`${prefix}${f}`, `${prefix}${f}Error`, msg);
   }
 
-  if (!email) {
-    setFieldError(emailId, `${emailId}Error`, 'Email is required.');
-    ok = false;
-  } else if (emailEl && !emailEl.checkValidity()) {
-    setFieldError(emailId, `${emailId}Error`, 'Enter a valid email address.');
-    ok = false;
-  }
-
-  if (!phone) {
-    setFieldError(phoneId, `${phoneId}Error`, 'Phone is required.');
-    ok = false;
-  } else if (digitsCount(phone) < 7) {
-    setFieldError(phoneId, `${phoneId}Error`, 'Enter a valid phone number.');
-    ok = false;
-  }
-
-  if (!role) {
-    setFieldError(roleId, `${roleId}Error`, 'Role is required.');
-    ok = false;
-  }
-
-  return ok;
+  return Object.keys(errors).length === 0;
 }
 
-// ---------- View/Edit ----------
+// === View/Edit ===
 async function openEditEmployee(userId) {
-  const cfg = getEmployeeConfig();
-  if (!cfg?.detailsUrlTemplate) return;
+  const url = getPageData()?.employeeDetailsUrlTemplate;
+  if (!url) return;
 
+  closeDropdowns();
   try {
-    closeAllRowDropdownMenus();
-    const res = await fetch(urlFromTemplate(cfg.detailsUrlTemplate, userId), {
-      headers: { Accept: 'application/json' },
-    });
+    const res = await fetch(urlFromTemplate(url, userId), { headers: { Accept: 'application/json' } });
     if (!res.ok) throw new Error('Failed to load employee.');
     const data = await res.json().catch(() => ({}));
 
     editTargetUserId = userId;
-    editTargetEmployeeMeta = {
-      employee_id: data.employee_id || '',
-      email: data.email || '',
-    };
-    document.getElementById('editUserId').value = String(userId);
+    document.getElementById('editUserId').value = userId;
     document.getElementById('editFullName').value = `${data.first_name || ''} ${data.last_name || ''}`.trim();
     document.getElementById('editEmail').value = data.email || '';
     document.getElementById('editPhone').value = data.phone || '';
-    document.getElementById('editRole').value = data.position_id ? String(data.position_id) : '';
+    document.getElementById('editRole').value = data.position_id ?? '';
 
     validateEmployeeFields('edit');
     openModal('editEmployeeModal');
@@ -153,58 +123,50 @@ async function openEditEmployee(userId) {
 }
 
 function openDeleteEmployee(userId, employeeId, email) {
-  closeAllRowDropdownMenus();
   pendingEmployeeDelete = { userId, employeeId: employeeId || '', email: email || '' };
   const label = document.getElementById('deleteEmployeeLabel');
-  if (label) label.textContent = `${pendingEmployeeDelete.employeeId} (${pendingEmployeeDelete.email})`.trim();
-  openModal('deleteEmployeeModal');
+  if (label) label.textContent = `${employeeId || ''} (${email || ''})`.trim();
+  openModalWithDropdownClose('deleteEmployeeModal');
 }
 
 function cancelDeleteEmployee() {
-  pendingEmployeeDelete = null;
-  closeModal('deleteEmployeeModal');
+  cancelModal('deleteEmployeeModal', () => { pendingEmployeeDelete = null; });
 }
 
 function confirmDeleteEmployee() {
-  const cfg = getEmployeeConfig();
-  if (!cfg?.deleteUrlTemplate || !pendingEmployeeDelete?.userId) return;
+  const url = getPageData()?.employeeDeleteUrlTemplate;
   const form = document.getElementById('deleteEmployeeForm');
-  if (!form) return;
-  form.action = urlFromTemplate(cfg.deleteUrlTemplate, pendingEmployeeDelete.userId);
+  if (!url || !form || !pendingEmployeeDelete?.userId) return;
+  form.action = urlFromTemplate(url, pendingEmployeeDelete.userId);
   pendingEmployeeDelete = null;
   form.submit();
 }
 
 async function saveEmployeeEdits() {
-  const cfg = getEmployeeConfig();
-  const userId = editTargetUserId || document.getElementById('editUserId')?.value;
-  if (!cfg?.updateUrlTemplate || !userId) return;
+  const url = getPageData()?.employeeUpdateUrlTemplate;
+  if (!url || !editTargetUserId || !validateEmployeeFields('edit')) return;
 
-  if (!validateEmployeeFields('edit')) return;
-
-  const fullName = document.getElementById('editFullName')?.value.trim() || '';
-  const email = document.getElementById('editEmail')?.value.trim() || '';
-  const phone = document.getElementById('editPhone')?.value.trim() || '';
-  const position = document.getElementById('editRole')?.value || '';
+  const getValue = (id) => document.getElementById(id)?.value.trim() || '';
 
   try {
-    const payload = await postFormJson(urlFromTemplate(cfg.updateUrlTemplate, userId), {
-      full_name: fullName,
-      email,
-      phone,
-      position,
+    const payload = await postFormJson(urlFromTemplate(url, editTargetUserId), {
+      full_name: getValue('editFullName'),
+      email: getValue('editEmail'),
+      phone: getValue('editPhone'),
+      position: getValue('editRole'),
     });
     const emp = payload.employee;
     if (!emp) throw new Error('Update failed.');
 
     const row = document.querySelector(`.employee-row[data-user-id="${emp.id}"]`);
     if (row) {
-      row.dataset.role = emp.position_id ? String(emp.position_id) : '';
+      row.dataset.role = emp.position_id ?? '';
       const cells = row.querySelectorAll('td');
       if (cells[2]) cells[2].textContent = emp.full_name || '';
       if (cells[3]) {
-        if (emp.position) cells[3].innerHTML = `<span class="badge badge-default">${emp.position}</span>`;
-        else cells[3].innerHTML = `<span class="text-sm text-muted">—</span>`;
+        cells[3].innerHTML = emp.position
+          ? `<span class="badge badge-default">${emp.position}</span>`
+          : '<span class="text-sm text-muted">—</span>';
       }
       if (cells[4]) cells[4].textContent = emp.email || '';
       if (cells[5]) cells[5].textContent = emp.phone || '—';
@@ -214,86 +176,70 @@ async function saveEmployeeEdits() {
     applyEmployeeFilters();
     showToast('success', 'Employee updated', 'Saved.');
   } catch (e) {
-    const msg =
-      typeof e?.message === 'string' && e.message
-        ? e.message
-        : 'Could not save changes.';
-    showToast('error', 'Could not update employee', msg);
+    showToast('error', 'Could not update employee', e?.message || 'Could not save changes.');
   }
 }
 
-// ---------- Reset password ----------
-let resetTarget = { label: null, url: null };
+// === Reset password ===
+let resetTargetUrl = null;
 
 function openResetPassword(empId, login, url) {
-  closeAllRowDropdownMenus();
-  resetTarget = { label: `${empId} (${login})`, url };
+  resetTargetUrl = url;
   const labelEl = document.getElementById('resetEmployeeLabel');
-  if (labelEl) labelEl.textContent = resetTarget.label;
-  openModal('resetPasswordModal');
+  if (labelEl) labelEl.textContent = `${empId} (${login})`;
+  openModalWithDropdownClose('resetPasswordModal');
 }
 
 function cancelResetPassword() {
-  resetTarget = { label: null, url: null };
-  closeModal('resetPasswordModal');
+  cancelModal('resetPasswordModal', () => { resetTargetUrl = null; });
 }
 
 function confirmResetPassword() {
-  if (!resetTarget.url) return;
   const form = document.getElementById('resetPasswordForm');
-  if (!form) return;
-  form.action = resetTarget.url;
+  if (!form || !resetTargetUrl) return;
+  form.action = resetTargetUrl;
   form.submit();
 }
 
-// ---------- Roles management (DB-backed) ----------
-function getRolesConfig() {
-  const el = document.getElementById('managerEmployeesPage');
-  if (!el) return null;
-  return {
-    createUrl: el.dataset.positionCreateUrl,
-    updateUrlTemplate: el.dataset.positionUpdateUrlTemplate,
-    deleteUrlTemplate: el.dataset.positionDeleteUrlTemplate,
-  };
-}
+// === Roles management (DB-backed) ===
+function updateRoleSelects(roleId, roleName) {
+  const id = String(roleId);
+  for (const selectId of ROLE_SELECT_IDS) {
+    const select = document.getElementById(selectId);
+    if (!select) continue;
 
-function upsertRoleOption(selectId, roleId, roleName) {
-  const select = document.getElementById(selectId);
-  if (!select) return;
-  let opt = Array.from(select.options).find((o) => String(o.value) === String(roleId));
-  if (!opt) {
-    opt = document.createElement('option');
-    opt.value = String(roleId);
-    select.appendChild(opt);
+    if (roleName === null) {
+      // Remove
+      select.querySelector(`option[value="${id}"]`)?.remove();
+    } else {
+      // Upsert
+      let opt = select.querySelector(`option[value="${id}"]`);
+      if (!opt) {
+        opt = document.createElement('option');
+        opt.value = id;
+        select.appendChild(opt);
+      }
+      opt.textContent = roleName;
+    }
   }
-  opt.textContent = roleName;
-}
-
-function removeRoleOption(selectId, roleId) {
-  const select = document.getElementById(selectId);
-  if (!select) return;
-  Array.from(select.options)
-    .filter((o) => String(o.value) === String(roleId))
-    .forEach((o) => o.remove());
 }
 
 async function addRole() {
-  const cfg = getRolesConfig();
-  if (!cfg) return;
+  const url = getPageData()?.positionCreateUrl;
+  if (!url) return;
 
   const input = document.getElementById('newRoleName');
-  const name = input?.value.trim() || '';
+  const name = input?.value.trim();
   if (!name) {
     showToast('error', 'Role name required', 'Please enter a role name.');
     return;
   }
 
   try {
-    const payload = await postFormJson(cfg.createUrl, { name, is_active: 'on' });
-    const roleId = payload.id;
+    const { id: roleId } = await postFormJson(url, { name, is_active: 'on' });
 
     const tr = document.createElement('tr');
-    tr.dataset.positionId = String(roleId);
+    tr.dataset.positionId = roleId;
     tr.innerHTML = `
       <td class="role-name"></td>
       <td class="role-actions-cell">
@@ -312,10 +258,7 @@ async function addRole() {
     tr.querySelector('.role-name').textContent = name;
     document.getElementById('roleTbody')?.appendChild(tr);
 
-    upsertRoleOption('roleFilter', roleId, name);
-    upsertRoleOption('addRole', roleId, name);
-    upsertRoleOption('editRole', roleId, name);
-
+    updateRoleSelects(roleId, name);
     if (input) input.value = '';
     showToast('success', 'Role added', `${name} added.`);
   } catch (e) {
@@ -324,8 +267,8 @@ async function addRole() {
 }
 
 async function renameRole(btn) {
-  const cfg = getRolesConfig();
-  if (!cfg) return;
+  const url = getPageData()?.positionUpdateUrlTemplate;
+  if (!url) return;
 
   const tr = btn.closest('tr');
   const roleId = tr?.dataset.positionId;
@@ -334,12 +277,9 @@ async function renameRole(btn) {
   if (!next || !roleId) return;
 
   try {
-    await postFormJson(urlFromTemplate(cfg.updateUrlTemplate, roleId), { name: next, is_active: 'on' });
+    await postFormJson(urlFromTemplate(url, roleId), { name: next, is_active: 'on' });
     tr.querySelector('.role-name').textContent = next;
-
-    upsertRoleOption('roleFilter', roleId, next);
-    upsertRoleOption('addRole', roleId, next);
-    upsertRoleOption('editRole', roleId, next);
+    updateRoleSelects(roleId, next);
     showToast('success', 'Role renamed', 'Updated.');
   } catch (e) {
     showToast('error', 'Could not rename role', e.message);
@@ -353,7 +293,7 @@ function deleteRole(btn) {
   const roleId = tr?.dataset.positionId;
   const roleName = tr?.querySelector('.role-name')?.textContent || 'Role';
   if (!roleId) return;
-  pendingRoleDelete = { roleId: String(roleId), roleName, tr };
+  pendingRoleDelete = { roleId, roleName, tr };
 
   const nameEl = document.getElementById('deleteRoleName');
   if (nameEl) nameEl.textContent = roleName;
@@ -361,30 +301,23 @@ function deleteRole(btn) {
 }
 
 function cancelDeleteRole() {
-  pendingRoleDelete = null;
-  closeModal('deleteRoleModal');
+  cancelModal('deleteRoleModal', () => { pendingRoleDelete = null; });
 }
 
 async function confirmDeleteRole() {
-  const cfg = getRolesConfig();
+  const url = getPageData()?.positionDeleteUrlTemplate;
   const target = pendingRoleDelete;
-  if (!cfg || !target?.roleId) return;
+  if (!url || !target?.roleId) return;
 
   try {
-    await postFormJson(urlFromTemplate(cfg.deleteUrlTemplate, target.roleId), {});
+    await postFormJson(urlFromTemplate(url, target.roleId), {});
     target.tr?.remove();
-    removeRoleOption('roleFilter', target.roleId);
-    removeRoleOption('addRole', target.roleId);
-    removeRoleOption('editRole', target.roleId);
+    updateRoleSelects(target.roleId, null);
 
-    const esc = window.CSS?.escape ? window.CSS.escape : (s) => String(s).replace(/["\\]/g, '\\$&');
-    const deletedRadio = document.querySelector(
-      `#roleFilterMulti input[type="radio"][name="employeeRoleChoice"][value="${esc(target.roleId)}"]`,
-    );
-    const deletedLabel = deletedRadio?.closest?.('label');
-    if (deletedLabel) deletedLabel.remove();
-    if (deletedRadio?.checked) setEmployeeRoleFilter('all');
-    else updateRoleFilterMultiLabel();
+    const esc = CSS?.escape || ((s) => String(s).replace(/["\\]/g, '\\$&'));
+    const radio = document.querySelector(`#roleFilterMulti input[name="employeeRoleChoice"][value="${esc(target.roleId)}"]`);
+    radio?.closest('label')?.remove();
+    radio?.checked ? setEmployeeRoleFilter('all') : updateRoleFilterMultiLabel();
 
     pendingRoleDelete = null;
     closeModal('deleteRoleModal');
@@ -394,39 +327,39 @@ async function confirmDeleteRole() {
   }
 }
 
+function bindOnce(el, key, setup) {
+  if (!el || el.dataset[key]) return;
+  el.dataset[key] = '1';
+  setup(el);
+}
+
 function initManagerEmployees() {
   updateRoleFilterMultiLabel();
   applyEmployeeFilters();
 
-  const addForm = document.getElementById('addEmployeeForm');
-  if (addForm && !addForm.dataset.validationBound) {
-    addForm.dataset.validationBound = '1';
-    addForm.addEventListener('submit', (e) => {
-      const ok = validateEmployeeFields('add');
-      if (!ok) {
+  bindOnce(document.getElementById('addEmployeeForm'), 'validationBound', (form) => {
+    form.addEventListener('submit', (e) => {
+      if (!validateEmployeeFields('add')) {
         e.preventDefault();
         e.stopPropagation();
       }
     });
-  }
+  });
 
-  const roleInput = document.getElementById('newRoleName');
-  if (roleInput && !roleInput.dataset.enterBound) {
-    roleInput.dataset.enterBound = '1';
-    roleInput.addEventListener('keydown', (e) => {
-      if (e.key !== 'Enter') return;
-      e.preventDefault();
-      addRole();
+  bindOnce(document.getElementById('newRoleName'), 'enterBound', (input) => {
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        addRole();
+      }
     });
-  }
+  });
 
-  const deleteModal = document.getElementById('deleteRoleModal');
-  if (deleteModal && !deleteModal.dataset.bound) {
-    deleteModal.dataset.bound = '1';
-    deleteModal.addEventListener('click', (e) => {
-      if (e.target === deleteModal) pendingRoleDelete = null;
+  bindOnce(document.getElementById('deleteRoleModal'), 'bound', (modal) => {
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) pendingRoleDelete = null;
     });
-  }
+  });
 }
 
 if (document.readyState === 'loading') {

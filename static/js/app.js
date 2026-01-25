@@ -1,31 +1,28 @@
 (function () {
+  // === Cookie & CSRF Utilities ===
   function getCookie(name) {
-    const cookies = document.cookie ? document.cookie.split(';') : [];
-    for (let i = 0; i < cookies.length; i++) {
-      const cookie = cookies[i].trim();
-      if (cookie.startsWith(name + '=')) {
-        return decodeURIComponent(cookie.substring(name.length + 1));
+    for (const cookie of (document.cookie || '').split(';')) {
+      const trimmed = cookie.trim();
+      if (trimmed.startsWith(`${name}=`)) {
+        return decodeURIComponent(trimmed.substring(name.length + 1));
       }
     }
     return null;
   }
 
-  window.getCsrfToken = function getCsrfToken() {
-    return (
-      getCookie('csrftoken') ||
-      document.querySelector('input[name="csrfmiddlewaretoken"]')?.value ||
-      ''
-    );
-  };
+  window.getCsrfToken = () =>
+    getCookie('csrftoken') ||
+    document.querySelector('input[name="csrfmiddlewaretoken"]')?.value ||
+    '';
 
   window.urlFromTemplate = function urlFromTemplate(template, id) {
     const tpl = String(template || '');
     const safeId = String(id ?? '').trim();
     if (!tpl || !safeId) return tpl;
-    if (tpl.includes('/0/')) return tpl.replace(/\/0\//, `/${safeId}/`);
-    return tpl;
+    return tpl.includes('/0/') ? tpl.replace('/0/', `/${safeId}/`) : tpl;
   };
 
+  // === Fetch Utilities ===
   async function parseJsonResponse(res) {
     const payload = await res.json().catch(() => ({}));
     if (res.ok) return payload;
@@ -38,42 +35,26 @@
             .filter(Boolean)[0]
         : '';
 
-    const msg = payload.error || firstFormError || 'Request failed.';
-    throw new Error(msg);
+    throw new Error(payload.error || firstFormError || 'Request failed.');
   }
-
-  window.fetchJson = async function fetchJson(url, options) {
-    const res = await fetch(url, {
-      ...(options || {}),
-      headers: {
-        Accept: 'application/json',
-        ...(options?.headers || {}),
-      },
-    });
-    return parseJsonResponse(res);
-  };
 
   window.postFormJson = async function postFormJson(url, data) {
     const csrf = window.getCsrfToken?.();
-    const body = new URLSearchParams(data || {});
     const res = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
-        ...(csrf ? { 'X-CSRFToken': csrf } : {}),
+        ...(csrf && { 'X-CSRFToken': csrf }),
         Accept: 'application/json',
       },
-      body,
+      body: new URLSearchParams(data || {}),
     });
     return parseJsonResponse(res);
   };
 
-  function getToastContainer() {
-    return document.getElementById('toastContainer');
-  }
-
+  // === Toast Notifications ===
   window.showToast = function showToast(type, title, desc) {
-    const container = getToastContainer();
+    const container = document.getElementById('toastContainer');
     if (!container) return;
 
     const toast = document.createElement('div');
@@ -89,36 +70,37 @@
     setTimeout(() => toast.remove(), type === 'error' ? 5000 : 3000);
   };
 
-  function numericZIndex(value, fallback) {
-    const n = parseInt(String(value || ''), 10);
-    if (Number.isFinite(n)) return n;
-    return fallback;
+  // === Modal Utilities ===
+  function getOverlayZIndex(overlay) {
+    const n = parseInt(getComputedStyle(overlay).zIndex, 10);
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  function getOpenModalOverlays() {
+    return [...document.querySelectorAll('.modal-overlay:not(.hidden)')];
   }
 
   function topModalZIndex() {
-    let z = 5000;
-    document.querySelectorAll('.modal-overlay').forEach((overlay) => {
-      if (overlay.classList.contains('hidden')) return;
-      z = Math.max(z, numericZIndex(window.getComputedStyle(overlay).zIndex, 0));
-    });
-    return z;
+    return getOpenModalOverlays().reduce(
+      (max, overlay) => Math.max(max, getOverlayZIndex(overlay)),
+      5000
+    );
   }
 
   window.openModal = function openModal(modalId) {
     const el = document.getElementById(modalId);
     if (!el) return;
     if (el.classList.contains('modal-overlay')) {
-      el.style.zIndex = String(topModalZIndex() + 1);
+      el.style.zIndex = topModalZIndex() + 1;
     }
     el.classList.remove('hidden');
   };
 
   window.closeModal = function closeModal(modalId) {
-    const el = document.getElementById(modalId);
-    if (!el) return;
-    el.classList.add('hidden');
+    document.getElementById(modalId)?.classList.add('hidden');
   };
 
+  // === Logout Confirmation ===
   let pendingLogoutHref = null;
 
   function ensureLogoutConfirmModal() {
@@ -149,43 +131,36 @@
     `;
     document.body.appendChild(overlay);
 
-    overlay.querySelector('.modal-close')?.addEventListener('click', () => {
+    const closeLogoutModal = () => {
       pendingLogoutHref = null;
       window.closeModal?.('logoutConfirmModal');
-    });
+    };
 
-    overlay.querySelector('#logoutConfirmNo')?.addEventListener('click', () => {
-      pendingLogoutHref = null;
-      window.closeModal?.('logoutConfirmModal');
-    });
-
+    overlay.querySelector('.modal-close')?.addEventListener('click', closeLogoutModal);
+    overlay.querySelector('#logoutConfirmNo')?.addEventListener('click', closeLogoutModal);
     overlay.querySelector('#logoutConfirmYes')?.addEventListener('click', () => {
       const href = pendingLogoutHref;
       pendingLogoutHref = null;
-      if (!href) return;
-      window.location.assign(href);
+      if (href) window.location.assign(href);
     });
-
     overlay.addEventListener('click', (e) => {
       if (e.target === overlay) pendingLogoutHref = null;
     });
   }
 
   function wireModalOverlayClose() {
-    document.querySelectorAll('.modal-overlay').forEach((overlay) => {
+    for (const overlay of document.querySelectorAll('.modal-overlay')) {
       overlay.addEventListener('click', (e) => {
         if (e.target === overlay) overlay.classList.add('hidden');
       });
-    });
+    }
   }
 
   function wireLogoutConfirm() {
     document.addEventListener('click', (e) => {
       const a = e.target.closest?.('a');
-      if (!a) return;
-      const href = a.getAttribute('href') || '';
-      if (!href) return;
-      if (!href.includes('/logout')) return;
+      const href = a?.getAttribute('href');
+      if (!href?.includes('/logout')) return;
       e.preventDefault();
       e.stopPropagation();
       pendingLogoutHref = href;
@@ -193,16 +168,32 @@
     });
   }
 
-  window.toggleDropdown = function toggleDropdown(button) {
-    const dropdown = button.closest ? button.closest('.dropdown') : button.parentElement;
-    if (!dropdown) return;
+  // === Dropdown Utilities ===
+  function resetDropdownMenu(menu) {
+    if (!menu) return;
+    menu.classList.remove('dropdown-menu-fixed');
+    menu.style.position = '';
+    menu.style.top = '';
+    menu.style.left = '';
+    menu.style.right = '';
+  }
 
-    const menu = dropdown.querySelector('.dropdown-menu');
+  function cleanupDropdownScroll(dropdown) {
+    if (dropdown?._closeOnScroll) {
+      window.removeEventListener('scroll', dropdown._closeOnScroll, true);
+      dropdown._closeOnScroll = null;
+    }
+  }
+
+  window.toggleDropdown = function toggleDropdown(button) {
+    const dropdown = button.closest?.('.dropdown') || button.parentElement;
+    const menu = dropdown?.querySelector('.dropdown-menu');
     if (!menu) return;
 
-    document.querySelectorAll('.dropdown-menu').forEach((m) => {
+    // Close other dropdowns
+    for (const m of document.querySelectorAll('.dropdown-menu')) {
       if (m !== menu) m.classList.remove('open');
-    });
+    }
 
     const willOpen = !menu.classList.contains('open');
     menu.classList.toggle('open', willOpen);
@@ -210,126 +201,87 @@
     if (dropdown.classList.contains('dropdown-fixed')) {
       if (willOpen) {
         const rect = button.getBoundingClientRect();
-        const vw = window.innerWidth || document.documentElement.clientWidth || 0;
+        const vw = innerWidth || document.documentElement.clientWidth || 0;
         const menuWidth = Math.max(menu.offsetWidth || 0, 160);
         const margin = 8;
-        const left = Math.min(Math.max(margin, rect.right - menuWidth), Math.max(margin, vw - menuWidth - margin));
+        const left = Math.min(Math.max(margin, rect.right - menuWidth), vw - menuWidth - margin);
 
         menu.classList.add('dropdown-menu-fixed');
-        menu.style.position = 'fixed';
-        menu.style.top = `${Math.round(rect.bottom + 6)}px`;
-        menu.style.left = `${Math.round(left)}px`;
-        menu.style.right = 'auto';
+        Object.assign(menu.style, {
+          position: 'fixed',
+          top: `${Math.round(rect.bottom + 6)}px`,
+          left: `${Math.round(left)}px`,
+          right: 'auto',
+        });
 
-        const closeOnScroll = (e) => {
-          if (!menu.classList.contains('open')) return;
-          menu.classList.remove('open');
-        };
+        const closeOnScroll = () => menu.classList.contains('open') && menu.classList.remove('open');
         dropdown._closeOnScroll = closeOnScroll;
-        window.addEventListener('scroll', closeOnScroll, true);
+        addEventListener('scroll', closeOnScroll, true);
       } else {
-        menu.classList.remove('dropdown-menu-fixed');
-        menu.style.position = '';
-        menu.style.top = '';
-        menu.style.left = '';
-        menu.style.right = '';
-        if (dropdown._closeOnScroll) {
-          window.removeEventListener('scroll', dropdown._closeOnScroll, true);
-          dropdown._closeOnScroll = null;
-        }
+        resetDropdownMenu(menu);
+        cleanupDropdownScroll(dropdown);
       }
     }
   };
 
   window.toggleUserMenu = window.toggleDropdown;
 
-  function emitMultiselectEvent(type, el, reason) {
-    if (!el) return;
-    document.dispatchEvent(
-      new CustomEvent(type, {
-        detail: {
-          id: el.id || '',
-          el,
-          reason: reason || 'programmatic',
-        },
-      }),
+  // === Multiselect Utilities ===
+  function emitMultiselectEvent(type, el, reason = 'programmatic') {
+    el && document.dispatchEvent(
+      new CustomEvent(type, { detail: { id: el.id || '', el, reason } })
     );
   }
 
-  function setMultiOpen(el, open) {
+  function setMultiOpenState(el, open, reason = 'programmatic') {
     if (!el) return;
+    const action = open ? 'open' : 'close';
+    emitMultiselectEvent(`multiselect:will${action}`, el, reason);
     el.classList.toggle('open', open);
-    const trigger = el.querySelector('.multiselect-trigger');
-    trigger?.setAttribute('aria-expanded', open ? 'true' : 'false');
+    el.querySelector('.multiselect-trigger')?.setAttribute('aria-expanded', String(open));
+    emitMultiselectEvent(`multiselect:did${action}`, el, reason);
   }
 
   window.closeAllMultiselects = function closeAllMultiselects(reason) {
-    const why = reason || 'programmatic';
-    document.querySelectorAll('.multiselect.open').forEach((ms) => {
-      emitMultiselectEvent('multiselect:willclose', ms, why);
-      setMultiOpen(ms, false);
-      emitMultiselectEvent('multiselect:didclose', ms, why);
-    });
+    for (const ms of document.querySelectorAll('.multiselect.open')) {
+      setMultiOpenState(ms, false, reason);
+    }
   };
 
   window.toggleMulti = function toggleMulti(id) {
     const el = document.getElementById(id);
     if (!el) return;
     const willOpen = !el.classList.contains('open');
-    if (willOpen) {
-      window.closeAllMultiselects?.('switch');
-      emitMultiselectEvent('multiselect:willopen', el, 'toggle');
-      setMultiOpen(el, true);
-      emitMultiselectEvent('multiselect:didopen', el, 'toggle');
-    } else {
-      emitMultiselectEvent('multiselect:willclose', el, 'toggle');
-      setMultiOpen(el, false);
-      emitMultiselectEvent('multiselect:didclose', el, 'toggle');
-    }
+    if (willOpen) window.closeAllMultiselects?.('switch');
+    setMultiOpenState(el, willOpen, 'toggle');
   };
 
   function wireMultiselectAutoClose() {
     document.addEventListener('click', (e) => {
-      if (e.target.closest?.('.multiselect')) return;
-      window.closeAllMultiselects?.('auto-close');
-    });
-    document.addEventListener('keydown', (e) => {
-      if (e.key !== 'Escape') return;
-      window.closeAllMultiselects?.('escape');
+      if (!e.target.closest?.('.multiselect')) window.closeAllMultiselects?.('auto-close');
     });
   }
 
   function closeTopModalOverlay() {
-    const overlays = Array.from(document.querySelectorAll('.modal-overlay')).filter(
-      (el) => !el.classList.contains('hidden'),
-    );
+    const overlays = getOpenModalOverlays();
     if (!overlays.length) return false;
-    let top = overlays[0];
-    let topZ = numericZIndex(window.getComputedStyle(top).zIndex, 0);
-    overlays.forEach((overlay) => {
-      const z = numericZIndex(window.getComputedStyle(overlay).zIndex, 0);
-      if (z > topZ) {
-        top = overlay;
-        topZ = z;
-      }
-    });
+    const top = overlays.reduce((a, b) => (getOverlayZIndex(b) > getOverlayZIndex(a) ? b : a));
     top.classList.add('hidden');
     return true;
   }
 
-  function wireModalEscapeClose() {
+  function wireEscapeClose() {
     document.addEventListener('keydown', (e) => {
       if (e.key !== 'Escape') return;
 
-      const hasOpenMultiselect = !!document.querySelector('.multiselect.open');
-      if (hasOpenMultiselect) {
+      // Priority: multiselects > modals
+      if (document.querySelector('.multiselect.open')) {
         window.closeAllMultiselects?.('escape');
         e.preventDefault();
         return;
       }
 
-      const closed = closeTopModalOverlay();
-      if (closed) {
+      if (closeTopModalOverlay()) {
         e.preventDefault();
         e.stopPropagation();
       }
@@ -338,22 +290,13 @@
 
   function wireDropdownAutoClose() {
     document.addEventListener('click', (e) => {
-      if (!e.target.closest('.dropdown')) {
-        document.querySelectorAll('.dropdown-menu').forEach((menu) => {
-          menu.classList.remove('open');
-          if (menu.classList.contains('dropdown-menu-fixed')) {
-            const dd = menu.closest('.dropdown');
-            menu.classList.remove('dropdown-menu-fixed');
-            menu.style.position = '';
-            menu.style.top = '';
-            menu.style.left = '';
-            menu.style.right = '';
-            if (dd && dd._closeOnScroll) {
-              window.removeEventListener('scroll', dd._closeOnScroll, true);
-              dd._closeOnScroll = null;
-            }
-          }
-        });
+      if (e.target.closest('.dropdown')) return;
+      for (const menu of document.querySelectorAll('.dropdown-menu')) {
+        menu.classList.remove('open');
+        if (menu.classList.contains('dropdown-menu-fixed')) {
+          resetDropdownMenu(menu);
+          cleanupDropdownScroll(menu.closest('.dropdown'));
+        }
       }
     });
   }
@@ -362,59 +305,55 @@
     const list = document.getElementById('djangoMessages');
     if (!list) return;
 
-    list.querySelectorAll('li').forEach((li) => {
+    for (const li of list.querySelectorAll('li')) {
       const level = (li.dataset.level || 'info').split(' ')[0];
-      const text = li.dataset.text || '';
-
-      const title = level.charAt(0).toUpperCase() + level.slice(1);
-      window.showToast?.(level, title, text);
-    });
-
+      window.showToast?.(level, level.charAt(0).toUpperCase() + level.slice(1), li.dataset.text || '');
+    }
     list.remove();
   }
 
   function wireStickyOffsets() {
-    const root = document.documentElement;
     const header = document.querySelector('.header');
-    if (!root || !header) return;
+    if (!header) return;
 
     const sync = () => {
-      const height = header.getBoundingClientRect().height;
-      root.style.setProperty('--header-sticky-height', `${height}px`);
+      document.documentElement.style.setProperty(
+        '--header-sticky-height',
+        `${header.getBoundingClientRect().height}px`
+      );
     };
 
     sync();
-    window.addEventListener('load', sync, { once: true });
+    addEventListener('load', sync, { once: true });
 
-    let resizeTimer = null;
-    window.addEventListener('resize', () => {
-      if (resizeTimer) window.clearTimeout(resizeTimer);
-      resizeTimer = window.setTimeout(sync, 50);
+    let resizeTimer;
+    addEventListener('resize', () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(sync, 50);
     });
   }
 
   window.copyText = async function copyText(elementId) {
-    const el = document.getElementById(elementId);
-    if (!el) return;
-    const text = (el.innerText || el.textContent || '').trim();
+    const text = (document.getElementById(elementId)?.textContent || '').trim();
     if (!text) return;
 
     try {
       await navigator.clipboard.writeText(text);
-    } catch (e) {
+    } catch {
       const t = document.createElement('textarea');
       t.value = text;
       document.body.appendChild(t);
       t.select();
       document.execCommand('copy');
-      document.body.removeChild(t);
+      t.remove();
     }
   };
 
+  // === Initialization ===
   function init() {
     ensureLogoutConfirmModal();
     wireModalOverlayClose();
-    wireModalEscapeClose();
+    wireEscapeClose();
     wireLogoutConfirm();
     wireDropdownAutoClose();
     wireMultiselectAutoClose();

@@ -1,4 +1,5 @@
 (function () {
+  // Core date utilities
   function toISODate(d) {
     const y = d.getFullYear();
     const m = String(d.getMonth() + 1).padStart(2, '0');
@@ -6,47 +7,61 @@
     return `${y}-${m}-${day}`;
   }
 
+  function dateFromISO(iso) {
+    const raw = String(iso || '').trim();
+    if (!raw) return null;
+    const d = new Date(`${raw}T00:00:00`);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+
   function addDays(isoDate, delta) {
-    const d = new Date(`${isoDate}T00:00:00`);
+    const d = dateFromISO(isoDate);
+    if (!d) return isoDate;
     d.setDate(d.getDate() + delta);
     return toISODate(d);
   }
 
   function addMonths(isoDate, delta) {
-    const d = new Date(`${isoDate}T00:00:00`);
+    const d = dateFromISO(isoDate);
+    if (!d) return isoDate;
     d.setMonth(d.getMonth() + delta);
     return toISODate(d);
   }
 
+  // Navigation utilities
   function navigateWith(params) {
     const url = new URL(window.location.href);
     const search = url.searchParams;
-    Object.entries(params).forEach(([k, v]) => {
-      if (v === null || v === undefined || v === '') search.delete(k);
+    for (const [k, v] of Object.entries(params)) {
+      if (v == null || v === '') search.delete(k);
       else search.set(k, v);
-    });
+    }
     window.location.assign(`${url.pathname}?${search.toString()}`);
   }
 
   function getPageEl(pageId) {
     const el = document.getElementById(pageId);
-    return el && el.dataset ? el : null;
+    return el?.dataset ? el : null;
+  }
+
+  function normalizeView(value) {
+    return String(value || '').toLowerCase();
   }
 
   function navigateRelativePeriod(pageId, direction, options) {
     const page = getPageEl(pageId);
     if (!page) return;
 
-    const defaultView = (options?.defaultView || '').toLowerCase();
-    const view = String(page.dataset.view || defaultView || '').toLowerCase();
-    const anchor = page.dataset.anchor || '';
+    const defaultView = normalizeView(options?.defaultView);
+    const view = normalizeView(page.dataset.view || defaultView);
+    const anchor = page.dataset.anchor;
     if (!anchor) return;
 
     const steps = options?.viewSteps || {};
-    const step = steps[view] || steps[defaultView] || null;
+    const step = steps[view] || steps[defaultView];
     if (!step) return;
 
-    const targetView = String(step.view || view || defaultView || '').toLowerCase();
+    const targetView = normalizeView(step.view || view || defaultView);
 
     let date = anchor;
     if (typeof step.days === 'number') date = addDays(anchor, direction * step.days);
@@ -58,22 +73,24 @@
   function goToToday(pageId, defaultView) {
     const page = getPageEl(pageId);
     if (!page) return;
+
     const view = page.dataset.view || defaultView || '';
-    const today = page.dataset.today || '';
-    if (!today) return;
-    navigateWith({ view, date: today });
+    const today = page.dataset.today;
+    if (today) navigateWith({ view, date: today });
   }
 
+  // JSON parsing utility
   function parseJsonScript(id, fallback) {
     const el = document.getElementById(id);
     if (!el) return fallback;
     try {
       return JSON.parse(el.textContent || '');
-    } catch (e) {
+    } catch {
       return fallback;
     }
   }
 
+  // Date formatting utilities
   function weekdayLabel(d) {
     return d.toLocaleDateString(undefined, { weekday: 'short' });
   }
@@ -82,91 +99,71 @@
     return d.getDate();
   }
 
-  function toDateAtMidnight(iso) {
-    const raw = String(iso || '').trim();
-    if (!raw) return null;
-    const d = new Date(`${raw}T00:00:00`);
-    if (Number.isNaN(d.getTime())) return null;
-    return d;
-  }
+  // Calendar grid rendering
+  const DEFAULT_WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-  window.calendarRenderMonthGrid = function calendarRenderMonthGrid(gridOrId, options) {
-    const grid =
-      typeof gridOrId === 'string' ? document.getElementById(String(gridOrId)) : gridOrId;
+  window.calendarRenderMonthGrid = function calendarRenderMonthGrid(gridOrId, options = {}) {
+    const grid = typeof gridOrId === 'string' ? document.getElementById(gridOrId) : gridOrId;
     if (!grid) return null;
 
-    const anchorISO = options?.anchorISO;
-    const todayISO = options?.todayISO;
-    const fallbackISO = options?.fallbackISO;
-    const onCell = options?.onCell;
+    const { anchorISO, todayISO, fallbackISO, onCell, weekdayLabels = DEFAULT_WEEKDAY_LABELS } = options;
 
-    const anchorDate = toDateAtMidnight(anchorISO) || toDateAtMidnight(fallbackISO);
+    const anchorDate = dateFromISO(anchorISO) || dateFromISO(fallbackISO);
     if (!anchorDate) return null;
 
     const anchorMonth = anchorDate.getMonth();
-    const anchorYear = anchorDate.getFullYear();
-    const firstOfMonth = new Date(anchorYear, anchorMonth, 1);
-    const startDow = firstOfMonth.getDay(); // 0=Sun
+    const firstOfMonth = new Date(anchorDate.getFullYear(), anchorMonth, 1);
     const gridStart = new Date(firstOfMonth);
-    gridStart.setDate(firstOfMonth.getDate() - startDow);
+    gridStart.setDate(1 - firstOfMonth.getDay()); // Rewind to Sunday of first week
 
     grid.innerHTML = '';
 
-    const labels = options?.weekdayLabels || ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    labels.forEach((label) => {
+    // Render weekday headers
+    for (const label of weekdayLabels) {
       const header = document.createElement('div');
       header.className = 'calendar-header-cell';
       header.textContent = label;
       grid.appendChild(header);
-    });
+    }
 
+    // Render 6 weeks of day cells
     for (let i = 0; i < 42; i++) {
       const d = new Date(gridStart);
       d.setDate(gridStart.getDate() + i);
       const iso = toISODate(d);
+      const inMonth = d.getMonth() === anchorMonth;
 
       const cell = document.createElement('div');
       cell.className = 'calendar-cell';
       cell.dataset.date = iso;
       if (iso === todayISO) cell.classList.add('calendar-cell-today');
-      const inMonth = d.getMonth() === anchorMonth;
       if (!inMonth) cell.classList.add('calendar-cell-other-month');
 
       const dateEl = document.createElement('div');
       dateEl.className = 'calendar-date';
-      dateEl.textContent = String(d.getDate());
+      dateEl.textContent = d.getDate();
       cell.appendChild(dateEl);
 
-      if (typeof onCell === 'function') onCell(cell, { date: d, iso, inMonth });
+      onCell?.(cell, { date: d, iso, inMonth });
       grid.appendChild(cell);
     }
 
     return { anchorDate, gridStart };
   };
 
+  // Expose utilities globally
   window.toISODate = toISODate;
-  window.addDays = addDays;
-  window.addMonths = addMonths;
   window.navigateWith = navigateWith;
   window.parseJsonScript = parseJsonScript;
   window.weekdayLabel = weekdayLabel;
   window.dayNumber = dayNumber;
 
   window.calendarSwitchView = function calendarSwitchView(pageId, view) {
-    const page = getPageEl(pageId);
-    const anchor = page?.dataset.anchor || '';
+    const anchor = getPageEl(pageId)?.dataset.anchor || '';
     navigateWith({ view, date: anchor });
   };
 
-  window.calendarPrevPeriod = function calendarPrevPeriod(pageId, options) {
-    navigateRelativePeriod(pageId, -1, options);
-  };
-
-  window.calendarNextPeriod = function calendarNextPeriod(pageId, options) {
-    navigateRelativePeriod(pageId, 1, options);
-  };
-
-  window.calendarGoToToday = function calendarGoToToday(pageId, defaultView) {
-    goToToday(pageId, defaultView);
-  };
+  window.calendarPrevPeriod = (pageId, options) => navigateRelativePeriod(pageId, -1, options);
+  window.calendarNextPeriod = (pageId, options) => navigateRelativePeriod(pageId, 1, options);
+  window.calendarGoToToday = goToToday;
 })();

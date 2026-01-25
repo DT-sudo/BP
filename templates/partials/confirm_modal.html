@@ -1,0 +1,31 @@
+{# Confirm Modal Partial - For delete/destructive action confirmations #}
+{# Usage: include "partials/confirm_modal.html" with modal_id="..." title="..." message="..." ... #}
+{# Parameters: modal_id, title, message, message_detail, message_detail_id, message_footer #}
+{# confirm_text, cancel_text, cancel_action, confirm_action, confirm_form, destructive, modal_size #}
+<div class="modal-overlay hidden" id="{{ modal_id }}">
+  <div class="modal" style="max-width: {{ modal_size|default:'520px' }};">
+    <div class="modal-header">
+      <h2 class="modal-title">{{ title }}</h2>
+      <button class="modal-close" type="button" onclick="{% if cancel_action %}{{ cancel_action }}{% else %}closeModal('{{ modal_id }}'){% endif %}" aria-label="Close">
+        {% include "partials/icons/x.html" %}
+      </button>
+    </div>
+    <div class="modal-body">
+      <p class="text-sm">{{ message|safe }}</p>
+      {% if message_detail or message_detail_id %}
+        <p class="font-medium mt-2"{% if message_detail_id %} id="{{ message_detail_id }}"{% endif %}>{{ message_detail|default:"—" }}</p>
+      {% endif %}
+      {% if message_footer %}
+        <p class="text-sm text-muted mt-3">{{ message_footer }}</p>
+      {% endif %}
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" type="button" onclick="{% if cancel_action %}{{ cancel_action }}{% else %}closeModal('{{ modal_id }}'){% endif %}">{{ cancel_text|default:"No" }}</button>
+      {% if confirm_form %}
+        <button class="btn {% if destructive %}btn-destructive{% else %}btn-primary{% endif %}" type="submit" form="{{ confirm_form }}">{{ confirm_text|default:"Yes" }}</button>
+      {% else %}
+        <button class="btn {% if destructive %}btn-destructive{% else %}btn-primary{% endif %}" type="button" onclick="{{ confirm_action }}">{{ confirm_text|default:"Yes" }}</button>
+      {% endif %}
+    </div>
+  </div>
+</div>
