@@ -1,0 +1,22 @@
+<div class="card page-toolbar-card">
+  <div class="employee-shifts-toolbar">
+    <div class="employee-shifts-toolbar-left">
+      {% include "partials/calendar_nav.html" with prev_aria_label=prev_aria_label next_aria_label=next_aria_label %}
+    </div>
+
+    <div class="employee-shifts-toolbar-center">
+      <div class="calendar-period" id="periodLabel">{{ period_label }}</div>
+    </div>
+
+    <div class="employee-shifts-toolbar-right">
+      {% if toolbar_variant == 'views' %}
+        <div class="flex gap-2">
+          <button class="btn btn-outline btn-sm" type="button" id="btnWeek" onclick="switchView('week')">Week</button>
+          <button class="btn btn-outline btn-sm" type="button" id="btnMonth" onclick="switchView('month')">Month</button>
+        </div>
+      {% else %}
+        <div class="text-sm text-muted">{{ toolbar_right_text|default:'Mark full days unavailable' }}</div>
+      {% endif %}
+    </div>
+  </div>
+</div>

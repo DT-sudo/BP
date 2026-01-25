@@ -10,12 +10,6 @@ class PositionForm(forms.ModelForm):
         model = Position
         fields = ["name", "is_active"]
 
-    def clean_name(self) -> str:
-        name = (self.cleaned_data.get("name") or "").strip()
-        if len(name) > 25:
-            raise forms.ValidationError("Role name must be 25 characters or fewer.")
-        return name
-
 
 class ShiftTemplateForm(forms.ModelForm):
     class Meta:

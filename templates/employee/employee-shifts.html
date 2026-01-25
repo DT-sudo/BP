@@ -1,95 +1,31 @@
-{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ShiftSync - My Shifts</title>
-  <meta name="description" content="ShiftSync - Employee shift calendar">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="{% static 'css/styles.css' %}?v={% now 'U' %}">
-</head>
-<body>
-  <div class="toast-container" id="toastContainer" aria-live="polite" aria-atomic="true"></div>
-  {% if messages %}
-    <ul id="djangoMessages" class="hidden">
-      {% for message in messages %}
-        <li data-level="{{ message.tags }}" data-text="{{ message|escape }}"></li>
-      {% endfor %}
-    </ul>
-  {% endif %}
+  {% include "partials/head.html" with page_title="ShiftSync - My Shifts" page_description="ShiftSync - Employee shift calendar" %}
+	</head>
+	<body>
+	  {% include "partials/toast_messages.html" %}
 
-  <!-- Header -->
-  <header class="header">
-    <div class="header-brand">
-      <div class="header-logo" aria-hidden="true">
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <rect width="18" height="18" x="3" y="4" rx="2" ry="2"/>
-          <line x1="16" x2="16" y1="2" y2="6"/>
-          <line x1="8" x2="8" y1="2" y2="6"/>
-          <line x1="3" x2="21" y1="10" y2="10"/>
-        </svg>
-      </div>
-      <span class="header-title">ShiftSync</span>
-    </div>
+	  {% include "partials/header.html" with nav_active="employee_shifts" %}
 
-    <div class="dropdown header-user">
-      <button class="btn btn-ghost btn-sm header-user-trigger" type="button" onclick="toggleUserMenu(this)" aria-label="User menu">
-        <div class="header-avatar" aria-label="User avatar">{{ user_initials|default:"E" }}</div>
-      </button>
-      <div class="dropdown-menu">
-        <div class="dropdown-item dropdown-item-static dropdown-item-title">{{ user_display_name|default:"Employee" }}</div>
-        <div class="dropdown-item dropdown-item-static">{{ user_header_role|default:"Employee" }}</div>
-        <div class="dropdown-divider"></div>
-        <a class="dropdown-item dropdown-item-destructive" href="{% url 'logout' %}">Logout</a>
-      </div>
-    </div>
-  </header>
+		  <main class="main-content main-content-tight-top">
+		    {% include "partials/employee_calendar_toolbar.html" with toolbar_variant="views" prev_aria_label="Previous period" next_aria_label="Next period" %}
 
-  <main class="main-content">
-    <!-- Calendar Controls -->
-    <div class="calendar-controls employee-calendar-controls">
-      <div class="calendar-nav">
-        <button class="btn btn-outline btn-icon" onclick="prevPeriod()" aria-label="Previous period">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="m15 18-6-6 6-6"/>
-          </svg>
-        </button>
-        <button class="btn btn-outline btn-sm" onclick="goToToday()">Today</button>
-        <button class="btn btn-outline btn-icon" onclick="nextPeriod()" aria-label="Next period">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="m9 18 6-6-6-6"/>
-          </svg>
-        </button>
-      </div>
+		    <!-- Month View -->
+		    <div class="card mt-3{% if view != 'month' %} hidden{% endif %}" id="monthView">
+		      <div class="calendar-grid calendar-grid-month" id="employeeMonthGrid" aria-label="Month calendar"></div>
+	    </div>
 
-      <div style="flex: 1; display: flex; justify-content: center;">
-        <div class="calendar-period" id="periodLabel">{{ period_label }}</div>
-      </div>
+	    <!-- Week View -->
+	    <div class="card mt-3{% if view != 'week' %} hidden{% endif %}" id="weekView">
+	      <div class="calendar-grid calendar-grid-week" id="employeeWeekGrid" aria-label="Week calendar"></div>
+	    </div>
 
-      <div class="flex gap-2">
-        <button class="btn btn-outline btn-sm" id="btnWeek" onclick="switchView('week')">Week</button>
-        <button class="btn btn-outline btn-sm" id="btnMonth" onclick="switchView('month')">Month</button>
-      </div>
-    </div>
-
-    <!-- Month View -->
-    <div class="card{% if view != 'month' %} hidden{% endif %}" id="monthView">
-      <div class="calendar-grid calendar-grid-month" id="employeeMonthGrid" aria-label="Month calendar"></div>
-    </div>
-
-    <!-- Week View -->
-    <div class="card{% if view != 'week' %} hidden{% endif %}" id="weekView">
-      <div class="calendar-grid calendar-grid-week" id="employeeWeekGrid" aria-label="Week calendar"></div>
-    </div>
-
-    <!-- Upcoming shifts list (small, helpful for Month view) -->
-    <div class="card" style="margin-top: 1rem;">
-      <div class="card-header">
-        <h3 class="card-title">Upcoming shifts</h3>
-      </div>
+	    <!-- Upcoming shifts list (small, helpful for Month view) -->
+	    <div class="card mt-3">
+	      <div class="card-header card-header-tight">
+	        <h3 class="card-title">Upcoming shifts</h3>
+	      </div>
       <div class="card-content">
         <div class="table-container">
 	          <table class="table" aria-label="Upcoming shifts">
@@ -128,10 +64,7 @@
       <div class="modal-header">
         <h2 class="modal-title">Shift</h2>
         <button class="modal-close" onclick="closeModal('monthPopupModal')" aria-label="Close">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <line x1="18" x2="6" y1="6" y2="18"/>
-            <line x1="6" x2="18" y1="6" y2="18"/>
-          </svg>
+          {% include "partials/icons/x.html" %}
         </button>
       </div>
       <div class="modal-body">
@@ -152,10 +85,7 @@
       <div class="modal-header">
         <h2 class="modal-title">Shift details</h2>
         <button class="modal-close" onclick="closeModal('shiftDetailsModal')" aria-label="Close">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <line x1="18" x2="6" y1="6" y2="18"/>
-            <line x1="6" x2="18" y1="6" y2="18"/>
-          </svg>
+          {% include "partials/icons/x.html" %}
         </button>
       </div>
       <div class="modal-body">
@@ -165,19 +95,16 @@
           <span class="badge badge-default" id="detailRole">Barista</span>
           <span class="text-sm text-muted" id="detailHours">8 hours</span>
         </div>
-        <p class="text-sm text-muted mt-4">
-          Note: Draft shifts are not visible to employees.
-        </p>
       </div>
       <div class="modal-footer">
         <button class="btn btn-primary" onclick="closeModal('shiftDetailsModal')">Close</button>
       </div>
     </div>
   </div>
-  <script type="application/json" id="employeeShiftsData">{{ shifts_json|safe }}</script>
-  <div
-    id="employeeShiftPage"
-    data-base-url="{% url 'employee_shifts' %}"
+  
+	  <script type="application/json" id="employeeShiftsData">{{ shifts_json|safe }}</script>
+	  <div
+	    id="employeeShiftPage"
     data-view="{{ view }}"
     data-anchor="{{ anchor|date:'Y-m-d' }}"
     data-start="{{ start|date:'Y-m-d' }}"
@@ -185,7 +112,6 @@
     data-today="{{ today|date:'Y-m-d' }}"
   ></div>
 
-  <script src="{% static 'js/app.js' %}?v={% now 'U' %}"></script>
-  <script src="{% static 'js/employee-shifts.js' %}?v={% now 'U' %}"></script>
+  {% include "partials/scripts.html" with include_calendar=1 page_script="js/employee-shifts.js" %}
 </body>
 </html>

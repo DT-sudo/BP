@@ -1,77 +1,25 @@
-function toISODate(d) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-}
-
-function addDays(isoDate, delta) {
-  const d = new Date(`${isoDate}T00:00:00`);
-  d.setDate(d.getDate() + delta);
-  return toISODate(d);
-}
-
-function addMonths(isoDate, delta) {
-  const d = new Date(`${isoDate}T00:00:00`);
-  d.setMonth(d.getMonth() + delta);
-  return toISODate(d);
-}
-
-function navigateWith(params) {
-  const url = new URL(window.location.href);
-  const search = url.searchParams;
-  Object.entries(params).forEach(([k, v]) => {
-    if (v === null || v === undefined || v === '') search.delete(k);
-    else search.set(k, v);
-  });
-  window.location.assign(`${url.pathname}?${search.toString()}`);
-}
+const EMPLOYEE_PERIOD_NAV = {
+  defaultView: 'month',
+  viewSteps: {
+    week: { days: 7, view: 'week' },
+    month: { months: 1, view: 'month' },
+  },
+};
 
 function switchView(view) {
-  const page = document.getElementById('employeeShiftPage');
-  const anchor = page?.dataset.anchor || '';
-  navigateWith({ view, date: anchor });
+  window.calendarSwitchView?.('employeeShiftPage', view);
 }
 
 function prevPeriod() {
-  const page = document.getElementById('employeeShiftPage');
-  if (!page) return;
-  const view = page.dataset.view;
-  const anchor = page.dataset.anchor;
-  if (!anchor) return;
-
-  if (view === 'week') navigateWith({ view: 'week', date: addDays(anchor, -7) });
-  else navigateWith({ view: 'month', date: addMonths(anchor, -1) });
+  window.calendarPrevPeriod?.('employeeShiftPage', EMPLOYEE_PERIOD_NAV);
 }
 
 function nextPeriod() {
-  const page = document.getElementById('employeeShiftPage');
-  if (!page) return;
-  const view = page.dataset.view;
-  const anchor = page.dataset.anchor;
-  if (!anchor) return;
-
-  if (view === 'week') navigateWith({ view: 'week', date: addDays(anchor, 7) });
-  else navigateWith({ view: 'month', date: addMonths(anchor, 1) });
+  window.calendarNextPeriod?.('employeeShiftPage', EMPLOYEE_PERIOD_NAV);
 }
 
 function goToToday() {
-  const page = document.getElementById('employeeShiftPage');
-  if (!page) return;
-  const view = page.dataset.view || 'month';
-  const today = page.dataset.today;
-  if (!today) return;
-  navigateWith({ view, date: today });
-}
-
-function parseJsonScript(id, fallback) {
-  const el = document.getElementById(id);
-  if (!el) return fallback;
-  try {
-    return JSON.parse(el.textContent || '');
-  } catch (e) {
-    return fallback;
-  }
+  window.calendarGoToToday?.('employeeShiftPage', 'month');
 }
 
 function shiftHours(shift) {
@@ -133,10 +81,6 @@ function renderMonthGrid(config, shifts) {
   }
 }
 
-function weekdayLabel(d) {
-  return d.toLocaleDateString(undefined, { weekday: 'short' });
-}
-
 function renderWeekGrid(config, shifts) {
   const grid = document.getElementById('employeeWeekGrid');
   if (!grid) return;
@@ -166,19 +110,18 @@ function renderWeekGrid(config, shifts) {
     cell.className = 'calendar-cell employee-week-day-cell';
     if (iso === config.today) cell.classList.add('calendar-cell-today');
 
-    (byDate.get(iso) || []).forEach((s) => {
-      const chip = document.createElement('div');
-      chip.className = `shift-chip employee-week-shift-chip ${s.is_past ? 'shift-chip-past' : 'shift-chip-future'}`;
-      chip.innerHTML = `
-        <div class="flex items-center justify-between">
-          <span>${s.start_time}–${s.end_time}</span>
-          <span class="badge badge-default">${s.position}</span>
-        </div>
-        <div class="text-xs text-muted mt-1">${weekdayLabel(d)} • ${shiftHours(s)}h</div>
-      `;
-      chip.addEventListener('click', () => openShiftDetails(s.id));
-      cell.appendChild(chip);
-    });
+	    (byDate.get(iso) || []).forEach((s) => {
+	      const chip = document.createElement('div');
+	      chip.className = `shift-chip employee-week-shift-chip ${s.is_past ? 'shift-chip-past' : 'shift-chip-future'}`;
+	      chip.innerHTML = `
+	        <div class="flex items-center">
+	          <span>${s.start_time}–${s.end_time}</span>
+	        </div>
+	        <div class="text-xs text-muted mt-1">${weekdayLabel(d)} • ${shiftHours(s)}h</div>
+	      `;
+	      chip.addEventListener('click', () => openShiftDetails(s.id));
+	      cell.appendChild(chip);
+	    });
 
     grid.appendChild(cell);
   }

@@ -188,7 +188,7 @@ async function saveEmployeeEdits() {
   const position = document.getElementById('editRole')?.value || '';
 
   try {
-    const payload = await postForm(urlFromTemplate(cfg.updateUrlTemplate, userId), {
+    const payload = await postFormJson(urlFromTemplate(cfg.updateUrlTemplate, userId), {
       full_name: fullName,
       email,
       phone,
@@ -257,39 +257,6 @@ function getRolesConfig() {
   };
 }
 
-function urlFromTemplate(template, id) {
-  return template.replace(/\/0\//, `/${id}/`);
-}
-
-async function postForm(url, data) {
-  const csrf = window.getCsrfToken?.();
-  const body = new URLSearchParams(data);
-
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
-      ...(csrf ? { 'X-CSRFToken': csrf } : {}),
-      Accept: 'application/json',
-    },
-    body,
-  });
-
-  const payload = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    const firstFormError =
-      payload?.errors && typeof payload.errors === 'object'
-        ? Object.values(payload.errors)
-            .flat()
-            .map((x) => (typeof x === 'string' ? x : x?.message || ''))
-            .filter(Boolean)[0]
-        : '';
-    const msg = payload.error || firstFormError || 'Request failed.';
-    throw new Error(msg);
-  }
-  return payload;
-}
-
 function upsertRoleOption(selectId, roleId, roleName) {
   const select = document.getElementById(selectId);
   if (!select) return;
@@ -322,7 +289,7 @@ async function addRole() {
   }
 
   try {
-    const payload = await postForm(cfg.createUrl, { name, is_active: 'on' });
+    const payload = await postFormJson(cfg.createUrl, { name, is_active: 'on' });
     const roleId = payload.id;
 
     const tr = document.createElement('tr');
@@ -367,7 +334,7 @@ async function renameRole(btn) {
   if (!next || !roleId) return;
 
   try {
-    await postForm(urlFromTemplate(cfg.updateUrlTemplate, roleId), { name: next, is_active: 'on' });
+    await postFormJson(urlFromTemplate(cfg.updateUrlTemplate, roleId), { name: next, is_active: 'on' });
     tr.querySelector('.role-name').textContent = next;
 
     upsertRoleOption('roleFilter', roleId, next);
@@ -404,7 +371,7 @@ async function confirmDeleteRole() {
   if (!cfg || !target?.roleId) return;
 
   try {
-    await postForm(urlFromTemplate(cfg.deleteUrlTemplate, target.roleId), {});
+    await postFormJson(urlFromTemplate(cfg.deleteUrlTemplate, target.roleId), {});
     target.tr?.remove();
     removeRoleOption('roleFilter', target.roleId);
     removeRoleOption('addRole', target.roleId);

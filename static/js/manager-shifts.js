@@ -30,7 +30,7 @@ function submitManagerFiltersForm() {
 }
 
 function submitFilters() {
-  closeAllMultiselects();
+  window.closeAllMultiselects?.('programmatic');
   submitManagerFiltersForm();
 }
 
@@ -57,83 +57,82 @@ function markPositionMultiDirty() {
   ms.dataset.dirty = '1';
 }
 
-function setMultiOpen(el, open) {
-  if (!el) return;
-  el.classList.toggle('open', open);
-  const trigger = el.querySelector('.multiselect-trigger');
-  trigger?.setAttribute('aria-expanded', open ? 'true' : 'false');
+let managerMultiselectHooksWired = false;
 
-  if (!open && el.id === 'managerMonthPicker') {
-    const menu = el.querySelector('.multiselect-menu');
-    if (menu) {
-      menu.style.position = '';
-      menu.style.top = '';
-      menu.style.left = '';
-      menu.style.right = '';
-      menu.style.bottom = '';
-      menu.style.transform = '';
-      menu.style.maxWidth = '';
-      menu.style.width = '';
+function resetManagerMonthPickerMenu(el) {
+  const menu = el?.querySelector?.('.multiselect-menu');
+  if (!menu) return;
+  menu.style.position = '';
+  menu.style.top = '';
+  menu.style.left = '';
+  menu.style.right = '';
+  menu.style.bottom = '';
+  menu.style.transform = '';
+  menu.style.maxWidth = '';
+  menu.style.width = '';
+}
+
+function positionManagerMonthPickerMenu(el) {
+  const trigger = el?.querySelector?.('.multiselect-trigger');
+  const label = el?.querySelector?.('#periodLabel');
+  const menu = el?.querySelector?.('.multiselect-menu');
+  if (!trigger || !menu) return;
+
+  const triggerRect = trigger.getBoundingClientRect();
+  const labelRect = (label || trigger).getBoundingClientRect();
+
+  menu.style.position = 'fixed';
+  menu.style.transform = '';
+  menu.style.width = '';
+  menu.style.maxWidth = `calc(100vw - 16px)`;
+
+  const menuWidth = Math.max(0, menu.offsetWidth || 0);
+  const margin = 8;
+  const vw = window.innerWidth || document.documentElement.clientWidth || 0;
+
+  const centerX = labelRect.left + labelRect.width / 2;
+  let left = centerX - menuWidth / 2;
+  left = Math.min(Math.max(margin, left), Math.max(margin, vw - menuWidth - margin));
+
+  menu.style.top = `${Math.round(triggerRect.bottom + 6)}px`;
+  menu.style.left = `${Math.round(left)}px`;
+  menu.style.right = 'auto';
+  menu.style.bottom = 'auto';
+}
+
+function wireManagerMultiselectHooks() {
+  if (managerMultiselectHooksWired) return;
+  managerMultiselectHooksWired = true;
+
+  document.addEventListener('multiselect:willopen', (e) => {
+    const id = e.detail?.id || '';
+    if (id === 'employeeMulti') filterEmployeePicker();
+    if (id === 'positionMulti') refreshPositionsFromServer();
+  });
+
+  document.addEventListener('multiselect:didopen', (e) => {
+    const id = e.detail?.id || '';
+    if (id !== 'managerMonthPicker') return;
+    const el = e.detail?.el;
+    window.requestAnimationFrame(() => positionManagerMonthPickerMenu(el));
+  });
+
+  document.addEventListener('multiselect:didclose', (e) => {
+    const id = e.detail?.id || '';
+    const el = e.detail?.el;
+    const reason = e.detail?.reason || '';
+
+    if (id === 'managerMonthPicker') {
+      resetManagerMonthPickerMenu(el);
+      return;
     }
-  }
-}
 
-function closeAllMultiselects() {
-  document.querySelectorAll('.multiselect.open').forEach((ms) => setMultiOpen(ms, false));
-}
-
-function closestByClass(node, className) {
-  let cur = node;
-  while (cur) {
-    if (cur.classList && cur.classList.contains(className)) return cur;
-    cur = cur.parentNode;
-  }
-  return null;
-}
-
-function toggleMulti(id) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  if (id === 'employeeMulti') filterEmployeePicker();
-  if (id === 'positionMulti') refreshPositionsFromServer();
-  const willOpen = !el.classList.contains('open');
-  closeAllMultiselects();
-  setMultiOpen(el, willOpen);
-
-  if (id === 'managerMonthPicker' && willOpen) {
-    window.requestAnimationFrame(() => {
-      const trigger = el.querySelector('.multiselect-trigger');
-      const label = el.querySelector('#periodLabel');
-      const menu = el.querySelector('.multiselect-menu');
-      if (!trigger || !menu) return;
-
-      const triggerRect = trigger.getBoundingClientRect();
-      const labelRect = (label || trigger).getBoundingClientRect();
-
-      menu.style.position = 'fixed';
-      menu.style.transform = '';
-      menu.style.width = '';
-      menu.style.maxWidth = `calc(100vw - 16px)`;
-
-      const menuWidth = Math.max(0, menu.offsetWidth || 0);
-      const margin = 8;
-      const vw = window.innerWidth || document.documentElement.clientWidth || 0;
-
-      const centerX = labelRect.left + labelRect.width / 2;
-      let left = centerX - menuWidth / 2;
-      left = Math.min(Math.max(margin, left), Math.max(margin, vw - menuWidth - margin));
-
-      menu.style.top = `${Math.round(triggerRect.bottom + 6)}px`;
-      menu.style.left = `${Math.round(left)}px`;
-      menu.style.right = 'auto';
-      menu.style.bottom = 'auto';
-    });
-  }
-
-  if (id === 'positionMulti' && !willOpen && el.dataset.dirty === '1') {
+    if (id !== 'positionMulti') return;
+    if (!['toggle', 'auto-close', 'escape'].includes(reason)) return;
+    if (!el || el.dataset.dirty !== '1') return;
     el.dataset.dirty = '0';
     submitManagerFiltersForm();
-  }
+  });
 }
 
 function selectAllPositions(on) {
@@ -444,21 +443,6 @@ function wireEmployeeChipRemovals() {
   });
 }
 
-function wireMultiSelectAutoClose() {
-  document.addEventListener('click', (e) => {
-    const clickedInside = closestByClass(e.target, 'multiselect');
-    document.querySelectorAll('.multiselect.open').forEach((ms) => {
-      if (clickedInside && ms === clickedInside) return;
-      const shouldSubmitPosition = ms.id === 'positionMulti' && ms.dataset.dirty === '1';
-      setMultiOpen(ms, false);
-      if (shouldSubmitPosition) {
-        ms.dataset.dirty = '0';
-        submitManagerFiltersForm();
-      }
-    });
-  });
-}
-
 function wireManagerFiltersMultiselectClickThrough() {
   const form = document.getElementById('managerFiltersForm');
   if (!form) return;
@@ -638,26 +622,7 @@ function wireCreateShiftValidation() {
   document.getElementById('employeeMulti')?.addEventListener('change', clearCreateShiftErrors);
 }
 
-// ---------- Navigation ----------
-function toISODate(d) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-}
-
-function addDays(isoDate, delta) {
-  const d = new Date(`${isoDate}T00:00:00`);
-  d.setDate(d.getDate() + delta);
-  return toISODate(d);
-}
-
-function addMonths(isoDate, delta) {
-  const d = new Date(`${isoDate}T00:00:00`);
-  d.setMonth(d.getMonth() + delta);
-  return toISODate(d);
-}
-
+// ---------- Time helpers ----------
 function parseTimeToMinutes(value) {
   const [h, m] = String(value || '00:00')
     .split(':')
@@ -668,9 +633,8 @@ function parseTimeToMinutes(value) {
   return hh * 60 + mm;
 }
 
-const TIME_GRID_HOUR_HEIGHT_PX = 72;
 const TIME_GRID_HOUR_WIDTH_PX = 72;
-const SHIFT_LANE_MIN_WIDTH_PX = 120;
+const TIME_GRID_HOUR_HEIGHT_PX = 56;
 const SHIFT_LANE_HEIGHT_PX = 60;
 const SHIFT_LANE_GAP_PX = 4;
 
@@ -775,6 +739,237 @@ function renderRoleLegend(positions, shifts) {
   window.requestAnimationFrame(() => window.managerSyncStickyOffsets?.());
 }
 
+// ---------- Employees Sidebar ----------
+let managerEmployees = [];
+let managerEmployeePeriodStats = { minutesByEmployeeId: new Map(), shiftIdsByEmployeeId: new Map() };
+let activeEmployeeHighlightId = null;
+let employeeSidebarControlsWired = false;
+
+function computeEmployeePeriodStats(shifts) {
+  const minutesByEmployeeId = new Map();
+  const shiftIdsByEmployeeId = new Map();
+
+  (Array.isArray(shifts) ? shifts : []).forEach((s) => {
+    if (!s) return;
+    const shiftId = String(s.id ?? '');
+    if (!shiftId) return;
+
+    const durationMinutes = Math.max(0, parseTimeToMinutes(s.end_time) - parseTimeToMinutes(s.start_time));
+    const assignedIds = Array.isArray(s.assigned_employee_ids) ? s.assigned_employee_ids : [];
+
+    assignedIds.forEach((eid) => {
+      const employeeId = String(eid ?? '');
+      if (!employeeId) return;
+
+      minutesByEmployeeId.set(employeeId, (minutesByEmployeeId.get(employeeId) || 0) + durationMinutes);
+      if (!shiftIdsByEmployeeId.has(employeeId)) shiftIdsByEmployeeId.set(employeeId, new Set());
+      shiftIdsByEmployeeId.get(employeeId).add(shiftId);
+    });
+  });
+
+  return { minutesByEmployeeId, shiftIdsByEmployeeId };
+}
+
+function initialsFromName(name) {
+  const parts = String(name || '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  if (!parts.length) return 'E';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+}
+
+function formatHoursCompact(minutes) {
+  const total = Math.max(0, parseInt(minutes, 10) || 0);
+  const rounded = Math.round((total / 60) * 10) / 10;
+  return `${String(rounded).replace(/\.0$/, '')}h`;
+}
+
+function syncEmployeeSidebarActiveState() {
+  const list = document.getElementById('employeeSidebarList');
+  if (!list) return;
+
+  list.querySelectorAll('.employee-sidebar-item').forEach((row) => {
+    const id = String(row.dataset.employeeId || '');
+    const active = !!activeEmployeeHighlightId && id === String(activeEmployeeHighlightId);
+    row.classList.toggle('active', active);
+
+    const btn = row.querySelector('.employee-highlight-btn');
+    if (btn) {
+      btn.classList.toggle('active', active);
+      btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+    }
+  });
+}
+
+function applyEmployeeShiftHighlight() {
+  document.querySelectorAll('.shift-chip.shift-chip-employee-highlight').forEach((el) => {
+    el.classList.remove('shift-chip-employee-highlight');
+  });
+
+  const activeId = activeEmployeeHighlightId ? String(activeEmployeeHighlightId) : '';
+  if (!activeId) return;
+
+  const shiftIds = managerEmployeePeriodStats?.shiftIdsByEmployeeId?.get(activeId);
+  if (!shiftIds || !shiftIds.size) return;
+
+  document.querySelectorAll('.shift-chip[data-shift-id]').forEach((chip) => {
+    const id = String(chip.dataset.shiftId || '');
+    if (!id) return;
+    if (shiftIds.has(id)) chip.classList.add('shift-chip-employee-highlight');
+  });
+}
+
+function toggleEmployeeHighlight(employeeId) {
+  const id = String(employeeId || '');
+  if (!id) return;
+  activeEmployeeHighlightId = activeEmployeeHighlightId === id ? null : id;
+  applyEmployeeShiftHighlight();
+  syncEmployeeSidebarActiveState();
+}
+
+function wireEmployeeSidebarControls() {
+  if (employeeSidebarControlsWired) return;
+  employeeSidebarControlsWired = true;
+
+  const search = document.getElementById('employeeSidebarSearch');
+  const position = document.getElementById('employeeSidebarPosition');
+  const sort = document.getElementById('employeeSidebarSort');
+  search?.addEventListener('input', renderEmployeeSidebar);
+  position?.addEventListener('change', renderEmployeeSidebar);
+  sort?.addEventListener('change', renderEmployeeSidebar);
+}
+
+function renderEmployeeSidebar() {
+  const sidebar = document.getElementById('managerEmployeeSidebar');
+  const list = document.getElementById('employeeSidebarList');
+  if (!sidebar || !list) return;
+
+  const queryRaw = document.getElementById('employeeSidebarSearch')?.value || '';
+  const query = String(queryRaw).trim().toLowerCase();
+  const filterPosition = document.getElementById('employeeSidebarPosition')?.value || '';
+  const sortMode = document.getElementById('employeeSidebarSort')?.value || 'hours_asc';
+
+  const minutesById = managerEmployeePeriodStats?.minutesByEmployeeId || new Map();
+
+  const filtered = (Array.isArray(managerEmployees) ? managerEmployees : []).filter((e) => {
+    if (!e) return false;
+    const positionId = e.position_id ?? e.positionId ?? null;
+    if (!filterPosition) return true;
+    if (filterPosition === '__none__') return positionId === null || positionId === undefined || String(positionId) === '';
+    return String(positionId) === String(filterPosition);
+  });
+
+  const enriched = filtered
+    .map((e) => {
+      const id = String(e.id ?? '');
+      const name = String(e.name || '');
+      return {
+        ...e,
+        _id: id,
+        _name: name,
+        _minutes: minutesById.get(id) || 0,
+        _search: `${name} ${String(e.position || '')}`.trim().toLowerCase(),
+      };
+    })
+    .filter((e) => {
+      if (!query) return true;
+      return e._search.includes(query);
+    });
+
+  if (sortMode === 'hours_asc') {
+    enriched.sort(
+      (a, b) =>
+        a._minutes - b._minutes ||
+        a._name.localeCompare(b._name) ||
+        String(a._id).localeCompare(String(b._id)),
+    );
+  } else {
+    enriched.sort((a, b) => a._name.localeCompare(b._name) || String(a._id).localeCompare(String(b._id)));
+  }
+
+  const meta = document.getElementById('employeeSidebarMeta');
+  if (meta) {
+    const total = Array.isArray(managerEmployees) ? managerEmployees.length : 0;
+    meta.textContent = total ? `${enriched.length}/${total}` : '';
+  }
+
+  list.innerHTML = '';
+  if (!enriched.length) {
+    const empty = document.createElement('div');
+    empty.className = 'employee-sidebar-empty text-sm text-muted';
+    empty.textContent = 'No employees found.';
+    list.appendChild(empty);
+    syncEmployeeSidebarActiveState();
+    return;
+  }
+
+  const frag = document.createDocumentFragment();
+  enriched.forEach((e) => {
+    const row = document.createElement('div');
+    row.className = 'employee-sidebar-item';
+    row.setAttribute('role', 'listitem');
+    row.dataset.employeeId = e._id;
+    if (e.position_id !== null && e.position_id !== undefined) row.dataset.positionId = String(e.position_id);
+
+    const avatar = document.createElement('div');
+    avatar.className = 'employee-avatar';
+    avatar.setAttribute('aria-hidden', 'true');
+    avatar.textContent = initialsFromName(e._name);
+
+    const meta = document.createElement('div');
+    meta.className = 'employee-sidebar-meta';
+
+    const name = document.createElement('div');
+    name.className = 'employee-sidebar-name';
+    name.textContent = e._name || 'Employee';
+
+    const sub = document.createElement('div');
+    sub.className = 'employee-sidebar-sub';
+
+    const badge = document.createElement('span');
+    badge.className = 'badge badge-outline employee-position-badge';
+    const positionLabel = String(e.position || '').trim() || 'Unassigned';
+    badge.textContent = positionLabel;
+    if (e.position_id) applyRolePaletteToElement(badge, e.position_id);
+
+    const hours = document.createElement('span');
+    hours.className = 'employee-sidebar-hours';
+    hours.textContent = formatHoursCompact(e._minutes);
+
+    sub.appendChild(badge);
+    sub.appendChild(hours);
+    meta.appendChild(name);
+    meta.appendChild(sub);
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'btn btn-outline btn-icon employee-highlight-btn';
+    btn.setAttribute('aria-label', `Highlight shifts for ${e._name || 'employee'}`);
+    btn.setAttribute('aria-pressed', 'false');
+    btn.innerHTML = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="10"></circle>
+        <circle cx="12" cy="12" r="3"></circle>
+      </svg>
+    `;
+    btn.addEventListener('click', (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      toggleEmployeeHighlight(e._id);
+    });
+
+    row.appendChild(avatar);
+    row.appendChild(meta);
+    row.appendChild(btn);
+    frag.appendChild(row);
+  });
+
+  list.appendChild(frag);
+  syncEmployeeSidebarActiveState();
+}
+
 function computeShiftLaneLayout(shifts) {
   const items = (shifts || [])
     .map((s) => ({
@@ -807,48 +1002,46 @@ function computeShiftLaneLayout(shifts) {
   return { laneById, laneCount: Math.max(1, laneEnds.length) };
 }
 
-function applyTimedShiftChip(chip, shift, hourStartMinutes, laneIndex, laneCount) {
+function applyTimedShiftChipVertical(chip, shift, laneIndex, laneCount, hourHeightPx) {
   if (!chip || !shift) return;
 
   const start = parseTimeToMinutes(shift.start_time);
   const end = parseTimeToMinutes(shift.end_time);
-  const offsetMinutes = Math.max(0, start - (hourStartMinutes || 0));
   const durationMinutes = Math.max(0, end - start);
+  const hourHeight = Number.isFinite(hourHeightPx) && hourHeightPx > 0 ? hourHeightPx : TIME_GRID_HOUR_HEIGHT_PX;
 
   chip.classList.add('shift-chip-timed');
-  chip.style.top = `${(offsetMinutes / 60) * TIME_GRID_HOUR_HEIGHT_PX}px`;
-  chip.style.height = `${Math.max(18, (durationMinutes / 60) * TIME_GRID_HOUR_HEIGHT_PX)}px`;
+  chip.style.top = `${(start / 60) * hourHeight}px`;
+  chip.style.height = `${Math.max(18, (durationMinutes / 60) * hourHeight)}px`;
 
   const lanes = Math.max(1, laneCount || 1);
   const lane = Math.min(Math.max(0, laneIndex || 0), lanes - 1);
-  const laneWidth = 100 / lanes;
-  const padPx = 2;
-  chip.style.left = `calc(${lane * laneWidth}% + ${padPx}px)`;
-  chip.style.width = `calc(${laneWidth}% - ${padPx * 2}px)`;
+  const pct = 100 / lanes;
+  const gap = SHIFT_LANE_GAP_PX;
+  chip.style.left = `calc(${lane * pct}% + ${gap}px)`;
+  chip.style.width = `calc(${pct}% - ${gap * 2}px)`;
 }
 
-function shiftLaneRowHeightPx(laneCount) {
-  const lanes = Math.max(1, laneCount || 1);
-  return lanes * SHIFT_LANE_HEIGHT_PX + (lanes + 1) * SHIFT_LANE_GAP_PX;
-}
+function autoScrollWeekGridToEarliestShift(gridEl, shifts, hourHeightPx) {
+  const grid = gridEl;
+  if (!grid) return;
+  const list = Array.isArray(shifts) ? shifts : [];
+  if (!list.length) return;
 
-function applyTimedShiftChipHorizontal(chip, shift, hourStartMinutes, laneIndex, laneCount, hourWidthPx) {
-  if (!chip || !shift) return;
+  let earliest = Infinity;
+  list.forEach((s) => {
+    const m = parseTimeToMinutes(s?.start_time);
+    if (Number.isFinite(m)) earliest = Math.min(earliest, m);
+  });
+  if (!Number.isFinite(earliest) || earliest === Infinity) return;
 
-  const start = parseTimeToMinutes(shift.start_time);
-  const end = parseTimeToMinutes(shift.end_time);
-  const offsetMinutes = Math.max(0, start - (hourStartMinutes || 0));
-  const durationMinutes = Math.max(0, end - start);
-  const hourWidth = Number.isFinite(hourWidthPx) && hourWidthPx > 0 ? hourWidthPx : TIME_GRID_HOUR_WIDTH_PX;
+  const hour = Math.max(0, Math.min(23, Math.floor(earliest / 60)));
+  const hh = Number.isFinite(hourHeightPx) && hourHeightPx > 0 ? hourHeightPx : TIME_GRID_HOUR_HEIGHT_PX;
+  const target = Math.max(0, Math.floor(hour * hh));
 
-  chip.classList.add('shift-chip-timed');
-  chip.style.left = `${(offsetMinutes / 60) * hourWidth}px`;
-  chip.style.width = `${Math.max(18, (durationMinutes / 60) * hourWidth)}px`;
-
-  const lanes = Math.max(1, laneCount || 1);
-  const lane = Math.min(Math.max(0, laneIndex || 0), lanes - 1);
-  chip.style.top = `${SHIFT_LANE_GAP_PX + lane * (SHIFT_LANE_HEIGHT_PX + SHIFT_LANE_GAP_PX)}px`;
-  chip.style.height = `${SHIFT_LANE_HEIGHT_PX}px`;
+  window.requestAnimationFrame(() => {
+    grid.scrollTop = target;
+  });
 }
 
 function applyTimedShiftChipHorizontalDynamic(
@@ -881,53 +1074,29 @@ function applyTimedShiftChipHorizontalDynamic(
   chip.style.height = `${laneHeight}px`;
 }
 
-function navigateWith(params) {
-  const url = new URL(window.location.href);
-  const search = url.searchParams;
-  Object.entries(params).forEach(([k, v]) => {
-    if (v === null || v === undefined || v === '') search.delete(k);
-    else search.set(k, v);
-  });
-  window.location.assign(`${url.pathname}?${search.toString()}`);
-}
+const MANAGER_PERIOD_NAV = {
+  defaultView: 'week',
+  viewSteps: {
+    day: { days: 1, view: 'day' },
+    week: { days: 7, view: 'week' },
+    month: { months: 1, view: 'month' },
+  },
+};
 
 function switchView(view) {
-  const page = document.getElementById('managerShiftPage');
-  const anchor = page?.dataset.anchor || '';
-  navigateWith({ view, date: anchor });
+  window.calendarSwitchView?.('managerShiftPage', view);
 }
 
 function prevPeriod() {
-  const page = document.getElementById('managerShiftPage');
-  if (!page) return;
-  const view = page.dataset.view;
-  const anchor = page.dataset.anchor;
-  if (!anchor) return;
-
-  if (view === 'day') navigateWith({ view, date: addDays(anchor, -1) });
-  else if (view === 'month') navigateWith({ view, date: addMonths(anchor, -1) });
-  else navigateWith({ view: 'week', date: addDays(anchor, -7) });
+  window.calendarPrevPeriod?.('managerShiftPage', MANAGER_PERIOD_NAV);
 }
 
 function nextPeriod() {
-  const page = document.getElementById('managerShiftPage');
-  if (!page) return;
-  const view = page.dataset.view;
-  const anchor = page.dataset.anchor;
-  if (!anchor) return;
-
-  if (view === 'day') navigateWith({ view, date: addDays(anchor, 1) });
-  else if (view === 'month') navigateWith({ view, date: addMonths(anchor, 1) });
-  else navigateWith({ view: 'week', date: addDays(anchor, 7) });
+  window.calendarNextPeriod?.('managerShiftPage', MANAGER_PERIOD_NAV);
 }
 
 function goToToday() {
-  const page = document.getElementById('managerShiftPage');
-  if (!page) return;
-  const view = page.dataset.view || 'week';
-  const today = page.dataset.today;
-  if (!today) return;
-  navigateWith({ view, date: today });
+  window.calendarGoToToday?.('managerShiftPage', 'week');
 }
 
 let managerMonthPickerYear = null;
@@ -1036,25 +1205,7 @@ function wireStickyOffsets() {
   });
 }
 
-// ---------- Calendar rendering ----------
-function parseJsonScript(id, fallback) {
-  const el = document.getElementById(id);
-  if (!el) return fallback;
-  try {
-    return JSON.parse(el.textContent || '');
-  } catch (e) {
-    return fallback;
-  }
-}
-
-function weekdayLabel(d) {
-  return d.toLocaleDateString(undefined, { weekday: 'short' });
-}
-
-function dayNumber(d) {
-  return d.getDate();
-}
-
+// ---------- Rendering helpers ----------
 function escapeHtml(value) {
   return String(value ?? '').replace(/[&<>"']/g, (ch) => {
     switch (ch) {
@@ -1072,13 +1223,6 @@ function escapeHtml(value) {
         return ch;
     }
   });
-}
-
-function formatChipDate(iso) {
-  if (!iso) return '';
-  const d = new Date(`${iso}T00:00:00`);
-  if (Number.isNaN(d.getTime())) return String(iso);
-  return d.toLocaleDateString(undefined, { month: 'short', day: '2-digit' });
 }
 
 function formatDurationMinutes(minutes) {
@@ -1419,9 +1563,17 @@ function renderWeekGrid(config, shifts) {
   grid.innerHTML = '';
 
   const start = new Date(`${config.start}T00:00:00`);
+  const weekDays = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(start);
+    d.setDate(start.getDate() + i);
+    weekDays.push({ date: d, iso: toISODate(d) });
+  }
+
   const byDate = new Map();
-  shifts.forEach((s) => {
-    const dateKey = s.date;
+  (Array.isArray(shifts) ? shifts : []).forEach((s) => {
+    const dateKey = s?.date;
+    if (!dateKey) return;
     if (!byDate.has(dateKey)) byDate.set(dateKey, []);
     byDate.get(dateKey).push(s);
   });
@@ -1432,80 +1584,72 @@ function renderWeekGrid(config, shifts) {
   });
 
   const corner = document.createElement('div');
-  corner.className = 'week-corner-header';
+  corner.className = 'week-time-corner';
   corner.textContent = '';
   corner.style.gridColumn = '1';
   corner.style.gridRow = '1';
   grid.appendChild(corner);
 
-  for (let hour = 0; hour < 24; hour++) {
-    const hourStr = `${String(hour).padStart(2, '0')}:00`;
+  weekDays.forEach(({ date, iso }, idx) => {
     const header = document.createElement('div');
-    header.className = 'week-hour-header';
-    header.textContent = hourStr;
-    header.dataset.hour = hourStr;
+    header.className = 'week-time-day-header';
+    header.textContent = `${weekdayLabel(date)} ${dayNumber(date)}`;
+    header.dataset.date = iso;
     header.style.gridRow = '1';
-    header.style.gridColumn = String(hour + 2);
-    grid.appendChild(header);
-  }
-
-  let maxLanesInWeek = 1;
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(start);
-    d.setDate(start.getDate() + i);
-    const iso = toISODate(d);
-    const laneCount = laneLayoutByDate.get(iso)?.laneCount || 1;
-    maxLanesInWeek = Math.max(maxLanesInWeek, laneCount);
-  }
-
-  grid.style.setProperty('--week-row-height', `${shiftLaneRowHeightPx(maxLanesInWeek)}px`);
-  grid.style.setProperty('--week-hour-width', `${TIME_GRID_HOUR_WIDTH_PX}px`);
-
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(start);
-    d.setDate(start.getDate() + i);
-    const iso = toISODate(d);
-
-    const dayLabel = document.createElement('div');
-    dayLabel.className = 'week-day-label';
-    dayLabel.textContent = `${weekdayLabel(d)} ${dayNumber(d)}`;
-    dayLabel.dataset.date = iso;
-    dayLabel.style.gridColumn = '1';
-    dayLabel.style.gridRow = String(i + 2);
-    dayLabel.addEventListener('click', (e) => {
+    header.style.gridColumn = String(idx + 2);
+    header.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
       navigateWith({ view: 'day', date: iso });
     });
-    grid.appendChild(dayLabel);
+    grid.appendChild(header);
+  });
 
-    for (let hour = 0; hour < 24; hour++) {
-      const hourStr = `${String(hour).padStart(2, '0')}:00`;
-      const slot = document.createElement('div');
-      slot.className = 'week-hour-cell';
-      slot.dataset.date = iso;
-      slot.dataset.hour = hourStr;
-      if (iso === config.today) slot.classList.add('calendar-cell-today');
-      slot.style.gridRow = String(i + 2);
-      slot.style.gridColumn = String(hour + 2);
-      grid.appendChild(slot);
-    }
+  for (let hour = 0; hour < 24; hour++) {
+    const hourStr = `${String(hour).padStart(2, '0')}:00`;
 
+    const label = document.createElement('div');
+    label.className = 'week-time-hour-label';
+    label.textContent = hourStr;
+    label.dataset.hour = hourStr;
+    label.style.gridColumn = '1';
+    label.style.gridRow = String(hour + 2);
+    grid.appendChild(label);
+
+    weekDays.forEach(({ iso }, idx) => {
+      const cell = document.createElement('div');
+      cell.className = 'week-time-cell';
+      cell.dataset.date = iso;
+      cell.dataset.hour = hourStr;
+      if (iso === config.today) cell.classList.add('calendar-cell-today');
+      cell.style.gridColumn = String(idx + 2);
+      cell.style.gridRow = String(hour + 2);
+      grid.appendChild(cell);
+    });
+  }
+
+  const sampleCell = grid.querySelector('.week-time-cell');
+  const hourHeightPx = sampleCell ? sampleCell.getBoundingClientRect().height : TIME_GRID_HOUR_HEIGHT_PX;
+
+  weekDays.forEach(({ iso }, idx) => {
     const layer = document.createElement('div');
-    layer.className = 'week-shifts-layer week-shifts-layer-horizontal';
+    layer.className = 'week-shifts-layer week-shifts-layer-vertical';
     layer.dataset.date = iso;
-    layer.style.gridColumn = '2 / -1';
-    layer.style.gridRow = String(i + 2);
+    layer.style.gridColumn = String(idx + 2);
+    layer.style.gridRow = '2 / -1';
 
     const laneInfo = laneLayoutByDate.get(iso) || { laneById: new Map(), laneCount: 1 };
     (byDate.get(iso) || []).forEach((s) => {
       const chip = renderShiftChip(s);
       const laneIndex = laneInfo.laneById.get(String(s.id)) ?? 0;
-      applyTimedShiftChipHorizontal(chip, s, 0, laneIndex, laneInfo.laneCount);
+      applyTimedShiftChipVertical(chip, s, laneIndex, laneInfo.laneCount, hourHeightPx);
       layer.appendChild(chip);
     });
     grid.appendChild(layer);
-  }
+  });
+
+  applyEmployeeShiftHighlight();
+  autoScrollWeekGridToEarliestShift(grid, shifts, hourHeightPx);
 }
 
 function renderMonthGrid(config, shifts) {
@@ -1573,6 +1717,8 @@ function renderMonthGrid(config, shifts) {
     cell.appendChild(list);
     grid.appendChild(cell);
   }
+
+  applyEmployeeShiftHighlight();
 }
 
 function renderDayGrid(config, shifts) {
@@ -1646,15 +1792,13 @@ function renderDayGrid(config, shifts) {
   });
 
   grid.appendChild(layer);
+
+  applyEmployeeShiftHighlight();
 }
 
 let activeShiftId = null;
 let activeShiftData = null;
 let managerCurrentShifts = [];
-
-function urlFromTemplate(template, id) {
-  return template.replace(/\/0\//, `/${id}/`);
-}
 
 function editShift() {
   if (!activeShiftData || !activeShiftId) return;
@@ -1749,11 +1893,15 @@ function initManagerShifts() {
 
   const shifts = parseJsonScript('managerShiftsData', []);
   managerCurrentShifts = Array.isArray(shifts) ? shifts : [];
+  const employees = parseJsonScript('managerEmployeesData', []);
+  managerEmployees = Array.isArray(employees) ? employees : [];
+  managerEmployeePeriodStats = computeEmployeePeriodStats(managerCurrentShifts);
   const formState = parseJsonScript('shiftFormState', null);
 
   initManagerMonthPicker(config);
 
-  wireMultiSelectAutoClose();
+  wireManagerMultiselectHooks();
+  wireEmployeeSidebarControls();
   wireManagerFiltersMultiselectClickThrough();
   wireEmployeeChipRemovals();
   initEmployeeBuckets();
@@ -1765,6 +1913,7 @@ function initManagerShifts() {
   document.getElementById('shiftPosition')?.addEventListener('change', filterEmployeePicker);
   renderRoleLegend(collectPositionsFromDom(), managerCurrentShifts);
   refreshPositionsFromServer();
+  renderEmployeeSidebar();
 
   wireCalendarClicks('weekGrid');
   wireCalendarClicks('monthGrid');

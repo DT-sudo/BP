@@ -4,7 +4,6 @@ import json
 from datetime import date, datetime, timedelta
 
 from django.contrib import messages
-from django.contrib.auth.decorators import login_required
 from django.core.serializers.json import DjangoJSONEncoder
 from django.core.exceptions import ValidationError
 from django.db import transaction
@@ -21,9 +20,11 @@ from apps.accounts.decorators import employee_required, manager_required
 from apps.accounts.models import User, UserRole
 
 from .forms import PositionForm, ShiftTemplateForm
-from .models import Position, Shift, ShiftStatus, ShiftTemplate
+from .models import EmployeeUnavailability, Position, Shift, ShiftStatus, ShiftTemplate
 from .services import (
+    delete_shift_ids,
     delete_drafts_in_range,
+    publish_draft_ids,
     publish_drafts_in_range,
     set_shift_assignments,
     shifts_for_employee,
@@ -49,6 +50,22 @@ def _parse_positive_int(value: str | None, field: str) -> int:
     if parsed < 1:
         raise ValidationError({field: "Must be at least 1."})
     return parsed
+
+
+def _parse_required_date(value: str | None, field: str) -> date:
+    raw = (value or "").strip()
+    try:
+        return datetime.strptime(raw, "%Y-%m-%d").date()
+    except (TypeError, ValueError):
+        raise ValidationError({field: "Enter a valid date."})
+
+
+def _parse_required_time(value: str | None, field: str):
+    raw = (value or "").strip()
+    try:
+        return datetime.strptime(raw, "%H:%M").time()
+    except (TypeError, ValueError):
+        raise ValidationError({field: "Enter a valid time."})
 
 
 def _week_bounds(anchor: date) -> tuple[date, date]:
@@ -117,6 +134,118 @@ def _manager_shifts_url_showing_shift(request: HttpRequest, shift: Shift) -> str
     return urlunparse(parsed._replace(query=query))
 
 
+def _read_shift_form_input(request: HttpRequest) -> dict:
+    return {
+        "date": request.POST.get("date"),
+        "start_time": request.POST.get("start_time"),
+        "end_time": request.POST.get("end_time"),
+        "position_id": request.POST.get("position_id"),
+        "capacity": request.POST.get("capacity"),
+        "publish": request.POST.get("publish") == "1",
+        "employee_ids": [int(e) for e in request.POST.getlist("employee_ids") if e.isdigit()],
+    }
+
+
+def _shift_form_state(
+    *,
+    mode: str,
+    data: dict,
+    shift_id: int | None = None,
+    error_field: str | None = None,
+) -> dict:
+    state = {
+        "mode": mode,
+        "date": data.get("date"),
+        "start_time": data.get("start_time"),
+        "end_time": data.get("end_time"),
+        "position_id": data.get("position_id"),
+        "capacity": data.get("capacity"),
+        "publish": bool(data.get("publish")),
+        "employee_ids": list(data.get("employee_ids") or []),
+    }
+    if shift_id is not None:
+        state["shift_id"] = shift_id
+    if error_field:
+        state["error_field"] = error_field
+    return state
+
+
+def _error_field_from_validation_error(exc: ValidationError) -> str | None:
+    msg_dict = getattr(exc, "message_dict", None)
+    if isinstance(msg_dict, dict):
+        if msg_dict.get("capacity"):
+            return "capacity"
+        if msg_dict.get("employee_ids"):
+            return "employee_ids"
+        if msg_dict.get("position") or msg_dict.get("position_id"):
+            return "position_id"
+        if msg_dict.get("date"):
+            return "date"
+        if msg_dict.get("start_time"):
+            return "start_time"
+        if msg_dict.get("end_time"):
+            return "end_time"
+
+    msg = str(exc).lower()
+    if "capacity" in msg:
+        return "capacity"
+    if "employee" in msg or "assign" in msg:
+        return "employee_ids"
+    if "position" in msg or "role" in msg:
+        return "position_id"
+    if "date" in msg:
+        return "date"
+    if "time" in msg:
+        return "end_time"
+    return None
+
+
+def _save_shift_from_request(*, shift: Shift, data: dict) -> None:
+    shift.date = _parse_required_date(data.get("date"), "date")
+    shift.start_time = _parse_required_time(data.get("start_time"), "start_time")
+    shift.end_time = _parse_required_time(data.get("end_time"), "end_time")
+    shift.position_id = _parse_positive_int(data.get("position_id"), "position")
+    shift.capacity = _parse_positive_int(data.get("capacity"), "capacity")
+    shift.status = ShiftStatus.PUBLISHED if data.get("publish") else ShiftStatus.DRAFT
+    shift.full_clean()
+    shift.save()
+    set_shift_assignments(shift, data.get("employee_ids") or [])
+
+
+def _save_shift_from_post(
+    request: HttpRequest,
+    *,
+    shift: Shift,
+    mode: str,
+    shift_id: int | None = None,
+    success_message: str,
+    last_action: str | None = None,
+) -> HttpResponse:
+    data = _read_shift_form_input(request)
+
+    try:
+        with transaction.atomic():
+            _save_shift_from_request(shift=shift, data=data)
+    except ValidationError as exc:
+        messages.error(request, str(exc))
+        request.session["shift_form_state"] = _shift_form_state(
+            mode=mode,
+            shift_id=shift_id,
+            data=data,
+            error_field=_error_field_from_validation_error(exc),
+        )
+        return _redirect_back(request, "manager_shifts")
+    except Exception as exc:
+        messages.error(request, f"Could not {mode} shift: {exc}")
+        request.session["shift_form_state"] = _shift_form_state(mode=mode, shift_id=shift_id, data=data)
+        return _redirect_back(request, "manager_shifts")
+
+    messages.success(request, success_message)
+    if last_action:
+        request.session["manager_last_action"] = {"action": last_action, "shift_ids": [shift.id]}
+    return redirect(_manager_shifts_url_showing_shift(request, shift))
+
+
 @manager_required
 @require_http_methods(["GET", "POST"])
 def manager_shifts(request: HttpRequest) -> HttpResponse:
@@ -146,11 +275,16 @@ def manager_shifts(request: HttpRequest) -> HttpResponse:
     understaffed = (request.GET.get("show") or "").lower() == "understaffed"
 
     if request.method == "POST" and request.POST.get("action") == "publish":
-        ids = publish_drafts_in_range(manager_id=request.user.id, start=start, end=end)
-        if ids:
-            request.session["manager_last_action"] = {"action": "publish", "shift_ids": ids}
-            messages.success(request, f"Published {len(ids)} draft shift(s).")
-        else:
+        published_ids, blocked_ids = publish_drafts_in_range(manager_id=request.user.id, start=start, end=end)
+        if published_ids:
+            request.session["manager_last_action"] = {"action": "publish", "shift_ids": published_ids}
+            messages.success(request, f"Published {len(published_ids)} draft shift(s).")
+        if blocked_ids:
+            messages.error(
+                request,
+                f"{len(blocked_ids)} draft shift(s) were not published because assigned employees are unavailable.",
+            )
+        if not published_ids and not blocked_ids:
             messages.info(request, "No draft shifts to publish.")
         return _redirect_back(request, "manager_shifts")
 
@@ -174,26 +308,22 @@ def manager_shifts(request: HttpRequest) -> HttpResponse:
             return _redirect_back(request, "manager_shifts")
 
         if request.POST.get("action") == "publish_selected":
-            qs = Shift.objects.filter(
-                created_by_id=request.user.id,
-                id__in=ids,
-                status=ShiftStatus.DRAFT,
-                is_deleted=False,
-            )
-            changed_ids = list(qs.values_list("id", flat=True))
-            if changed_ids:
-                qs.update(status=ShiftStatus.PUBLISHED)
-                request.session["manager_last_action"] = {"action": "publish", "shift_ids": changed_ids}
-                messages.success(request, f"Published {len(changed_ids)} selected shift(s).")
-            else:
+            published_ids, blocked_ids = publish_draft_ids(manager_id=request.user.id, shift_ids=ids)
+            if published_ids:
+                request.session["manager_last_action"] = {"action": "publish", "shift_ids": published_ids}
+                messages.success(request, f"Published {len(published_ids)} selected shift(s).")
+            if blocked_ids:
+                messages.error(
+                    request,
+                    f"{len(blocked_ids)} selected shift(s) were not published because assigned employees are unavailable.",
+                )
+            if not published_ids and not blocked_ids:
                 messages.info(request, "No draft shifts selected to publish.")
             return _redirect_back(request, "manager_shifts")
 
         # delete_selected
-        qs = Shift.objects.filter(created_by_id=request.user.id, id__in=ids, is_deleted=False)
-        deleted_ids = list(qs.values_list("id", flat=True))
+        deleted_ids = delete_shift_ids(manager_id=request.user.id, shift_ids=ids)
         if deleted_ids:
-            qs.update(is_deleted=True)
             request.session["manager_last_action"] = {"action": "delete", "shift_ids": deleted_ids}
             messages.success(request, f"Deleted {len(deleted_ids)} selected shift(s).")
         else:
@@ -211,6 +341,7 @@ def manager_shifts(request: HttpRequest) -> HttpResponse:
 
     shifts_payload = []
     for s in shift_qs:
+        assigned_employee_ids = [a.employee_id for a in s.assignments.all()]
         shifts_payload.append(
             {
                 "id": s.id,
@@ -220,17 +351,27 @@ def manager_shifts(request: HttpRequest) -> HttpResponse:
                 "position": s.position.name,
                 "position_id": s.position_id,
                 "capacity": s.capacity,
-                "assigned_count": s.assignments.count(),
+                "assigned_count": len(assigned_employee_ids),
+                "assigned_employee_ids": assigned_employee_ids,
                 "status": s.status,
                 "is_past": s.is_past,
             }
         )
 
-    employees = (
+    employees = list(
         User.objects.filter(role=UserRole.EMPLOYEE, is_active=True)
         .select_related("position")
         .order_by("last_name", "first_name", "username")
     )
+    employees_payload = [
+        {
+            "id": e.id,
+            "name": e.get_full_name() or e.username,
+            "position_id": e.position_id,
+            "position": e.position.name if e.position else "",
+        }
+        for e in employees
+    ]
 
     shift_form_state = request.session.pop("shift_form_state", None)
     can_undo = bool(request.session.get("manager_last_action"))
@@ -251,6 +392,7 @@ def manager_shifts(request: HttpRequest) -> HttpResponse:
             "status": status,
             "understaffed": understaffed,
             "shifts_json": json.dumps(shifts_payload, cls=DjangoJSONEncoder),
+            "employees_json": json.dumps(employees_payload, cls=DjangoJSONEncoder),
             "shift_form_state_json": json.dumps(shift_form_state, cls=DjangoJSONEncoder) if shift_form_state else "",
             "can_undo": can_undo,
         },
@@ -260,131 +402,33 @@ def manager_shifts(request: HttpRequest) -> HttpResponse:
 @manager_required
 @require_http_methods(["POST"])
 def create_shift(request: HttpRequest) -> HttpResponse:
-    date_str = request.POST.get("date")
-    start_time = request.POST.get("start_time")
-    end_time = request.POST.get("end_time")
-    position_id = request.POST.get("position_id")
-    capacity = request.POST.get("capacity")
-    publish = request.POST.get("publish") == "1"
-
-    employee_ids = [int(e) for e in request.POST.getlist("employee_ids") if e.isdigit()]
-
-    try:
-        with transaction.atomic():
-            parsed_position_id = _parse_positive_int(position_id, "position")
-            parsed_capacity = _parse_positive_int(capacity, "capacity")
-            shift = Shift(
-                date=datetime.strptime(date_str, "%Y-%m-%d").date(),
-                start_time=datetime.strptime(start_time, "%H:%M").time(),
-                end_time=datetime.strptime(end_time, "%H:%M").time(),
-                position_id=parsed_position_id,
-                capacity=parsed_capacity,
-                status=ShiftStatus.PUBLISHED if publish else ShiftStatus.DRAFT,
-                created_by=request.user,
-            )
-            shift.full_clean()
-
-            shift.save()
-            set_shift_assignments(shift, employee_ids)
-    except ValidationError as exc:
-        messages.error(request, str(exc))
-        msg = str(exc).lower()
-        request.session["shift_form_state"] = {
-            "mode": "create",
-            "date": date_str,
-            "start_time": start_time,
-            "end_time": end_time,
-            "position_id": position_id,
-            "capacity": capacity,
-            "publish": publish,
-            "employee_ids": employee_ids,
-            "error_field": "capacity" if "capacity" in msg else "employee_ids",
-        }
-        return _redirect_back(request, "manager_shifts")
-    except Exception as exc:
-        messages.error(request, f"Could not create shift: {exc}")
-        request.session["shift_form_state"] = {
-            "mode": "create",
-            "date": date_str,
-            "start_time": start_time,
-            "end_time": end_time,
-            "position_id": position_id,
-            "capacity": capacity,
-            "publish": publish,
-            "employee_ids": employee_ids,
-        }
-        return _redirect_back(request, "manager_shifts")
-
-    messages.success(request, "Shift created.")
-    request.session["manager_last_action"] = {"action": "create", "shift_ids": [shift.id]}
-    return redirect(_manager_shifts_url_showing_shift(request, shift))
+    shift = Shift(created_by=request.user)
+    return _save_shift_from_post(
+        request,
+        shift=shift,
+        mode="create",
+        success_message="Shift created.",
+        last_action="create",
+    )
 
 
 @manager_required
 @require_http_methods(["POST"])
 def update_shift(request: HttpRequest, shift_id: int) -> HttpResponse:
-    shift = get_object_or_404(Shift, pk=shift_id, created_by=request.user)
-
-    date_str = request.POST.get("date")
-    start_time = request.POST.get("start_time")
-    end_time = request.POST.get("end_time")
-    position_id = request.POST.get("position_id")
-    capacity = request.POST.get("capacity")
-    publish = request.POST.get("publish") == "1"
-
-    employee_ids = [int(e) for e in request.POST.getlist("employee_ids") if e.isdigit()]
-
-    try:
-        with transaction.atomic():
-            shift.date = datetime.strptime(date_str, "%Y-%m-%d").date()
-            shift.start_time = datetime.strptime(start_time, "%H:%M").time()
-            shift.end_time = datetime.strptime(end_time, "%H:%M").time()
-            shift.position_id = _parse_positive_int(position_id, "position")
-            shift.capacity = _parse_positive_int(capacity, "capacity")
-            shift.status = ShiftStatus.PUBLISHED if publish else ShiftStatus.DRAFT
-            shift.full_clean()
-
-            shift.save()
-            set_shift_assignments(shift, employee_ids)
-    except ValidationError as exc:
-        messages.error(request, str(exc))
-        msg = str(exc).lower()
-        request.session["shift_form_state"] = {
-            "mode": "update",
-            "shift_id": shift_id,
-            "date": date_str,
-            "start_time": start_time,
-            "end_time": end_time,
-            "position_id": position_id,
-            "capacity": capacity,
-            "publish": publish,
-            "employee_ids": employee_ids,
-            "error_field": "capacity" if "capacity" in msg else "employee_ids",
-        }
-        return _redirect_back(request, "manager_shifts")
-    except Exception as exc:
-        messages.error(request, f"Could not update shift: {exc}")
-        request.session["shift_form_state"] = {
-            "mode": "update",
-            "shift_id": shift_id,
-            "date": date_str,
-            "start_time": start_time,
-            "end_time": end_time,
-            "position_id": position_id,
-            "capacity": capacity,
-            "publish": publish,
-            "employee_ids": employee_ids,
-        }
-        return _redirect_back(request, "manager_shifts")
-
-    messages.success(request, "Shift updated.")
-    return redirect(_manager_shifts_url_showing_shift(request, shift))
+    shift = get_object_or_404(Shift.objects.active(), pk=shift_id, created_by=request.user)
+    return _save_shift_from_post(
+        request,
+        shift=shift,
+        mode="update",
+        shift_id=shift_id,
+        success_message="Shift updated.",
+    )
 
 
 @manager_required
 @require_http_methods(["POST"])
 def delete_shift(request: HttpRequest, shift_id: int) -> HttpResponse:
-    shift = get_object_or_404(Shift, pk=shift_id, created_by=request.user, is_deleted=False)
+    shift = get_object_or_404(Shift.objects.active(), pk=shift_id, created_by=request.user)
     shift.is_deleted = True
     shift.save(update_fields=["is_deleted", "updated_at"])
     request.session["manager_last_action"] = {"action": "delete", "shift_ids": [shift.id]}
@@ -395,8 +439,11 @@ def delete_shift(request: HttpRequest, shift_id: int) -> HttpResponse:
 @manager_required
 @require_http_methods(["POST"])
 def publish_shift(request: HttpRequest, shift_id: int) -> HttpResponse:
-    shift = get_object_or_404(Shift, pk=shift_id, created_by=request.user, is_deleted=False)
+    shift = get_object_or_404(Shift.objects.active(), pk=shift_id, created_by=request.user)
     if shift.status != ShiftStatus.PUBLISHED:
+        if shift.assignments.filter(employee__unavailability__date=shift.date).exists():
+            messages.error(request, "Cannot publish shift: one or more assigned employees are unavailable that day.")
+            return redirect(_manager_shifts_url_showing_shift(request, shift))
         shift.status = ShiftStatus.PUBLISHED
         shift.save(update_fields=["status", "updated_at"])
         request.session["manager_last_action"] = {"action": "publish", "shift_ids": [shift.id]}
@@ -409,10 +456,9 @@ def publish_shift(request: HttpRequest, shift_id: int) -> HttpResponse:
 @manager_required
 def shift_details(request: HttpRequest, shift_id: int) -> JsonResponse:
     shift = get_object_or_404(
-        Shift.objects.select_related("position"),
+        Shift.objects.active().select_related("position"),
         pk=shift_id,
         created_by=request.user,
-        is_deleted=False,
     )
     assigned = (
         User.objects.filter(assignments__shift=shift, role=UserRole.EMPLOYEE)
@@ -456,7 +502,7 @@ def undo_last_action(request: HttpRequest) -> HttpResponse:
 
     if action == "create":
         # Undo create => hide the created shift(s).
-        count = Shift.objects.filter(created_by_id=request.user.id, id__in=ids, is_deleted=False).update(is_deleted=True)
+        count = Shift.objects.active().filter(created_by_id=request.user.id, id__in=ids).update(is_deleted=True)
         if count:
             messages.success(request, f"Undid create ({count} shift).")
         else:
@@ -472,9 +518,11 @@ def undo_last_action(request: HttpRequest) -> HttpResponse:
         return _redirect_back(request, "manager_shifts")
 
     if action == "publish":
-        count = Shift.objects.filter(created_by_id=request.user.id, id__in=ids, status=ShiftStatus.PUBLISHED, is_deleted=False).update(
-            status=ShiftStatus.DRAFT
-        )
+        count = Shift.objects.active().filter(
+            created_by_id=request.user.id,
+            id__in=ids,
+            status=ShiftStatus.PUBLISHED,
+        ).update(status=ShiftStatus.DRAFT)
         if count:
             messages.success(request, f"Reverted {count} shift(s) back to Draft.")
         else:
@@ -644,3 +692,55 @@ def employee_shifts_view(request: HttpRequest) -> HttpResponse:
             "upcoming": upcoming_items,
         },
     )
+
+
+@employee_required
+@require_http_methods(["GET"])
+def employee_unavailability_view(request: HttpRequest) -> HttpResponse:
+    today = timezone.localdate()
+    anchor = _parse_date(request.GET.get("date"), today)
+    start, end = _month_bounds(anchor)
+
+    unavailable_days = list(
+        EmployeeUnavailability.objects.filter(
+            employee_id=request.user.id,
+            date__gte=start,
+            date__lte=end,
+        ).values_list("date", flat=True)
+    )
+
+    return render(
+        request,
+        "employee/employee-unavailability.html",
+        {
+            "view": "month",
+            "anchor": anchor,
+            "start": start,
+            "end": end,
+            "period_label": anchor.strftime("%B %Y"),
+            "today": today,
+            "unavailable_json": json.dumps([d.isoformat() for d in unavailable_days], cls=DjangoJSONEncoder),
+        },
+    )
+
+
+@employee_required
+@require_http_methods(["POST"])
+def employee_unavailability_toggle(request: HttpRequest) -> JsonResponse:
+    try:
+        day = _parse_required_date(request.POST.get("date"), "date")
+    except ValidationError as exc:
+        msg_dict = getattr(exc, "message_dict", None)
+        if isinstance(msg_dict, dict) and msg_dict.get("date"):
+            msg = msg_dict["date"][0]
+        else:
+            msg = str(exc)
+        return JsonResponse({"ok": False, "error": msg}, status=400)
+
+    obj = EmployeeUnavailability.objects.filter(employee_id=request.user.id, date=day).first()
+    if obj:
+        obj.delete()
+        return JsonResponse({"ok": True, "date": day.isoformat(), "unavailable": False})
+
+    EmployeeUnavailability.objects.create(employee_id=request.user.id, date=day)
+    return JsonResponse({"ok": True, "date": day.isoformat(), "unavailable": True})

@@ -1,57 +1,12 @@
-{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ShiftSync - Shift Management</title>
-  <meta name="description" content="ShiftSync - Manage employee shifts">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="{% static 'css/styles.css' %}?v={% now 'U' %}">
-</head>
-<body class="has-bottom-legend">
-  <div class="toast-container" id="toastContainer" aria-live="polite" aria-atomic="true"></div>
-  {% if messages %}
-    <ul id="djangoMessages" class="hidden">
-      {% for message in messages %}
-        <li data-level="{{ message.tags }}" data-text="{{ message|escape }}"></li>
-      {% endfor %}
-    </ul>
-  {% endif %}
+  {% include "partials/head.html" with page_title="ShiftSync - Shift Management" page_description="ShiftSync - Manage employee shifts" %}
+	</head>
+	<body class="has-bottom-legend manager-shifts-page">
+	  {% include "partials/toast_messages.html" %}
 
-  <!-- Header -->
-  <header class="header">
-    <div class="header-brand">
-      <div class="header-logo" aria-hidden="true">
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <rect width="18" height="18" x="3" y="4" rx="2" ry="2"/>
-          <line x1="16" x2="16" y1="2" y2="6"/>
-          <line x1="8" x2="8" y1="2" y2="6"/>
-          <line x1="3" x2="21" y1="10" y2="10"/>
-        </svg>
-      </div>
-      <span class="header-title">ShiftSync</span>
-    </div>
-
-    <nav class="header-nav" aria-label="Primary">
-      <a href="{% url 'manager_shifts' %}" class="nav-link active">Shifts</a>
-      <a href="{% url 'manager_employees' %}" class="nav-link">Team</a>
-    </nav>
-
-    <div class="dropdown header-user">
-      <button class="btn btn-ghost btn-sm header-user-trigger" type="button" onclick="toggleUserMenu(this)" aria-label="User menu">
-        <div class="header-avatar" aria-label="User avatar">{{ user_initials|default:"M" }}</div>
-      </button>
-      <div class="dropdown-menu">
-        <div class="dropdown-item dropdown-item-static dropdown-item-title">{{ user_display_name|default:"Manager" }}</div>
-        <div class="dropdown-item dropdown-item-static">{{ user_header_role|default:"Manager" }}</div>
-        <div class="dropdown-divider"></div>
-        <a class="dropdown-item dropdown-item-destructive" href="{% url 'logout' %}">Logout</a>
-      </div>
-    </div>
-  </header>
+	  {% include "partials/header.html" with nav_active="manager_shifts" %}
 
 	  <!-- Main Content -->
 	  <main class="main-content main-content-tight-top">
@@ -64,13 +19,11 @@
 	            <input type="hidden" name="date" value="{{ anchor|date:'Y-m-d' }}">
 	            <!-- Position multi-select -->
 	            <div class="filter-group">
-	              <label class="form-label" style="margin-bottom: 0;">Position:</label>
+	              <label class="form-label mb-0">Position:</label>
 	              <div class="multiselect" id="positionMulti">
 	                <button class="btn btn-outline btn-sm multiselect-trigger" type="button" onclick="toggleMulti('positionMulti')" aria-haspopup="true" aria-expanded="false">
 	                  <span id="positionMultiLabel">All positions</span>
-	                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-	                    <path d="m6 9 6 6 6-6"/>
-	                  </svg>
+	                  {% include "partials/icons/chevron_down.html" with size=16 %}
 	                </button>
 		                <div class="multiselect-menu" role="menu" aria-label="Select positions">
 		                  {% for p in positions %}
@@ -101,13 +54,11 @@
 		            </div>
 
 	            <div class="filter-group">
-	              <label class="form-label" style="margin-bottom: 0;">Status:</label>
+	              <label class="form-label mb-0">Status:</label>
 	              <div class="multiselect" id="statusMulti">
 	                <button class="btn btn-outline btn-sm multiselect-trigger" type="button" onclick="toggleMulti('statusMulti')" aria-haspopup="true" aria-expanded="false">
 	                  <span id="statusMultiLabel">{% if status %}{{ status|title }}{% else %}All{% endif %}</span>
-	                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-	                    <path d="m6 9 6 6 6-6"/>
-	                  </svg>
+	                  {% include "partials/icons/chevron_down.html" with size=16 %}
 	                </button>
 		                <div class="multiselect-menu" role="menu" aria-label="Status">
 		                  <label class="multiselect-item"><input type="radio" name="status" value="" {% if not status %}checked{% endif %} onchange="submitFilters()"> All</label>
@@ -121,13 +72,11 @@
 		            </div>
 
 	            <div class="filter-group">
-	              <label class="form-label" style="margin-bottom: 0;">Show:</label>
+	              <label class="form-label mb-0">Show:</label>
 	              <div class="multiselect" id="showMulti">
 	                <button class="btn btn-outline btn-sm multiselect-trigger" type="button" onclick="toggleMulti('showMulti')" aria-haspopup="true" aria-expanded="false">
 	                  <span id="showMultiLabel">{% if understaffed %}Understaffed only{% else %}All{% endif %}</span>
-	                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-	                    <path d="m6 9 6 6 6-6"/>
-	                  </svg>
+	                  {% include "partials/icons/chevron_down.html" with size=16 %}
 	                </button>
 		                <div class="multiselect-menu" role="menu" aria-label="Show">
 		                  <label class="multiselect-item"><input type="radio" name="show" value="" {% if not understaffed %}checked{% endif %} onchange="submitFilters()"> All</label>
@@ -143,27 +92,21 @@
 
 	        <div class="manager-shifts-toolbar-center">
 	          {% if view == 'month' %}
-	            <div class="multiselect" id="managerMonthPicker" style="min-width: 0;">
-	              <button class="btn btn-ghost btn-sm multiselect-trigger calendar-period-trigger" type="button" onclick="toggleMulti('managerMonthPicker')" aria-haspopup="true" aria-expanded="false">
-	                <span class="calendar-period" id="periodLabel" style="min-width: auto; text-align: center; white-space: nowrap; margin: 0;">{{ period_label }}</span>
-	                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-	                  <path d="m6 9 6 6 6-6"/>
-	                </svg>
-	              </button>
+	            <div class="multiselect min-w-0" id="managerMonthPicker">
+		              <button class="btn btn-ghost btn-sm multiselect-trigger calendar-period-trigger" type="button" onclick="toggleMulti('managerMonthPicker')" aria-haspopup="true" aria-expanded="false">
+		                <span class="calendar-period" id="periodLabel" style="min-width: auto; text-align: center; white-space: nowrap; margin: 0;">{{ period_label }}</span>
+		                {% include "partials/icons/chevron_down.html" with size=16 %}
+		              </button>
 	              <div class="multiselect-menu" role="menu" aria-label="Choose month" style="min-width: 260px;">
-	                <div class="month-picker-header">
-	                  <button class="btn btn-ghost btn-icon" type="button" onclick="managerMonthPickerPrevYear()" aria-label="Previous year">
-	                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-	                      <path d="m15 18-6-6 6-6"/>
-	                    </svg>
-	                  </button>
-	                  <div class="font-medium" id="managerMonthPickerYearLabel">—</div>
-	                  <button class="btn btn-ghost btn-icon" type="button" onclick="managerMonthPickerNextYear()" aria-label="Next year">
-	                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-	                      <path d="m9 18 6-6-6-6"/>
-	                    </svg>
-	                  </button>
-	                </div>
+		                <div class="month-picker-header">
+		                  <button class="btn btn-ghost btn-icon" type="button" onclick="managerMonthPickerPrevYear()" aria-label="Previous year">
+		                    {% include "partials/icons/chevron_left.html" with size=18 %}
+		                  </button>
+		                  <div class="font-medium" id="managerMonthPickerYearLabel">—</div>
+		                  <button class="btn btn-ghost btn-icon" type="button" onclick="managerMonthPickerNextYear()" aria-label="Next year">
+		                    {% include "partials/icons/chevron_right.html" with size=18 %}
+		                  </button>
+		                </div>
 	                <div class="month-picker-grid" id="managerMonthPickerGrid"></div>
 	              </div>
 	            </div>
@@ -173,29 +116,15 @@
 	        </div>
 
 	        <div class="manager-shifts-toolbar-right">
-	          <div class="calendar-nav">
-	            <button class="btn btn-outline btn-icon" type="button" onclick="prevPeriod()" aria-label="Previous period">
-	              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-	                <path d="m15 18-6-6 6-6"/>
-	              </svg>
-	            </button>
-	            <button class="btn btn-outline btn-sm" type="button" onclick="goToToday()">Today</button>
-	            <button class="btn btn-outline btn-icon" type="button" onclick="nextPeriod()" aria-label="Next period">
-	              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-	                <path d="m9 18 6-6-6-6"/>
-	              </svg>
-	            </button>
-	          </div>
+		          {% include "partials/calendar_nav.html" with prev_aria_label="Previous period" next_aria_label="Next period" %}
 
-            <div class="multiselect" id="viewMulti" style="min-width: 0;">
-              <button class="btn btn-outline btn-sm multiselect-trigger" type="button" onclick="toggleMulti('viewMulti')" aria-haspopup="true" aria-expanded="false">
-                <span id="viewMultiLabel">
-                  {% if view == 'day' %}Day{% elif view == 'week' %}Week{% else %}Month{% endif %}
-                </span>
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <path d="m6 9 6 6 6-6"/>
-                </svg>
-              </button>
+            <div class="multiselect min-w-0" id="viewMulti">
+	              <button class="btn btn-outline btn-sm multiselect-trigger" type="button" onclick="toggleMulti('viewMulti')" aria-haspopup="true" aria-expanded="false">
+	                <span id="viewMultiLabel">
+	                  {% if view == 'day' %}Day{% elif view == 'week' %}Week{% else %}Month{% endif %}
+	                </span>
+	                {% include "partials/icons/chevron_down.html" with size=16 %}
+	              </button>
               <div class="multiselect-menu" role="menu" aria-label="View">
                 <label class="multiselect-item"><input type="radio" name="viewChoice" value="day" {% if view == 'day' %}checked{% endif %} onchange="switchView(this.value)"> Day</label>
                 <label class="multiselect-item"><input type="radio" name="viewChoice" value="week" {% if view == 'week' %}checked{% endif %} onchange="switchView(this.value)"> Week</label>
@@ -212,21 +141,12 @@
               </svg>
             </button>
 
-            <button class="btn btn-outline btn-icon" type="button" onclick="toolbarDelete()" aria-label="Delete">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M3 6h18"/>
-                <path d="M8 6V4h8v2"/>
-                <path d="M19 6l-1 14H6L5 6"/>
-                <path d="M10 11v6"/>
-                <path d="M14 11v6"/>
-              </svg>
-            </button>
+	            <button class="btn btn-outline btn-icon" type="button" onclick="toolbarDelete()" aria-label="Delete">
+	              {% include "partials/icons/trash.html" with size=16 %}
+	            </button>
 
 	          <button class="btn btn-primary" type="button" onclick="openCreateShiftModal()">
-	            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-	              <path d="M12 5v14"/>
-	              <path d="M5 12h14"/>
-	            </svg>
+	            {% include "partials/icons/plus.html" with size=16 %}
 	            Add
 	          </button>
 
@@ -258,25 +178,64 @@
 	      </div>
 	    </div>
 
-    <!-- Week Calendar View -->
-    <div class="card{% if view != 'week' %} hidden{% endif %}" id="weekView" style="margin-top: 0.75rem;">
-      <div class="calendar-grid calendar-grid-week-transposed" id="weekGrid" aria-label="Week calendar"></div>
-    </div>
+    <div class="manager-calendar-layout">
+      <!-- Employees Sidebar -->
+      <aside class="card manager-employee-sidebar mt-3" id="managerEmployeeSidebar">
+        <div class="card-header card-header-tight">
+          <div class="employee-sidebar-header">
+            <h3 class="card-title">Employees</h3>
+            <span class="text-sm text-muted" id="employeeSidebarMeta"></span>
+          </div>
+        </div>
 
-    <!-- Month Calendar View -->
-    <div class="card{% if view != 'month' %} hidden{% endif %}" id="monthView" style="margin-top: 0.75rem;">
-      <div class="calendar-grid calendar-grid-month" id="monthGrid" aria-label="Month schedule"></div>
-    </div>
+        <div class="card-content-compact employee-sidebar-controls">
+          <div class="form-group">
+            <label class="form-label" for="employeeSidebarSearch">Search</label>
+            <input class="form-input" id="employeeSidebarSearch" type="search" placeholder="Search employees" autocomplete="off">
+          </div>
 
-    <!-- Day Calendar View -->
-    <div class="card{% if view != 'day' %} hidden{% endif %}" id="dayView" style="margin-top: 0.75rem;">
-      <div class="card-content card-content-no-padding">
-        <div id="dayGrid" class="day-view" aria-label="Day schedule"></div>
+          <div class="form-group">
+            <label class="form-label" for="employeeSidebarPosition">Position</label>
+            <select class="form-select" id="employeeSidebarPosition">
+              <option value="">All positions</option>
+              <option value="__none__">Unassigned</option>
+              {% include "partials/options/positions.html" %}
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="employeeSidebarSort">Sort</label>
+            <select class="form-select" id="employeeSidebarSort">
+              <option value="hours_asc">Hours (least busy)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="employee-sidebar-list" id="employeeSidebarList" role="list"></div>
+      </aside>
+
+      <div class="manager-calendar-main">
+        <!-- Week Calendar View -->
+        <div class="card mt-3{% if view != 'week' %} hidden{% endif %}" id="weekView">
+          <div class="calendar-grid calendar-grid-week-time" id="weekGrid" aria-label="Week calendar"></div>
+        </div>
+
+        <!-- Month Calendar View -->
+        <div class="card mt-3{% if view != 'month' %} hidden{% endif %}" id="monthView">
+          <div class="calendar-grid calendar-grid-month" id="monthGrid" aria-label="Month schedule"></div>
+        </div>
+
+        <!-- Day Calendar View -->
+        <div class="card mt-3{% if view != 'day' %} hidden{% endif %}" id="dayView">
+          <div class="card-content card-content-no-padding">
+            <div id="dayGrid" class="day-view" aria-label="Day schedule"></div>
+          </div>
+        </div>
       </div>
     </div>
 
     <!-- Role Color Legend -->
-    <div class="card" id="roleLegendCard" style="margin-top: 1rem;">
+    <div class="card mt-4" id="roleLegendCard">
       <div class="card-content card-content-compact">
         <div class="role-legend" id="roleLegend" aria-label="Role color legend"></div>
       </div>
@@ -289,10 +248,7 @@
       <div class="modal-header">
         <h2 class="modal-title" id="createShiftTitle">Create Shift</h2>
         <button class="modal-close" onclick="closeModal('createShiftModal')" aria-label="Close">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <line x1="18" x2="6" y1="6" y2="18"/>
-            <line x1="6" x2="18" y1="6" y2="18"/>
-          </svg>
+          {% include "partials/icons/x.html" %}
         </button>
       </div>
 
@@ -300,11 +256,11 @@
         <form id="createShiftForm" method="post" action="{% url 'create_shift' %}" data-create-action="{% url 'create_shift' %}">
           {% csrf_token %}
           <div class="flex gap-4">
-            <div class="form-group" style="flex: 1;">
+            <div class="form-group flex-1">
               <label class="form-label" for="shiftDate">Date *</label>
               <input type="date" class="form-input" id="shiftDate" name="date" required>
             </div>
-            <div class="form-group" style="flex: 1;">
+            <div class="form-group flex-1">
               <label class="form-label" for="shiftCapacity">Capacity *</label>
               <input type="number" class="form-input" id="shiftCapacity" name="capacity" value="1" min="1" required>
               <div class="form-error-message hidden" id="capacityError"></div>
@@ -312,11 +268,11 @@
           </div>
 
           <div class="flex gap-4">
-            <div class="form-group" style="flex: 1;">
+            <div class="form-group flex-1">
               <label class="form-label" for="shiftStart">Start Time *</label>
               <input type="time" class="form-input" id="shiftStart" name="start_time" value="09:00" required>
             </div>
-            <div class="form-group" style="flex: 1;">
+            <div class="form-group flex-1">
               <label class="form-label" for="shiftEnd">End Time *</label>
               <input type="time" class="form-input" id="shiftEnd" name="end_time" value="17:00" required>
             </div>
@@ -326,16 +282,12 @@
             <label class="form-label" for="shiftPositionMulti">Position *</label>
             <select class="hidden" id="shiftPosition" name="position_id" required onchange="filterEmployeePicker()" aria-hidden="true" tabindex="-1">
               <option value="">Select position...</option>
-              {% for p in positions %}
-                <option value="{{ p.id }}">{{ p.name }}</option>
-              {% endfor %}
+              {% include "partials/options/positions.html" %}
             </select>
             <div class="multiselect multiselect-full" id="shiftPositionMulti">
               <button class="btn btn-outline btn-sm multiselect-trigger" id="shiftPositionMultiTrigger" type="button" onclick="toggleMulti('shiftPositionMulti')" aria-haspopup="true" aria-expanded="false">
                 <span id="shiftPositionMultiLabel">Select position...</span>
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <path d="m6 9 6 6 6-6"/>
-                </svg>
+                {% include "partials/icons/chevron_down.html" with size=16 %}
               </button>
               <div class="multiselect-menu" role="menu" aria-label="Select position" id="shiftPositionMultiMenu">
                 <div class="text-sm text-muted" style="padding: .5rem .75rem;">No positions yet.</div>
@@ -350,9 +302,7 @@
                 <span class="multiselect-chips" id="employeeMultiChips">
                   <span class="multiselect-placeholder" id="employeeMultiPlaceholder">Select role first</span>
                 </span>
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <path d="m6 9 6 6 6-6"/>
-                </svg>
+                {% include "partials/icons/chevron_down.html" with size=16 %}
               </button>
               <div class="multiselect-menu" role="menu" aria-label="Select employees">
                 <div class="text-sm text-muted" id="employeeMultiEmpty" style="padding: .5rem .75rem;">Select role first</div>
@@ -375,7 +325,7 @@
             <div class="form-error-message hidden" id="employeeAssignError"></div>
           </div>
 
-          <label class="switch" style="margin-top: 0.75rem;">
+          <label class="switch mt-3">
             <input type="checkbox" id="publishImmediatelyCustom" name="publish" value="1">
             <span class="switch-slider" aria-hidden="true"></span>
             <span class="text-sm">Publish</span>
@@ -396,10 +346,7 @@
       <div class="modal-header">
         <h2 class="modal-title">Delete draft shifts</h2>
         <button class="modal-close" type="button" onclick="closeModal('deleteDraftsModal')" aria-label="Close">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <line x1="18" x2="6" y1="6" y2="18"/>
-            <line x1="6" x2="18" y1="6" y2="18"/>
-          </svg>
+          {% include "partials/icons/x.html" %}
         </button>
       </div>
       <div class="modal-body">
@@ -418,10 +365,7 @@
       <div class="modal-header">
         <h2 class="modal-title">Delete selected shifts</h2>
         <button class="modal-close" type="button" onclick="closeModal('deleteSelectedModal')" aria-label="Close">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <line x1="18" x2="6" y1="6" y2="18"/>
-            <line x1="6" x2="18" y1="6" y2="18"/>
-          </svg>
+          {% include "partials/icons/x.html" %}
         </button>
       </div>
       <div class="modal-body">
@@ -440,10 +384,7 @@
       <div class="modal-header">
         <h2 class="modal-title">Delete shift</h2>
         <button class="modal-close" type="button" onclick="cancelDeleteShift()" aria-label="Close">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <line x1="18" x2="6" y1="6" y2="18"/>
-            <line x1="6" x2="18" y1="6" y2="18"/>
-          </svg>
+          {% include "partials/icons/x.html" %}
         </button>
       </div>
       <div class="modal-body">
@@ -465,10 +406,7 @@
           <span class="badge badge-outline" id="detailsStatus">Draft</span>
         </div>
         <button class="modal-close" onclick="closeModal('shiftDetailsModal')" aria-label="Close">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <line x1="18" x2="6" y1="6" y2="18"/>
-            <line x1="6" x2="18" y1="6" y2="18"/>
-          </svg>
+          {% include "partials/icons/x.html" %}
         </button>
       </div>
       <div class="modal-body">
@@ -493,7 +431,7 @@
           <span class="text-sm text-muted" id="detailsCapacity">Capacity: 2/3 filled</span>
         </div>
 
-        <div style="margin-top: 1rem;">
+        <div class="mt-4">
           <p class="font-medium mb-2">Assigned Employees:</p>
           <div class="flex flex-col gap-2" id="detailsEmployees">
             <!-- filled by JS -->
@@ -508,112 +446,8 @@
     </div>
   </div>
 
-  <!-- Templates Modal -->
-  <div class="modal-overlay hidden" id="templatesModal">
-    <div class="modal" style="max-width: 720px;">
-      <div class="modal-header">
-        <h2 class="modal-title">Manage Shift Templates</h2>
-        <button class="modal-close" onclick="closeModal('templatesModal')" aria-label="Close">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <line x1="18" x2="6" y1="6" y2="18"/>
-            <line x1="6" x2="18" y1="6" y2="18"/>
-          </svg>
-        </button>
-      </div>
-
-      <div class="modal-body">
-        <div class="flex items-center justify-between" style="margin-bottom: 0.75rem;">
-          <p class="text-sm text-muted">Templates speed up shift creation. You can still edit fields after selecting a template.</p>
-          <button class="btn btn-outline btn-sm" onclick="toggleTemplateForm(true)">+ Add Template</button>
-        </div>
-
-        <div id="templateForm" class="card hidden" style="padding: 1rem; margin-bottom: 1rem;">
-          <div class="flex gap-4">
-            <div class="form-group" style="flex: 1;">
-              <label class="form-label" for="tplName">Template name *</label>
-              <input class="form-input" id="tplName" placeholder="e.g., Morning Barista">
-            </div>
-            <div class="form-group" style="width: 140px;">
-              <label class="form-label" for="tplCapacity">Capacity *</label>
-              <input class="form-input" type="number" id="tplCapacity" min="1" value="1">
-            </div>
-          </div>
-
-          <div class="flex gap-4">
-            <div class="form-group" style="flex: 1;">
-              <label class="form-label" for="tplStart">Start *</label>
-              <input class="form-input" type="time" id="tplStart" value="06:00">
-            </div>
-            <div class="form-group" style="flex: 1;">
-              <label class="form-label" for="tplEnd">End *</label>
-              <input class="form-input" type="time" id="tplEnd" value="14:00">
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label" for="tplPosition">Position *</label>
-            <select class="form-select" id="tplPosition">
-              <option value="barista">Barista</option>
-              <option value="cashier">Cashier</option>
-              <option value="supervisor">Supervisor</option>
-              <option value="cleaner">Cleaner</option>
-            </select>
-          </div>
-
-          <div class="flex gap-2">
-            <button class="btn btn-primary btn-sm" onclick="saveTemplate()">Save</button>
-            <button class="btn btn-outline btn-sm" onclick="toggleTemplateForm(false)">Cancel</button>
-          </div>
-        </div>
-
-        <div class="table-container">
-          <table class="table" aria-label="Template list">
-            <thead>
-              <tr>
-                <th>Template name</th>
-                <th>Position</th>
-                <th>Time</th>
-                <th>Capacity</th>
-                <th style="width: 160px;">Actions</th>
-              </tr>
-            </thead>
-            <tbody id="templatesTbody">
-              <tr>
-                <td>Morning Barista</td>
-                <td><span class="badge badge-default">Barista</span></td>
-                <td>06:00 - 14:00</td>
-                <td>2</td>
-                <td>
-                  <div class="flex gap-1">
-                    <button class="btn btn-ghost btn-sm" onclick="editTemplateRow(this)">Edit</button>
-                    <button class="btn btn-ghost btn-sm" style="color: var(--destructive);" onclick="deleteTemplateRow(this)">Delete</button>
-                  </div>
-                </td>
-              </tr>
-              <tr>
-                <td>Evening Cashier</td>
-                <td><span class="badge badge-default">Cashier</span></td>
-                <td>14:00 - 22:00</td>
-                <td>1</td>
-                <td>
-                  <div class="flex gap-1">
-                    <button class="btn btn-ghost btn-sm" onclick="editTemplateRow(this)">Edit</button>
-                    <button class="btn btn-ghost btn-sm" style="color: var(--destructive);" onclick="deleteTemplateRow(this)">Delete</button>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <div class="modal-footer">
-        <button class="btn btn-outline" onclick="closeModal('templatesModal')">Done</button>
-      </div>
-    </div>
-  </div>
-
   <script type="application/json" id="managerShiftsData">{{ shifts_json|safe }}</script>
+  <script type="application/json" id="managerEmployeesData">{{ employees_json|safe }}</script>
   {% if shift_form_state_json %}
     <script type="application/json" id="shiftFormState">{{ shift_form_state_json|safe }}</script>
   {% endif %}
@@ -642,7 +476,6 @@
     {% csrf_token %}
   </form>
 
-  <script src="{% static 'js/app.js' %}?v={% now 'U' %}"></script>
-  <script src="{% static 'js/manager-shifts.js' %}?v={% now 'U' %}"></script>
+  {% include "partials/scripts.html" with include_calendar=1 page_script="js/manager-shifts.js" %}
 </body>
 </html>

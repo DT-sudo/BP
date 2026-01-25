@@ -1,0 +1,15 @@
+.DS_Store
+__pycache__/
+*.pyc
+*.pyo
+.Python
+
+# Django / Python
+*.log
+*.pot
+*.py[cod]
+*.sqlite3-journal
+
+# Node / tooling
+node_modules/
+

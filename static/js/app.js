@@ -18,6 +18,56 @@
     );
   };
 
+  window.urlFromTemplate = function urlFromTemplate(template, id) {
+    const tpl = String(template || '');
+    const safeId = String(id ?? '').trim();
+    if (!tpl || !safeId) return tpl;
+    if (tpl.includes('/0/')) return tpl.replace(/\/0\//, `/${safeId}/`);
+    return tpl;
+  };
+
+  async function parseJsonResponse(res) {
+    const payload = await res.json().catch(() => ({}));
+    if (res.ok) return payload;
+
+    const firstFormError =
+      payload?.errors && typeof payload.errors === 'object'
+        ? Object.values(payload.errors)
+            .flat()
+            .map((x) => (typeof x === 'string' ? x : x?.message || ''))
+            .filter(Boolean)[0]
+        : '';
+
+    const msg = payload.error || firstFormError || 'Request failed.';
+    throw new Error(msg);
+  }
+
+  window.fetchJson = async function fetchJson(url, options) {
+    const res = await fetch(url, {
+      ...(options || {}),
+      headers: {
+        Accept: 'application/json',
+        ...(options?.headers || {}),
+      },
+    });
+    return parseJsonResponse(res);
+  };
+
+  window.postFormJson = async function postFormJson(url, data) {
+    const csrf = window.getCsrfToken?.();
+    const body = new URLSearchParams(data || {});
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+        ...(csrf ? { 'X-CSRFToken': csrf } : {}),
+        Accept: 'application/json',
+      },
+      body,
+    });
+    return parseJsonResponse(res);
+  };
+
   function getToastContainer() {
     return document.getElementById('toastContainer');
   }
@@ -39,9 +89,27 @@
     setTimeout(() => toast.remove(), type === 'error' ? 5000 : 3000);
   };
 
+  function numericZIndex(value, fallback) {
+    const n = parseInt(String(value || ''), 10);
+    if (Number.isFinite(n)) return n;
+    return fallback;
+  }
+
+  function topModalZIndex() {
+    let z = 5000;
+    document.querySelectorAll('.modal-overlay').forEach((overlay) => {
+      if (overlay.classList.contains('hidden')) return;
+      z = Math.max(z, numericZIndex(window.getComputedStyle(overlay).zIndex, 0));
+    });
+    return z;
+  }
+
   window.openModal = function openModal(modalId) {
     const el = document.getElementById(modalId);
     if (!el) return;
+    if (el.classList.contains('modal-overlay')) {
+      el.style.zIndex = String(topModalZIndex() + 1);
+    }
     el.classList.remove('hidden');
   };
 
@@ -175,6 +243,19 @@
 
   window.toggleUserMenu = window.toggleDropdown;
 
+  function emitMultiselectEvent(type, el, reason) {
+    if (!el) return;
+    document.dispatchEvent(
+      new CustomEvent(type, {
+        detail: {
+          id: el.id || '',
+          el,
+          reason: reason || 'programmatic',
+        },
+      }),
+    );
+  }
+
   function setMultiOpen(el, open) {
     if (!el) return;
     el.classList.toggle('open', open);
@@ -182,26 +263,39 @@
     trigger?.setAttribute('aria-expanded', open ? 'true' : 'false');
   }
 
-  window.closeAllMultiselects = function closeAllMultiselects() {
-    document.querySelectorAll('.multiselect.open').forEach((ms) => setMultiOpen(ms, false));
+  window.closeAllMultiselects = function closeAllMultiselects(reason) {
+    const why = reason || 'programmatic';
+    document.querySelectorAll('.multiselect.open').forEach((ms) => {
+      emitMultiselectEvent('multiselect:willclose', ms, why);
+      setMultiOpen(ms, false);
+      emitMultiselectEvent('multiselect:didclose', ms, why);
+    });
   };
 
   window.toggleMulti = function toggleMulti(id) {
     const el = document.getElementById(id);
     if (!el) return;
     const willOpen = !el.classList.contains('open');
-    window.closeAllMultiselects?.();
-    setMultiOpen(el, willOpen);
+    if (willOpen) {
+      window.closeAllMultiselects?.('switch');
+      emitMultiselectEvent('multiselect:willopen', el, 'toggle');
+      setMultiOpen(el, true);
+      emitMultiselectEvent('multiselect:didopen', el, 'toggle');
+    } else {
+      emitMultiselectEvent('multiselect:willclose', el, 'toggle');
+      setMultiOpen(el, false);
+      emitMultiselectEvent('multiselect:didclose', el, 'toggle');
+    }
   };
 
   function wireMultiselectAutoClose() {
     document.addEventListener('click', (e) => {
       if (e.target.closest?.('.multiselect')) return;
-      window.closeAllMultiselects?.();
+      window.closeAllMultiselects?.('auto-close');
     });
     document.addEventListener('keydown', (e) => {
       if (e.key !== 'Escape') return;
-      window.closeAllMultiselects?.();
+      window.closeAllMultiselects?.('escape');
     });
   }
 
@@ -210,7 +304,16 @@
       (el) => !el.classList.contains('hidden'),
     );
     if (!overlays.length) return false;
-    overlays[overlays.length - 1].classList.add('hidden');
+    let top = overlays[0];
+    let topZ = numericZIndex(window.getComputedStyle(top).zIndex, 0);
+    overlays.forEach((overlay) => {
+      const z = numericZIndex(window.getComputedStyle(overlay).zIndex, 0);
+      if (z > topZ) {
+        top = overlay;
+        topZ = z;
+      }
+    });
+    top.classList.add('hidden');
     return true;
   }
 
@@ -220,7 +323,7 @@
 
       const hasOpenMultiselect = !!document.querySelector('.multiselect.open');
       if (hasOpenMultiselect) {
-        window.closeAllMultiselects?.();
+        window.closeAllMultiselects?.('escape');
         e.preventDefault();
         return;
       }

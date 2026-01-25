@@ -10,12 +10,21 @@ from apps.scheduling.models import Position
 
 from .models import User, UserRole
 
+PHONE_RE = re.compile(r"[0-9+()\-\s]{6,25}")
+
+
+def _split_full_name(full_name: str) -> tuple[str, str]:
+    parts = [p for p in (full_name or "").split() if p]
+    first_name = parts[0] if parts else ""
+    last_name = " ".join(parts[1:]) if len(parts) > 1 else ""
+    return first_name, last_name
+
 
 class LoginForm(AuthenticationForm):
     username = forms.CharField(label="Email / Username")
 
 
-class CreateEmployeeForm(forms.ModelForm):
+class EmployeeBaseForm(forms.ModelForm):
     full_name = forms.CharField(label="Full name", max_length=150)
 
     class Meta:
@@ -28,53 +37,14 @@ class CreateEmployeeForm(forms.ModelForm):
         self.fields["phone"].required = True
         self.fields["position"].queryset = Position.objects.order_by("name")
         self.fields["position"].required = True
-
-    def clean_email(self):
-        email = (self.cleaned_data.get("email") or "").strip().lower()
-        if not email:
-            raise ValidationError("Email is required.")
-        if User.objects.filter(email=email).exists():
-            raise ValidationError("An employee with this email already exists.")
-        return email
 
     def clean_phone(self):
         phone = (self.cleaned_data.get("phone") or "").strip()
         if not phone:
             raise ValidationError("Phone is required.")
-        if not re.fullmatch(r"[0-9+()\-\s]{6,25}", phone):
+        if not PHONE_RE.fullmatch(phone):
             raise ValidationError("Enter a valid phone number.")
         return phone
-
-    def save(self, commit=True) -> User:
-        user: User = super().save(commit=False)
-        full_name = self.cleaned_data["full_name"].strip()
-        parts = [p for p in full_name.split(" ") if p]
-        user.first_name = parts[0] if parts else ""
-        user.last_name = " ".join(parts[1:]) if len(parts) > 1 else ""
-
-        user.username = self.cleaned_data["email"]
-        user.role = UserRole.EMPLOYEE
-        user.is_staff = False
-        user.is_superuser = False
-
-        if commit:
-            user.save()
-        return user
-
-
-class UpdateEmployeeForm(forms.ModelForm):
-    full_name = forms.CharField(label="Full name", max_length=150)
-
-    class Meta:
-        model = User
-        fields = ["email", "phone", "position"]
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.fields["email"].required = True
-        self.fields["phone"].required = True
-        self.fields["position"].queryset = Position.objects.order_by("name")
-        self.fields["position"].required = True
 
     def clean_email(self):
         email = (self.cleaned_data.get("email") or "").strip().lower()
@@ -87,21 +57,34 @@ class UpdateEmployeeForm(forms.ModelForm):
             raise ValidationError("An employee with this email already exists.")
         return email
 
-    def clean_phone(self):
-        phone = (self.cleaned_data.get("phone") or "").strip()
-        if not phone:
-            raise ValidationError("Phone is required.")
-        if not re.fullmatch(r"[0-9+()\-\s]{6,25}", phone):
-            raise ValidationError("Enter a valid phone number.")
-        return phone
+    def _apply_full_name(self, user: User) -> None:
+        first_name, last_name = _split_full_name(self.cleaned_data.get("full_name"))
+        user.first_name = first_name
+        user.last_name = last_name
+
+    def _apply_common(self, user: User) -> None:
+        user.username = self.cleaned_data["email"]
 
     def save(self, commit=True) -> User:
         user: User = super().save(commit=False)
-        full_name = (self.cleaned_data.get("full_name") or "").strip()
-        parts = [p for p in full_name.split(" ") if p]
-        user.first_name = parts[0] if parts else ""
-        user.last_name = " ".join(parts[1:]) if len(parts) > 1 else ""
-        user.username = self.cleaned_data["email"]
+        self._apply_full_name(user)
+        self._apply_common(user)
         if commit:
             user.save()
         return user
+
+
+class CreateEmployeeForm(EmployeeBaseForm):
+    def save(self, commit=True) -> User:
+        user: User = super().save(commit=False)
+        user.role = UserRole.EMPLOYEE
+        user.is_staff = False
+        user.is_superuser = False
+
+        if commit:
+            user.save()
+        return user
+
+
+class UpdateEmployeeForm(EmployeeBaseForm):
+    pass

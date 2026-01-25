@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  {% include "partials/head.html" with page_title="ShiftSync - Availability" page_description="ShiftSync - Employee availability constraints" %}
+</head>
+<body>
+  {% include "partials/toast_messages.html" %}
+  {% include "partials/header.html" with nav_active="employee_unavailability" %}
+
+  <main class="main-content main-content-tight-top">
+    {% include "partials/employee_calendar_toolbar.html" with toolbar_variant="unavailability" toolbar_right_text="Mark full days unavailable" prev_aria_label="Previous month" next_aria_label="Next month" %}
+
+    <div class="card mt-3">
+      <div class="calendar-grid calendar-grid-month" id="employeeUnavailableMonthGrid" aria-label="Availability calendar"></div>
+    </div>
+
+    <div class="card mt-3">
+      <div class="card-header card-header-tight">
+        <h3 class="card-title">Unavailable days</h3>
+      </div>
+      <div class="card-content">
+        <p class="text-sm text-muted mb-3">
+          Managers will avoid assigning shifts on these dates (00:00–23:59).
+        </p>
+        <div class="date-chip-list" id="unavailableDaysList" aria-label="Unavailable days list"></div>
+      </div>
+    </div>
+  </main>
+
+  <script type="application/json" id="employeeUnavailableData">{{ unavailable_json|safe }}</script>
+  <div
+    id="employeeUnavailabilityPage"
+    data-view="{{ view }}"
+    data-anchor="{{ anchor|date:'Y-m-d' }}"
+    data-today="{{ today|date:'Y-m-d' }}"
+    data-toggle-url="{% url 'employee_unavailability_toggle' %}"
+  ></div>
+
+  {% include "partials/scripts.html" with include_calendar=1 page_script="js/employee-unavailability.js" %}
+</body>
+</html>

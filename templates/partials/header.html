@@ -1,0 +1,30 @@
+<header class="header">
+  <div class="header-brand">
+    <div class="header-logo" aria-hidden="true">
+      {% include "partials/icons/calendar.html" %}
+    </div>
+    <span class="header-title">ShiftSync</span>
+  </div>
+
+  <nav class="header-nav" aria-label="Primary">
+    {% if request.user.is_authenticated and request.user.is_manager %}
+      <a href="{% if request.session.manager_shifts_last_url %}{{ request.session.manager_shifts_last_url }}{% else %}{% url 'manager_shifts' %}{% endif %}" class="nav-link{% if nav_active == 'manager_shifts' %} active{% endif %}">Shifts</a>
+      <a href="{% url 'manager_employees' %}" class="nav-link{% if nav_active == 'manager_employees' %} active{% endif %}">Team</a>
+    {% elif request.user.is_authenticated %}
+      <a href="{% url 'employee_shifts' %}" class="nav-link{% if nav_active == 'employee_shifts' %} active{% endif %}">My Shifts</a>
+      <a href="{% url 'employee_unavailability' %}" class="nav-link{% if nav_active == 'employee_unavailability' %} active{% endif %}">Availability</a>
+    {% endif %}
+  </nav>
+
+  <div class="dropdown header-user">
+    <button class="btn btn-ghost btn-sm header-user-trigger" type="button" onclick="toggleUserMenu(this)" aria-label="User menu">
+      <div class="header-avatar" aria-label="User avatar">{{ user_initials|default:"U" }}</div>
+    </button>
+    <div class="dropdown-menu">
+      <div class="dropdown-item dropdown-item-static dropdown-item-title">{{ user_display_name|default:"User" }}</div>
+      <div class="dropdown-item dropdown-item-static">{{ user_header_role|default:"User" }}</div>
+      <div class="dropdown-divider"></div>
+      <a class="dropdown-item dropdown-item-destructive" href="{% url 'logout' %}">Logout</a>
+    </div>
+  </div>
+</header>

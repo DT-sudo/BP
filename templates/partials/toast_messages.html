@@ -1,0 +1,8 @@
+<div class="toast-container" id="toastContainer" aria-live="polite" aria-atomic="true"></div>
+{% if messages %}
+  <ul id="djangoMessages" class="hidden">
+    {% for message in messages %}
+      <li data-level="{{ message.tags }}" data-text="{{ message|escape }}"></li>
+    {% endfor %}
+  </ul>
+{% endif %}
