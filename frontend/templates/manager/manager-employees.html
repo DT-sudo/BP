@@ -12,32 +12,19 @@
     <!-- Top controls -->
     <div class="card page-toolbar-card">
       <div class="filters-row" style="align-items: flex-end; justify-content: space-between; flex-wrap: nowrap;">
-        <div class="filters-row" style="align-items: flex-end; flex-wrap: nowrap;">
-        <div class="filter-group" style="flex: 1 1 840px; max-width: 840px; min-width: 360px;">
-          <label class="form-label" for="employeeSearch">Search:</label>
-          <input class="form-input" id="employeeSearch" placeholder="Search by name, email, phone, or ID" oninput="applyEmployeeFilters()" value="{{ q|default:'' }}">
+        <div class="filters-row" style="align-items: flex-end; flex-wrap: nowrap; min-width: 0;">
+        <div class="filter-group" style="flex: 1 1 auto; min-width: 100px;">
+          <input class="form-input" id="employeeSearch" placeholder="Search" oninput="applyEmployeeFilters()" value="{{ q|default:'' }}">
         </div>
 
         <div class="filter-group">
           <label class="form-label" for="roleFilter">Role:</label>
-          <select class="hidden" id="roleFilter" onchange="applyEmployeeFilters()" aria-hidden="true" tabindex="-1">
+          <select id="roleFilter" onchange="applyEmployeeFilters()" class="form-select">
             <option value="all" {% if not position %}selected{% endif %}>All</option>
             {% for p in positions %}
               <option value="{{ p.id }}" {% if position == p.id|stringformat:'s' %}selected{% endif %}>{{ p.name }}</option>
             {% endfor %}
           </select>
-          <div class="multiselect" id="roleFilterMulti">
-            <button class="btn btn-outline btn-sm multiselect-trigger" type="button" onclick="toggleMulti('roleFilterMulti')" aria-haspopup="true" aria-expanded="false">
-              <span id="roleFilterMultiLabel">All</span>
-              {% include "partials/icons/chevron_down.html" with size=16 %}
-            </button>
-            <div class="multiselect-menu" role="menu" aria-label="Role">
-              <label class="multiselect-item"><input type="radio" name="employeeRoleChoice" value="all" {% if not position %}checked{% endif %} onchange="setEmployeeRoleFilter(this.value)"> All</label>
-              {% for p in positions %}
-                <label class="multiselect-item"><input type="radio" name="employeeRoleChoice" value="{{ p.id }}" {% if position == p.id|stringformat:'s' %}checked{% endif %} onchange="setEmployeeRoleFilter(this.value)"> {{ p.name }}</label>
-              {% endfor %}
-            </div>
-          </div>
         </div>
         </div>
 
@@ -52,9 +39,9 @@
     </div>
 
     <!-- Employee Table -->
-    <div class="card mt-4">
-      <div class="table-container">
-        <table class="table table-fixed" aria-label="Employee list">
+    <div class="card mt-4 employee-table-card">
+      <div class="table-container table-container-scrollable">
+        <table class="table table-fixed table-sticky-header" aria-label="Employee list">
           <colgroup>
             <col style="width: 72px;">
             <col style="width: 130px;">

@@ -1,20 +1,17 @@
 #!/usr/bin/env python
+"""
+Wrapper script to run manage.py from backend/ directory.
+This allows running: python manage.py (from project root) instead of: python backend/manage.py
+"""
 import os
 import sys
-
-
-def main() -> None:
-    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "shiftflow.settings")
-    try:
-        from django.core.management import execute_from_command_line
-    except ImportError as exc:
-        raise ImportError(
-            "Couldn't import Django. Are you sure it's installed and available on your PYTHONPATH environment variable? "
-            "Did you forget to activate a virtual environment?"
-        ) from exc
-    execute_from_command_line(sys.argv)
-
+import subprocess
 
 if __name__ == "__main__":
-    main()
-
+    # Change to backend directory and run manage.py
+    backend_dir = os.path.join(os.path.dirname(__file__), 'backend')
+    manage_py = os.path.join(backend_dir, 'manage.py')
+    
+    # Run the backend manage.py with all arguments
+    result = subprocess.run([sys.executable, manage_py] + sys.argv[1:])
+    sys.exit(result.returncode)

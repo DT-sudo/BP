@@ -17,6 +17,7 @@
 	          <form class="filters-row manager-shifts-filters" id="managerFiltersForm" method="get" action="{% url 'manager_shifts' %}">
 	            <input type="hidden" name="view" value="{{ view }}">
 	            <input type="hidden" name="date" value="{{ anchor|date:'Y-m-d' }}">
+
 	            <!-- Position multi-select -->
 	            <div class="filter-group">
 	              <label class="form-label mb-0">Position:</label>
@@ -55,42 +56,24 @@
 
 	            <div class="filter-group">
 	              <label class="form-label mb-0">Status:</label>
-	              <div class="multiselect" id="statusMulti">
-	                <button class="btn btn-outline btn-sm multiselect-trigger" type="button" onclick="toggleMulti('statusMulti')" aria-haspopup="true" aria-expanded="false">
-	                  <span id="statusMultiLabel">{% if status %}{{ status|title }}{% else %}All{% endif %}</span>
-	                  {% include "partials/icons/chevron_down.html" with size=16 %}
-	                </button>
-		                <div class="multiselect-menu" role="menu" aria-label="Status">
-		                  <label class="multiselect-item"><input type="radio" name="status" value="" {% if not status %}checked{% endif %} onchange="submitFilters()"> All</label>
-		                  <label class="multiselect-item"><input type="radio" name="status" value="draft" {% if status == 'draft' %}checked{% endif %} onchange="submitFilters()"> Draft</label>
-		                  <label class="multiselect-item"><input type="radio" name="status" value="published" {% if status == 'published' %}checked{% endif %} onchange="submitFilters()"> Published</label>
-		                  <div class="multiselect-actions">
-		                    <button class="btn btn-primary btn-sm" type="button" onclick="submitFilters()">Apply</button>
-		                  </div>
-		                </div>
-		              </div>
-		            </div>
+              <select name="status" onchange="submitFilters()" class="form-select">
+                <option value="" {% if not status %}selected{% endif %}>All</option>
+                <option value="draft" {% if status == 'draft' %}selected{% endif %}>Draft</option>
+                <option value="published" {% if status == 'published' %}selected{% endif %}>Published</option>
+              </select>
+            </div>
 
-	            <div class="filter-group">
-	              <label class="form-label mb-0">Show:</label>
-	              <div class="multiselect" id="showMulti">
-	                <button class="btn btn-outline btn-sm multiselect-trigger" type="button" onclick="toggleMulti('showMulti')" aria-haspopup="true" aria-expanded="false">
-	                  <span id="showMultiLabel">{% if understaffed %}Understaffed only{% else %}All{% endif %}</span>
-	                  {% include "partials/icons/chevron_down.html" with size=16 %}
-	                </button>
-		                <div class="multiselect-menu" role="menu" aria-label="Show">
-		                  <label class="multiselect-item"><input type="radio" name="show" value="" {% if not understaffed %}checked{% endif %} onchange="submitFilters()"> All</label>
-		                  <label class="multiselect-item"><input type="radio" name="show" value="understaffed" {% if understaffed %}checked{% endif %} onchange="submitFilters()"> Understaffed only</label>
-		                  <div class="multiselect-actions">
-		                    <button class="btn btn-primary btn-sm" type="button" onclick="submitFilters()">Apply</button>
-		                  </div>
-		                </div>
-		              </div>
-		            </div>
-	          </form>
-	        </div>
+            <div class="filter-group">
+              <label class="form-label mb-0">Show:</label>
+              <select name="show" onchange="submitFilters()" class="form-select">
+                <option value="" {% if not understaffed %}selected{% endif %}>All</option>
+                <option value="understaffed" {% if understaffed %}selected{% endif %}>Understaffed only</option>
+              </select>
+            </div>
+          </form>
+        </div>
 
-	        <div class="manager-shifts-toolbar-center">
+        <div class="manager-shifts-toolbar-center">
 	          {% if view == 'month' %}
 	            <div class="multiselect min-w-0" id="managerMonthPicker">
 		              <button class="btn btn-ghost btn-sm multiselect-trigger calendar-period-trigger" type="button" onclick="toggleMulti('managerMonthPicker')" aria-haspopup="true" aria-expanded="false">
@@ -190,8 +173,10 @@
 
         <div class="card-content-compact employee-sidebar-controls">
           <div class="form-group">
-            <label class="form-label" for="employeeSidebarSearch">Search</label>
-            <input class="form-input" id="employeeSidebarSearch" type="search" placeholder="Search employees" autocomplete="off">
+            <div class="search-input-wrapper">
+              <span class="search-input-icon">{% include "partials/icons/search.html" with size=18 %}</span>
+              <input class="form-input search-input-with-icon" id="employeeSidebarSearch" type="search" placeholder="Employee name" autocomplete="off">
+            </div>
           </div>
 
           <div class="form-group">

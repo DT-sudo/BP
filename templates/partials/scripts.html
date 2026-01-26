@@ -1,8 +1,0 @@
-{% load static %}
-<script src="{% static 'js/app.js' %}?v={% now 'U' %}"></script>
-{% if include_calendar %}
-  <script src="{% static 'js/calendar-utils.js' %}?v={% now 'U' %}"></script>
-{% endif %}
-{% if page_script %}
-  <script src="{% static page_script %}?v={% now 'U' %}"></script>
-{% endif %}
