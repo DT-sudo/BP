@@ -27,17 +27,17 @@ INSTALLED_APPS = [
 # security/auth/session middleware
 #  Middleware запускаются автоматически для КАЖДОГО запроса!
 MIDDLEWARE = [
-    #   (проверка HTTPS, безопасность)
+    #    (проверка HTTPS, безопасность)
     "django.middleware.security.SecurityMiddleware",
-    #   (загрузит session из cookies)
+    #    (загрузит session из cookies)
     "django.contrib.sessions.middleware.SessionMiddleware",
-    #   (стандартная обработка)
+    #    (стандартная обработка)
     "django.middleware.common.CommonMiddleware",
     #    (проверит CSRF токен от POST запроса)
     "django.middleware.csrf.CsrfViewMiddleware",
     # ГЛАВНЫЙ!(загрузить request.user)
     "django.contrib.auth.middleware.AuthenticationMiddleware",
-    #   (загрузить flash сообщения)
+    #    (загрузить flash сообщения)
     "django.contrib.messages.middleware.MessageMiddleware",
     #    (защита от clickjacking)
     #    return render(request, "auth/login.html", {...})

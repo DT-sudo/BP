@@ -83,12 +83,12 @@ def position_delete(request: HttpRequest, position_id: int) -> JsonResponse:
     
     if position.employees.exists():
         return JsonResponse(
-            {"ok": False, "error": "Cannot delete role: employees are assigned."},
+            {"ok": False, "error": "Cannot delete position: employees are assigned."},
             status=400
         )
     if position.shifts.exists():
         return JsonResponse(
-            {"ok": False, "error": "Cannot delete role: shifts are using this role."},
+            {"ok": False, "error": "Cannot delete position: shifts are using this position."},
             status=400
         )
     

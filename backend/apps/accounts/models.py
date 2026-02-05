@@ -7,6 +7,8 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models
 
 
+# UserRole is central to your project’s access control and user filtering. It 
+# determines what a user can see/do and is the main way your app distinguishes between managers and employees.
 class UserRole(models.TextChoices):
     MANAGER = "manager", "Manager"
     EMPLOYEE = "employee", "Employee"

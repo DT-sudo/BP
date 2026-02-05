@@ -153,7 +153,7 @@ def employee_unavailability_toggle(request: HttpRequest) -> JsonResponse:
     If employee is marked unavailable on that date, removes the record.
     If employee is available, creates an unavailability record.
     
-    Returns {ok: true, date: 'YYYY-MM-DD', unavailable: true/false}.
+    Returns {ok: true, date: 'DD-MM-YYYY', unavailable: true/false}.
     Called via AJAX when clicking a calendar day.
     """
     try:
@@ -172,7 +172,7 @@ def employee_unavailability_toggle(request: HttpRequest) -> JsonResponse:
     
     if obj:
         obj.delete()
-        return JsonResponse({"ok": True, "date": day.isoformat(), "unavailable": False})
+        return JsonResponse({"ok": True, "date": day.strftime("%d-%m-%Y"), "unavailable": False})
 
     EmployeeUnavailability.objects.create(employee_id=request.user.id, date=day)
-    return JsonResponse({"ok": True, "date": day.isoformat(), "unavailable": True})
+    return JsonResponse({"ok": True, "date": day.strftime("%d-%m-%Y"), "unavailable": True})
