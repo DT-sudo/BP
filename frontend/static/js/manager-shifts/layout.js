@@ -93,7 +93,7 @@ function wireStickyOffsets() {
     const toolbarHeight = toolbar?.getBoundingClientRect().height || 0;
     root.style.setProperty('--toolbar-sticky-height', `${toolbarHeight}px`);
 
-    const legend = getEl('roleLegendCard');
+    const legend = getEl('positionLegendCard');
     const legendHeight = legend?.getBoundingClientRect().height || 0;
     root.style.setProperty('--bottom-legend-height', `${legendHeight}px`);
 

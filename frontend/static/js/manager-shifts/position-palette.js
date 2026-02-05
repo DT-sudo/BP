@@ -1,5 +1,5 @@
 /**
- * MANAGER SHIFTS - Role Color Palette System
+ * MANAGER SHIFTS - Position Color Palette System
  * Generates consistent colors for positions based on their ID
  */
 
@@ -9,7 +9,7 @@
   const Config = window.ManagerShiftsConfig || {};
 const { getEl } = Config;
 
-function computeRolePalette(positionId) {
+function computePositionPalette(positionId) {
   const n = parseInt(positionId, 10);
   if (!Number.isFinite(n)) return null;
 
@@ -20,13 +20,13 @@ function computeRolePalette(positionId) {
   return { bg, border, fg };
 }
 
-function applyRolePaletteToElement(el, positionId) {
-  const palette = computeRolePalette(positionId);
+function applyPositionPaletteToElement(el, positionId) {
+  const palette = computePositionPalette(positionId);
   if (!el || !palette) return;
-  el.classList.add('shift-chip-role');
-  el.style.setProperty('--role-bg', palette.bg);
-  el.style.setProperty('--role-border', palette.border);
-  el.style.setProperty('--role-fg', palette.fg);
+  el.classList.add('shift-chip-position');
+  el.style.setProperty('--position-bg', palette.bg);
+  el.style.setProperty('--position-border', palette.border);
+  el.style.setProperty('--position-fg', palette.fg);
 }
 
 function collectPositionsFromDom() {
@@ -41,9 +41,9 @@ function collectPositionsFromDom() {
     .filter((p) => p.id && p.name);
 }
 
-function renderRoleLegend(positions, shifts) {
-  const card = getEl('roleLegendCard');
-  const root = getEl('roleLegend');
+function renderPositionLegend(positions, shifts) {
+  const card = getEl('positionLegendCard');
+  const root = getEl('positionLegend');
   if (!root) return;
   root.innerHTML = '';
 
@@ -61,11 +61,11 @@ function renderRoleLegend(positions, shifts) {
 
   const hasDraft = currentShifts.some((s) => s && String(s.status || '').toLowerCase() === 'draft');
 
-  const visibleRoles = active
+  const visiblePositions = active
     .filter((p) => presentPublishedPositionIds.has(String(p.id)))
     .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
 
-  if (!visibleRoles.length && !hasDraft) {
+  if (!visiblePositions.length && !hasDraft) {
     card?.classList.add('hidden');
     window.requestAnimationFrame(() => window.managerSyncStickyOffsets?.());
     return;
@@ -75,14 +75,14 @@ function renderRoleLegend(positions, shifts) {
 
   if (hasDraft) {
     const draftItem = document.createElement('div');
-    draftItem.className = 'role-legend-item role-legend-item-draft';
+    draftItem.className = 'position-legend-item position-legend-item-draft';
 
     const draftSwatch = document.createElement('span');
-    draftSwatch.className = 'role-swatch role-swatch-draft';
+    draftSwatch.className = 'position-swatch position-swatch-draft';
     draftSwatch.setAttribute('aria-hidden', 'true');
 
     const draftLabel = document.createElement('span');
-    draftLabel.className = 'role-legend-label';
+    draftLabel.className = 'position-legend-label';
     draftLabel.textContent = 'Draft';
 
     draftItem.appendChild(draftSwatch);
@@ -90,16 +90,16 @@ function renderRoleLegend(positions, shifts) {
     root.appendChild(draftItem);
   }
 
-  visibleRoles.forEach((p) => {
+  visiblePositions.forEach((p) => {
     const item = document.createElement('div');
-    item.className = 'role-legend-item';
+    item.className = 'position-legend-item';
 
     const swatch = document.createElement('span');
-    swatch.className = 'role-swatch';
-    applyRolePaletteToElement(swatch, p.id);
+    swatch.className = 'position-swatch';
+    applyPositionPaletteToElement(swatch, p.id);
 
     const label = document.createElement('span');
-    label.className = 'role-legend-label';
+    label.className = 'position-legend-label';
     label.textContent = p.name || '';
 
     item.appendChild(swatch);
@@ -110,11 +110,11 @@ function renderRoleLegend(positions, shifts) {
   window.requestAnimationFrame(() => window.managerSyncStickyOffsets?.());
 }
 
-window.ManagerShiftsRolePalette = {
-  computeRolePalette,
-  applyRolePaletteToElement,
+window.ManagerShiftsPositionPalette = {
+  computePositionPalette,
+  applyPositionPaletteToElement,
   collectPositionsFromDom,
-  renderRoleLegend,
+  renderPositionLegend,
 };
 
 })();

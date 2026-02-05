@@ -213,7 +213,7 @@ function openShiftDetails(shiftId) {
 
   document.getElementById('detailDate').textContent = shift.date;
   document.getElementById('detailTime').textContent = shift.start_time + '-' + shift.end_time;
-  document.getElementById('detailRole').textContent = shift.position;
+  document.getElementById('detailPosition').textContent = shift.position;
   document.getElementById('detailHours').textContent = calculateHours(shift) + ' hours';
 
   openModal('shiftDetailsModal');

@@ -486,7 +486,7 @@ body.manager-shifts-page .main-content {
   color: var(--foreground);
 }
 
-.role-actions-cell {
+.position-actions-cell {
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -624,13 +624,13 @@ body.selection-mode .shift-chip:active {
   border: 2px dashed var(--border);
 }
 
-.shift-chip-role {
-  background-color: var(--role-bg);
-  color: var(--role-fg);
-  border-color: var(--role-border);
+.shift-chip-position {
+  background-color: var(--position-bg);
+  color: var(--position-fg);
+  border-color: var(--position-border);
 }
 
-.shift-chip-past.shift-chip-role {
+.shift-chip-past.shift-chip-position {
   opacity: 0.75;
 }
 
@@ -642,7 +642,7 @@ body.selection-mode .shift-chip:active {
   min-width: 0;
 }
 
-.shift-chip-role-name {
+.shift-chip-position-name {
   font-weight: 600;
   flex: 1 1 auto;
   min-width: 0;
@@ -1315,10 +1315,10 @@ body.has-bottom-legend .manager-employee-sidebar {
 }
 
 /* ========================================
-   Role Legend
+   Position Legend
    ======================================== */
 
-.role-legend {
+.position-legend {
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem 1rem;
@@ -1329,7 +1329,7 @@ body.has-bottom-legend .main-content {
   padding-bottom: 0;
 }
 
-body.has-bottom-legend #roleLegendCard {
+body.has-bottom-legend #positionLegendCard {
   position: fixed;
   left: 0;
   right: 0;
@@ -1343,11 +1343,11 @@ body.has-bottom-legend #roleLegendCard {
   box-shadow: 0 -10px 20px rgba(0, 0, 0, 0.06);
 }
 
-body.has-bottom-legend #roleLegendCard .card-content {
+body.has-bottom-legend #positionLegendCard .card-content {
   padding: 0.6rem var(--page-padding);
 }
 
-body.has-bottom-legend #roleLegendCard .role-legend {
+body.has-bottom-legend #positionLegendCard .position-legend {
   justify-content: center;
   gap: 0.35rem 1rem;
 }
@@ -1384,7 +1384,7 @@ body.has-bottom-legend #dayView .card-content-no-padding {
   flex-direction: column;
 }
 
-.role-legend-item {
+.position-legend-item {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
@@ -1392,20 +1392,20 @@ body.has-bottom-legend #dayView .card-content-no-padding {
   color: var(--foreground);
 }
 
-.role-legend-item-draft {
+.position-legend-item-draft {
   order: -1;
 }
 
-.role-swatch {
+.position-swatch {
   width: 14px;
   height: 14px;
   border-radius: 4px;
-  background-color: var(--role-bg);
-  border: 2px solid var(--role-border);
+  background-color: var(--position-bg);
+  border: 2px solid var(--position-border);
   flex: 0 0 auto;
 }
 
-.role-swatch.role-swatch-draft {
+.position-swatch.position-swatch-draft {
   background-color: var(--muted);
   border-color: var(--border);
   border-style: dashed;

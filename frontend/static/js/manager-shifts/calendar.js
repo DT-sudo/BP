@@ -10,14 +10,14 @@
   const Config = window.ManagerShiftsConfig || {};
 const Time = window.ManagerShiftsTime || {};
 const LaneLayout = window.ManagerShiftsLaneLayout || {};
-const RolePalette = window.ManagerShiftsRolePalette || {};
+const PositionPalette = window.ManagerShiftsPositionPalette || {};
 const Sidebar = window.ManagerShiftsSidebar || {};
 const BulkSelection = window.ManagerShiftsBulkSelection || {};
 
 const { getEl, escapeHtml, TIME_GRID_HOUR_HEIGHT_PX, TIME_GRID_HOUR_WIDTH_PX, SHIFT_LANE_GAP_PX } = Config;
 const { parseTimeToMinutes, formatDurationMinutes } = Time;
 const { computeShiftLaneLayout, applyTimedShiftChipVertical, applyTimedShiftChipHorizontalDynamic, autoScrollWeekGridToEarliestShift } = LaneLayout;
-const { applyRolePaletteToElement } = RolePalette;
+const { applyPositionPaletteToElement } = PositionPalette;
 const { applyEmployeeShiftHighlight } = Sidebar;
 const { isSelectionMode, getSelectedShiftIds, toggleChipSelected } = BulkSelection;
 
@@ -35,14 +35,14 @@ function renderShiftChip(shift) {
     shift.status === 'draft' ? 'shift-chip-draft' : 'shift-chip-published'
   }`;
   chip.dataset.shiftId = String(shift.id);
-  if (shift.status !== 'draft') applyRolePaletteToElement(chip, shift.position_id);
+  if (shift.status !== 'draft') applyPositionPaletteToElement(chip, shift.position_id);
   if (selectedShiftIds.has(String(shift.id))) chip.classList.add('shift-chip-selected');
 
   const time = `${shift.start_time}-${shift.end_time}`;
   const duration = formatDurationMinutes(parseTimeToMinutes(shift.end_time) - parseTimeToMinutes(shift.start_time));
   chip.innerHTML = `
     <div class="shift-chip-header">
-      <span class="shift-chip-role-name" title="${escapeHtml(shift.position)}">${escapeHtml(shift.position)}</span>
+      <span class="shift-chip-position-name" title="${escapeHtml(shift.position)}">${escapeHtml(shift.position)}</span>
       <span class="shift-chip-qty">${shift.assigned_count}/${shift.capacity}</span>
     </div>
     <div class="shift-chip-time">${time}</div>
@@ -67,7 +67,7 @@ function renderMonthShiftChip(shift) {
     shift.status === 'draft' ? 'shift-chip-draft' : 'shift-chip-published'
   }`;
   chip.dataset.shiftId = String(shift.id);
-  if (shift.status !== 'draft') applyRolePaletteToElement(chip, shift.position_id);
+  if (shift.status !== 'draft') applyPositionPaletteToElement(chip, shift.position_id);
   if (selectedShiftIds.has(String(shift.id))) chip.classList.add('shift-chip-selected');
 
   chip.innerHTML = `

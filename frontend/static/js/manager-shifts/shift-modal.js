@@ -224,10 +224,10 @@ function deleteShift() {
   if (!activeShiftId) return;
   const titleEl = getEl('deleteShiftConfirmTitle');
   if (titleEl) {
-    const role = activeShiftData?.position || '';
+    const positionName = activeShiftData?.position || '';
     const time = activeShiftData?.start_time && activeShiftData?.end_time
       ? `${activeShiftData.start_time}-${activeShiftData.end_time}` : '';
-    titleEl.textContent = [role, time, activeShiftData?.date].filter(Boolean).join(' • ') || `#${activeShiftId}`;
+    titleEl.textContent = [positionName, time, activeShiftData?.date].filter(Boolean).join(' • ') || `#${activeShiftId}`;
   }
   openModal('deleteShiftConfirmModal');
 }

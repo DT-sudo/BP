@@ -43,7 +43,7 @@
 		                      {{ p.name }}
 		                    </label>
 		                  {% empty %}
-		                    <div class="text-sm text-muted" style="padding: .5rem .75rem;">No positions yet. Add roles in Employees → Manage roles.</div>
+		                    <div class="text-sm text-muted" style="padding: .5rem .75rem;">No positions yet. Add positions in Employees → Manage positions.</div>
 		                  {% endfor %}
 		                  <div class="multiselect-actions multiselect-actions-right">
 		                    <button class="btn btn-ghost btn-sm" type="button" onclick="selectAllPositions(false); markPositionMultiDirty(); updatePositionMulti()">Clear</button>
@@ -219,10 +219,10 @@
       </div>
     </div>
 
-    <!-- Role Color Legend -->
-    <div class="card mt-4" id="roleLegendCard">
+    <!-- Position Color Legend -->
+    <div class="card mt-4" id="positionLegendCard">
       <div class="card-content card-content-compact">
-        <div class="role-legend" id="roleLegend" aria-label="Role color legend"></div>
+        <div class="position-legend" id="positionLegend" aria-label="Position color legend"></div>
       </div>
     </div>
   </main>
@@ -285,12 +285,12 @@
             <div class="multiselect multiselect-full" id="employeeMulti">
               <button class="btn btn-outline btn-sm multiselect-trigger" id="employeeMultiTrigger" type="button" onclick="toggleMulti('employeeMulti')" aria-haspopup="true" aria-expanded="false">
                 <span class="multiselect-chips" id="employeeMultiChips">
-                  <span class="multiselect-placeholder" id="employeeMultiPlaceholder">Select role first</span>
+                  <span class="multiselect-placeholder" id="employeeMultiPlaceholder">Select position first</span>
                 </span>
                 {% include "partials/icons/chevron_down.html" with size=16 %}
               </button>
               <div class="multiselect-menu" role="menu" aria-label="Select employees">
-                <div class="text-sm text-muted" id="employeeMultiEmpty" style="padding: .5rem .75rem;">Select role first</div>
+                <div class="text-sm text-muted" id="employeeMultiEmpty" style="padding: .5rem .75rem;">Select position first</div>
                 <div id="employeeMultiList">
                   {% for e in employees %}
                     <label class="multiselect-item employee-item hidden" data-position-id="{{ e.position_id|default:'' }}" data-employee-name="{{ e.get_full_name|default:e.username|escape }}">

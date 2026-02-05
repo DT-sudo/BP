@@ -147,7 +147,7 @@ function rebuildPositionFilterOptions(positions) {
   menu.innerHTML = '';
 
   if (!positions.length) {
-    menu.appendChild(createEmptyMessage('No positions yet. Add roles in Employees → Manage roles.'));
+    menu.appendChild(createEmptyMessage('No positions yet. Add positions in Employees → Manage positions.'));
     return;
   }
 

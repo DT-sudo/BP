@@ -6,7 +6,7 @@
  * 1. config.js         - Constants and utilities
  * 2. time-utils.js     - Time parsing functions  
  * 3. lane-layout.js    - Shift positioning algorithm
- * 4. role-palette.js   - Color system
+ * 4. position-palette.js   - Color system
  * 5. filters.js        - URL builder and dropdowns
  * 6. employee-picker.js - Employee selection
  * 7. sidebar.js        - Employee sidebar
@@ -40,7 +40,7 @@
     Sidebar: window.ManagerShiftsSidebar,
     BulkSelection: window.ManagerShiftsBulkSelection,
     Calendar: window.ManagerShiftsCalendar,
-    RolePalette: window.ManagerShiftsRolePalette,
+    PositionPalette: window.ManagerShiftsPositionPalette,
     Modal: window.ManagerShiftsModal,
     Layout: window.ManagerShiftsLayout,
   };
@@ -53,7 +53,7 @@
 
   console.log('[ManagerShifts] All modules loaded successfully');
 
-  const { Config, Filters, EmployeePicker, Sidebar, BulkSelection, Calendar, RolePalette, Modal, Layout } = modules;
+  const { Config, Filters, EmployeePicker, Sidebar, BulkSelection, Calendar, PositionPalette, Modal, Layout } = modules;
 
   let managerCurrentShifts = [];
 
@@ -118,7 +118,7 @@
     
     Config.getEl('shiftPosition')?.addEventListener('change', EmployeePicker.filterEmployeePicker);
     
-    RolePalette.renderRoleLegend(RolePalette.collectPositionsFromDom(), managerCurrentShifts);
+    PositionPalette.renderPositionLegend(PositionPalette.collectPositionsFromDom(), managerCurrentShifts);
     EmployeePicker.refreshPositionsFromServer();
     Sidebar.renderEmployeeSidebar();
 

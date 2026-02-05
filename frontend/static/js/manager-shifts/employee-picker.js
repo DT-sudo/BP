@@ -7,10 +7,10 @@
   'use strict';
 
   const Config = window.ManagerShiftsConfig || {};
-const RolePalette = window.ManagerShiftsRolePalette || {};
+const PositionPalette = window.ManagerShiftsPositionPalette || {};
 const Filters = window.ManagerShiftsFilters || {};
 const { getEl, getPageData, getEmployeeCbs, createEmptyMessage } = Config;
-const { renderRoleLegend, collectPositionsFromDom } = RolePalette;
+const { renderPositionLegend, collectPositionsFromDom } = PositionPalette;
 const { rebuildPositionFilterOptions, updatePositionMulti } = Filters;
 
 // State
@@ -62,7 +62,7 @@ function updateEmployeeMulti() {
     const ph = document.createElement('span');
     ph.className = 'multiselect-placeholder';
     ph.id = 'employeeMultiPlaceholder';
-    ph.textContent = getEl('shiftPosition')?.value ? 'Select employees' : 'Select role first';
+    ph.textContent = getEl('shiftPosition')?.value ? 'Select employees' : 'Select position first';
     chips.appendChild(ph);
     return;
   }
@@ -146,7 +146,7 @@ function filterEmployeePicker() {
     lastShiftPositionId = null;
     clearAllEmployeeSelections();
     if (empty) {
-      empty.textContent = 'Select role first';
+      empty.textContent = 'Select position first';
       empty.classList.remove('hidden');
     }
     getEl('employeeMulti')?.classList.remove('open');
@@ -263,7 +263,7 @@ async function refreshPositionsFromServer() {
     rebuildShiftPositionMultiOptions(positions);
     updatePositionMulti();
     updateShiftPositionMultiLabel();
-    renderRoleLegend(positions, managerCurrentShifts);
+    renderPositionLegend(positions, managerCurrentShifts);
   } catch (e) {
     // ignore
   }

@@ -8,10 +8,10 @@
 
   const Config = window.ManagerShiftsConfig || {};
 const Time = window.ManagerShiftsTime || {};
-const RolePalette = window.ManagerShiftsRolePalette || {};
+const PositionPalette = window.ManagerShiftsPositionPalette || {};
 const { getEl, initialsFromName } = Config;
 const { parseTimeToMinutes, formatHoursCompact } = Time;
-const { applyRolePaletteToElement } = RolePalette;
+const { applyPositionPaletteToElement } = PositionPalette;
 
 // State
 let managerEmployees = [];
@@ -194,7 +194,7 @@ function renderEmployeeSidebar() {
     badge.className = 'badge badge-outline employee-position-badge';
     const positionLabel = String(e.position || '').trim() || 'Unassigned';
     badge.textContent = positionLabel;
-    if (e.position_id) applyRolePaletteToElement(badge, e.position_id);
+    if (e.position_id) applyPositionPaletteToElement(badge, e.position_id);
 
     const hours = document.createElement('span');
     hours.className = 'employee-sidebar-hours';

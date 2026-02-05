@@ -1,8 +1,8 @@
 /**
  * Manager Employees Page
- * Employee CRUD, role management, and filtering
+ * Employee CRUD, position management, and filtering
  */
-const ROLE_SELECT_IDS = ['roleFilter', 'addRole', 'editRole'];
+const POSITION_SELECT_IDS = ['positionFilter', 'addPosition', 'editPosition'];
 
 // Use global getById from app.js
 const getById = window.getById || ((id) => document.getElementById(id));
@@ -32,43 +32,43 @@ function cancelAndClose(modalId, cleanup) {
 // Filtering
 function applyFilters() {
   let searchInput = getById('employeeSearch');
-  let roleSelect = getById('roleFilter');
+  let positionSelect = getById('positionFilter');
 
   let query = searchInput ? (searchInput.value || '').trim().toLowerCase() : '';
-  let role = roleSelect ? (roleSelect.value || 'all') : 'all';
+  let position = positionSelect ? (positionSelect.value || 'all') : 'all';
 
   let rows = document.querySelectorAll('.employee-row');
   for (let i = 0; i < rows.length; i++) {
     let row = rows[i];
-    let matchesRole = (role === 'all' || row.dataset.role === role);
+    let matchesPosition = (position === 'all' || row.dataset.position === position);
     let matchesSearch = !query || row.innerText.toLowerCase().indexOf(query) >= 0;
-    row.style.display = (matchesRole && matchesSearch) ? '' : 'none';
+    row.style.display = (matchesPosition && matchesSearch) ? '' : 'none';
   }
 }
 
 // Global alias for HTML onclick handlers
 window.applyEmployeeFilters = applyFilters;
 
-function updateRoleFilterLabel() {
-  let label = getById('roleFilterMultiLabel');
+function updatePositionFilterLabel() {
+  let label = getById('positionFilterMultiLabel');
   if (!label) return;
 
-  let checked = document.querySelector('#roleFilterMulti input[name="employeeRoleChoice"]:checked');
+  let checked = document.querySelector('#positionFilterMulti input[name="employeePositionChoice"]:checked');
 
   if (!checked || checked.value === 'all' || checked.value === '') {
     label.textContent = 'All';
   } else {
     let parent = checked.parentElement;
-    label.textContent = parent ? (parent.textContent || '').trim() : 'Role';
+    label.textContent = parent ? (parent.textContent || '').trim() : 'Position';
   }
 }
 
-function setRoleFilter(value) {
-  let select = getById('roleFilter');
+function setPositionFilter(value) {
+  let select = getById('positionFilter');
   if (select) {
     select.value = value || 'all';
   }
-  updateRoleFilterLabel();
+  updatePositionFilterLabel();
   applyFilters();
 
   if (window.closeAllMultiselects) {
@@ -100,7 +100,7 @@ function setFieldError(inputId, errorId, message) {
 
 function validateEmployeeForm(prefix) {
   let errors = {};
-  let fields = ['FullName', 'Email', 'Phone', 'Role'];
+  let fields = ['FullName', 'Email', 'Phone', 'Position'];
 
   // Clear previous errors
   for (let i = 0; i < fields.length; i++) {
@@ -111,12 +111,12 @@ function validateEmployeeForm(prefix) {
   let nameInput = getById(prefix + 'FullName');
   let emailInput = getById(prefix + 'Email');
   let phoneInput = getById(prefix + 'Phone');
-  let roleInput = getById(prefix + 'Role');
+  let positionInput = getById(prefix + 'Position');
 
   let name = nameInput ? nameInput.value.trim() : '';
   let email = emailInput ? emailInput.value.trim() : '';
   let phone = phoneInput ? phoneInput.value.trim() : '';
-  let role = roleInput ? roleInput.value : '';
+  let position = positionInput ? positionInput.value : '';
 
   // Validate
   if (!name) {
@@ -135,8 +135,8 @@ function validateEmployeeForm(prefix) {
     errors.Phone = 'Enter a valid phone number.';
   }
 
-  if (!role) {
-    errors.Role = 'Role is required.';
+  if (!position) {
+    errors.Position = 'Position is required.';
   }
 
   // Show errors
@@ -181,8 +181,8 @@ async function openEditEmployee(userId) {
     let phoneInput = getById('editPhone');
     if (phoneInput) phoneInput.value = data.phone || '';
 
-    let roleInput = getById('editRole');
-    if (roleInput) roleInput.value = data.position_id != null ? data.position_id : '';
+    let positionInput = getById('editPosition');
+    if (positionInput) positionInput.value = data.position_id != null ? data.position_id : '';
 
     validateEmployeeForm('edit');
     openModal('editEmployeeModal');
@@ -241,7 +241,7 @@ async function saveEmployeeEdits() {
       full_name: getValue('editFullName'),
       email: getValue('editEmail'),
       phone: getValue('editPhone'),
-      position: getValue('editRole')
+      position: getValue('editPosition')
     });
 
     let employee = payload.employee;
@@ -252,7 +252,7 @@ async function saveEmployeeEdits() {
     // Update table row
     let row = document.querySelector('.employee-row[data-user-id="' + employee.id + '"]');
     if (row) {
-      row.dataset.role = employee.position_id != null ? employee.position_id : '';
+      row.dataset.position = employee.position_id != null ? employee.position_id : '';
 
       let cells = row.querySelectorAll('td');
       if (cells[2]) cells[2].textContent = employee.full_name || '';
@@ -305,18 +305,18 @@ function confirmResetPassword() {
   form.submit();
 }
 
-// Role management helpers
-function updateRoleSelects(roleId, roleName) {
-  let roleIdStr = String(roleId);
+// Position management helpers
+function updatePositionSelects(positionId, positionName) {
+  let positionIdStr = String(positionId);
 
-  for (let i = 0; i < ROLE_SELECT_IDS.length; i++) {
-    let selectId = ROLE_SELECT_IDS[i];
+  for (let i = 0; i < POSITION_SELECT_IDS.length; i++) {
+    let selectId = POSITION_SELECT_IDS[i];
     let select = getById(selectId);
     if (!select) continue;
 
-    let existingOption = select.querySelector('option[value="' + roleIdStr + '"]');
+    let existingOption = select.querySelector('option[value="' + positionIdStr + '"]');
 
-    if (roleName === null) {
+    if (positionName === null) {
       // Remove option
       if (existingOption) {
         existingOption.remove();
@@ -325,151 +325,151 @@ function updateRoleSelects(roleId, roleName) {
       // Add or update option
       if (!existingOption) {
         existingOption = document.createElement('option');
-        existingOption.value = roleIdStr;
+        existingOption.value = positionIdStr;
         select.appendChild(existingOption);
       }
-      existingOption.textContent = roleName;
+      existingOption.textContent = positionName;
     }
   }
 }
 
-async function addRole() {
+async function addPosition() {
   let pageData = getPageData();
   let url = pageData ? pageData.positionCreateUrl : null;
   if (!url) return;
 
-  let nameInput = getById('newRoleName');
+  let nameInput = getById('newPositionName');
   let name = nameInput ? nameInput.value.trim() : '';
 
   if (!name) {
-    showToast('error', 'Role name required', 'Please enter a role name.');
+    showToast('error', 'Position name required', 'Please enter a position name.');
     return;
   }
 
   try {
     let result = await postFormJson(url, { name: name, is_active: 'on' });
-    let roleId = result.id;
+    let positionId = result.id;
 
     // Add table row
     let row = document.createElement('tr');
-    row.dataset.positionId = roleId;
-    row.innerHTML = '<td class="role-name"></td>' +
-      '<td class="role-actions-cell">' +
-      '<button class="btn btn-outline btn-sm" type="button" onclick="renameRole(this)">Rename</button>' +
-      '<button class="btn btn-ghost btn-icon" type="button" onclick="deleteRole(this)" aria-label="Delete role" title="Delete" style="color:var(--destructive)">' +
+    row.dataset.positionId = positionId;
+    row.innerHTML = '<td class="position-name"></td>' +
+      '<td class="position-actions-cell">' +
+      '<button class="btn btn-outline btn-sm" type="button" onclick="renamePosition(this)">Rename</button>' +
+      '<button class="btn btn-ghost btn-icon" type="button" onclick="deletePosition(this)" aria-label="Delete position" title="Delete" style="color:var(--destructive)">' +
       '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
       '<path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/>' +
       '</svg></button></td>';
 
-    let nameCell = row.querySelector('.role-name');
+    let nameCell = row.querySelector('.position-name');
     if (nameCell) nameCell.textContent = name;
 
-    let tbody = getById('roleTbody');
+    let tbody = getById('positionTbody');
     if (tbody) tbody.appendChild(row);
 
-    updateRoleSelects(roleId, name);
+    updatePositionSelects(positionId, name);
 
     if (nameInput) nameInput.value = '';
 
-    showToast('success', 'Role added', name + ' added.');
+    showToast('success', 'Position added', name + ' added.');
   } catch (error) {
-    showToast('error', 'Could not add role', error.message);
+    showToast('error', 'Could not add position', error.message);
   }
 }
 
-async function renameRole(button) {
+async function renamePosition(button) {
   let pageData = getPageData();
   let url = pageData ? pageData.positionUpdateUrlTemplate : null;
   if (!url) return;
 
   let row = button.closest('tr');
-  let roleId = row ? row.dataset.positionId : null;
-  let nameCell = row ? row.querySelector('.role-name') : null;
+  let positionId = row ? row.dataset.positionId : null;
+  let nameCell = row ? row.querySelector('.position-name') : null;
   let currentName = nameCell ? nameCell.textContent : '';
 
-  let newName = prompt('Rename role:', currentName);
-  if (!newName || !roleId) return;
+  let newName = prompt('Rename position:', currentName);
+  if (!newName || !positionId) return;
 
   try {
-    await postFormJson(urlFromTemplate(url, roleId), {
+    await postFormJson(urlFromTemplate(url, positionId), {
       name: newName,
       is_active: 'on'
     });
 
     if (nameCell) nameCell.textContent = newName;
-    updateRoleSelects(roleId, newName);
+    updatePositionSelects(positionId, newName);
 
-    showToast('success', 'Role renamed', 'Updated.');
+    showToast('success', 'Position renamed', 'Updated.');
   } catch (error) {
-    showToast('error', 'Could not rename role', error.message);
+    showToast('error', 'Could not rename position', error.message);
   }
 }
 
-let pendingRoleDelete = null;
+let pendingPositionDelete = null;
 
-function deleteRole(button) {
+function deletePosition(button) {
   let row = button.closest('tr');
-  let roleId = row ? row.dataset.positionId : null;
-  let nameCell = row ? row.querySelector('.role-name') : null;
-  let roleName = nameCell ? nameCell.textContent : 'Role';
+  let positionId = row ? row.dataset.positionId : null;
+  let nameCell = row ? row.querySelector('.position-name') : null;
+  let positionName = nameCell ? nameCell.textContent : 'Position';
 
-  if (!roleId) return;
+  if (!positionId) return;
 
-  pendingRoleDelete = {
-    roleId: roleId,
-    roleName: roleName,
+  pendingPositionDelete = {
+    positionId: positionId,
+    positionName: positionName,
     row: row
   };
 
-  let nameEl = getById('deleteRoleName');
-  if (nameEl) nameEl.textContent = roleName;
+  let nameEl = getById('deletePositionName');
+  if (nameEl) nameEl.textContent = positionName;
 
-  openModal('deleteRoleModal');
+  openModal('deletePositionModal');
 }
 
-function cancelDeleteRole() {
-  cancelAndClose('deleteRoleModal', function () {
-    pendingRoleDelete = null;
+function cancelDeletePosition() {
+  cancelAndClose('deletePositionModal', function () {
+    pendingPositionDelete = null;
   });
 }
 
-async function confirmDeleteRole() {
+async function confirmDeletePosition() {
   let pageData = getPageData();
   let url = pageData ? pageData.positionDeleteUrlTemplate : null;
 
-  if (!url || !pendingRoleDelete || !pendingRoleDelete.roleId) return;
+  if (!url || !pendingPositionDelete || !pendingPositionDelete.positionId) return;
 
   try {
-    await postFormJson(urlFromTemplate(url, pendingRoleDelete.roleId), {});
+    await postFormJson(urlFromTemplate(url, pendingPositionDelete.positionId), {});
 
     // Remove table row
-    if (pendingRoleDelete.row) {
-      pendingRoleDelete.row.remove();
+    if (pendingPositionDelete.row) {
+      pendingPositionDelete.row.remove();
     }
 
     // Update selects
-    updateRoleSelects(pendingRoleDelete.roleId, null);
+    updatePositionSelects(pendingPositionDelete.positionId, null);
 
     // Remove from filter multiselect
-    let escapedId = pendingRoleDelete.roleId.replace(/["\\]/g, '\\$&');
-    let radio = document.querySelector('#roleFilterMulti input[name="employeeRoleChoice"][value="' + escapedId + '"]');
+    let escapedId = pendingPositionDelete.positionId.replace(/["\\]/g, '\\$&');
+    let radio = document.querySelector('#positionFilterMulti input[name="employeePositionChoice"][value="' + escapedId + '"]');
 
     if (radio) {
       let radioLabel = radio.closest('label');
       if (radioLabel) radioLabel.remove();
 
       if (radio.checked) {
-        setRoleFilter('all');
+        setPositionFilter('all');
       } else {
-        updateRoleFilterLabel();
+        updatePositionFilterLabel();
       }
     }
 
-    pendingRoleDelete = null;
-    closeModal('deleteRoleModal');
-    showToast('success', 'Role deleted', 'Deleted.');
+    pendingPositionDelete = null;
+    closeModal('deletePositionModal');
+    showToast('success', 'Position deleted', 'Deleted.');
   } catch (error) {
-    showToast('error', 'Cannot delete role', error.message);
+    showToast('error', 'Cannot delete position', error.message);
   }
 }
 
@@ -482,7 +482,7 @@ function bindOnce(element, key, setupFn) {
 
 // Initialize
 function init() {
-  updateRoleFilterLabel();
+  updatePositionFilterLabel();
   applyFilters();
 
   // Wire add employee form validation
@@ -495,21 +495,21 @@ function init() {
     });
   });
 
-  // Wire new role input enter key
-  bindOnce(getById('newRoleName'), 'enterWired', function (input) {
+  // Wire new position input enter key
+  bindOnce(getById('newPositionName'), 'enterWired', function (input) {
     input.addEventListener('keydown', function (event) {
       if (event.key === 'Enter') {
         event.preventDefault();
-        addRole();
+        addPosition();
       }
     });
   });
 
-  // Wire delete role modal backdrop click
-  bindOnce(getById('deleteRoleModal'), 'backdropWired', function (modal) {
+  // Wire delete position modal backdrop click
+  bindOnce(getById('deletePositionModal'), 'backdropWired', function (modal) {
     modal.addEventListener('click', function (event) {
       if (event.target === modal) {
-        pendingRoleDelete = null;
+        pendingPositionDelete = null;
       }
     });
   });
