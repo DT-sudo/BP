@@ -8,7 +8,6 @@ Django admin registration for scheduling models.
 Provides admin interface for:
 - Position: Job roles (Barista, Cashier, etc.)
 - Shift: Individual scheduled shifts
-- ShiftTemplate: Reusable shift configurations
 
 Note: Assignment and EmployeeUnavailability are not registered
 as they are managed through the main app UI, not admin.
@@ -16,7 +15,7 @@ as they are managed through the main app UI, not admin.
 """
 from django.contrib import admin
 
-from .models import Position, Shift, ShiftTemplate
+from .models import Position, Shift
 
 
 @admin.register(Position)
@@ -39,10 +38,3 @@ class ShiftAdmin(admin.ModelAdmin):
     list_filter = ("status", "position", "date")
     search_fields = ("position__name", "created_by__username")
 
-
-@admin.register(ShiftTemplate)
-class ShiftTemplateAdmin(admin.ModelAdmin):
-    """Admin for ShiftTemplate model."""
-    list_display = ("name", "position", "start_time", "end_time", "capacity", "created_by")
-    list_filter = ("position",)
-    search_fields = ("name", "position__name", "created_by__username")

@@ -9,7 +9,7 @@ organized into logical modules:
 ├── __init__.py          - This file (exports all public views)
 ├── helpers.py           - Private helper functions (date parsing, URL handling)
 ├── manager_shifts.py    - Manager shift calendar and CRUD operations
-├── manager_resources.py - Templates and positions management
+├── manager_resources.py - Positions management
 ├── employee.py          - Employee shifts and unavailability views
 
 Import Pattern:
@@ -33,12 +33,8 @@ from .manager_shifts import (
     undo_last_action,
 )
 
-# Manager resource views (templates, positions)
+# Manager resource views (positions)
 from .manager_resources import (
-    templates_list,
-    template_create,
-    template_update,
-    template_delete,
     positions_list,
     position_create,
     position_update,
@@ -62,10 +58,6 @@ __all__ = [
     "shift_details",
     "undo_last_action",
     # Manager resources
-    "templates_list",
-    "template_create",
-    "template_update",
-    "template_delete",
     "positions_list",
     "position_create",
     "position_update",

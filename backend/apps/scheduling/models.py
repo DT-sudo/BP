@@ -9,7 +9,6 @@ Core data models for the shift scheduling system:
 2. Shift - Scheduled work shifts with date, time, position, capacity
 3. Assignment - Links employees to shifts (many-to-many through model)
 4. EmployeeUnavailability - Days when employees can't work
-5. ShiftTemplate - Reusable shift patterns for quick creation
 
 Key patterns used:
 - Soft delete (is_deleted flag) for Shift model
@@ -42,7 +41,6 @@ def _validate_time_range_and_capacity(*, start_time, end_time, capacity) -> None
     - Capacity must be at least 1
     
     Raises ValidationError with field-specific messages if invalid.
-    Used by both Shift.clean() and ShiftTemplate.clean().
     """
     errors: dict[str, str] = {}
     if start_time and end_time and start_time >= end_time:
@@ -266,55 +264,3 @@ class EmployeeUnavailability(models.Model):
 
     def __str__(self) -> str:
         return f"{self.employee.employee_id} unavailable on {self.date.isoformat()}"
-
-
-# =============================================================================
-# SHIFT TEMPLATE MODEL
-# =============================================================================
-
-class ShiftTemplate(models.Model):
-    """
-    Reusable shift patterns for quick shift creation.
-    
-    Managers can save common shift configurations (e.g., "Morning Barista")
-    and reuse them when creating new shifts. Only need to pick a date.
-    
-    Templates are private to each manager (unique name per created_by).
-    
-    Similar fields to Shift but without date, status, is_deleted, assignments.
-    """
-    name = models.CharField(max_length=120)  # e.g., "Morning Barista", "Evening Close"
-    start_time = models.TimeField()
-    end_time = models.TimeField()
-    position = models.ForeignKey(
-        Position, 
-        on_delete=models.PROTECT, 
-        related_name="templates"
-    )
-    capacity = models.PositiveIntegerField(default=1)
-    
-    # Each manager has their own templates
-    created_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.PROTECT,
-        related_name="created_templates",
-    )
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        constraints = [
-            # Template names are unique per manager
-            models.UniqueConstraint(
-                fields=["created_by", "name"], 
-                name="unique_template_name_per_manager"
-            ),
-        ]
-
-    def clean(self) -> None:
-        """Validates time range and capacity (same rules as Shift)."""
-        _validate_time_range_and_capacity(
-            start_time=self.start_time,
-            end_time=self.end_time,
-            capacity=self.capacity,
-        )

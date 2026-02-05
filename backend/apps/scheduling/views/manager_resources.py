@@ -1,15 +1,9 @@
 """
 =============================================================================
-MANAGER RESOURCE VIEWS - Templates & Positions
+MANAGER RESOURCE VIEWS - Positions
 =============================================================================
 
 Views for managing scheduling resources:
-
-Templates (reusable shift configurations):
-- templates_list() - List all templates (JSON)
-- template_create() - Create new template
-- template_update() - Update existing template
-- template_delete() - Delete template
 
 Positions (job roles):
 - positions_list() - List all positions (JSON)
@@ -28,78 +22,8 @@ from django.views.decorators.http import require_http_methods
 
 from apps.accounts.decorators import manager_required
 
-from ..forms import PositionForm, ShiftTemplateForm
-from ..models import Position, ShiftTemplate
-
-
-# =============================================================================
-# SHIFT TEMPLATES
-# =============================================================================
-
-
-@manager_required
-@require_http_methods(["GET"])
-def templates_list(request: HttpRequest) -> JsonResponse:
-    """
-    JSON endpoint returning all shift templates for this manager.
-    Used to populate the template dropdown in the shift form.
-    """
-    templates = (
-        ShiftTemplate.objects.filter(created_by=request.user)
-        .select_related("position")
-        .order_by("name")
-    )
-    return JsonResponse({
-        "templates": [
-            {
-                "id": t.id,
-                "name": t.name,
-                "position_id": t.position_id,
-                "position": t.position.name,
-                "start_time": t.start_time.strftime("%H:%M"),
-                "end_time": t.end_time.strftime("%H:%M"),
-                "capacity": t.capacity,
-            }
-            for t in templates
-        ]
-    })
-
-
-@manager_required
-@require_http_methods(["POST"])
-def template_create(request: HttpRequest) -> JsonResponse:
-    """Creates a new shift template. Returns {ok: true, id: <new_id>}."""
-    form = ShiftTemplateForm(request.POST)
-    if not form.is_valid():
-        return JsonResponse({"ok": False, "errors": form.errors}, status=400)
-    template = form.save(commit=False)
-    template.created_by = request.user
-    template.full_clean()
-    template.save()
-    return JsonResponse({"ok": True, "id": template.id})
-
-
-@manager_required
-@require_http_methods(["POST"])
-def template_update(request: HttpRequest, template_id: int) -> JsonResponse:
-    """Updates an existing shift template. Returns {ok: true}."""
-    template = get_object_or_404(ShiftTemplate, pk=template_id, created_by=request.user)
-    form = ShiftTemplateForm(request.POST, instance=template)
-    if not form.is_valid():
-        return JsonResponse({"ok": False, "errors": form.errors}, status=400)
-    template = form.save(commit=False)
-    template.full_clean()
-    template.save()
-    return JsonResponse({"ok": True})
-
-
-@manager_required
-@require_http_methods(["POST"])
-def template_delete(request: HttpRequest, template_id: int) -> JsonResponse:
-    """Deletes a shift template. Returns {ok: true}."""
-    template = get_object_or_404(ShiftTemplate, pk=template_id, created_by=request.user)
-    template.delete()
-    return JsonResponse({"ok": True})
+from ..forms import PositionForm
+from ..models import Position
 
 
 # =============================================================================
@@ -152,7 +76,6 @@ def position_delete(request: HttpRequest, position_id: int) -> JsonResponse:
     Checks for:
     - Employees assigned to this position
     - Shifts requiring this position
-    - Templates using this position
     
     Returns error if any references exist (cannot orphan data).
     """
@@ -166,11 +89,6 @@ def position_delete(request: HttpRequest, position_id: int) -> JsonResponse:
     if position.shifts.exists():
         return JsonResponse(
             {"ok": False, "error": "Cannot delete role: shifts are using this role."},
-            status=400
-        )
-    if position.templates.exists():
-        return JsonResponse(
-            {"ok": False, "error": "Cannot delete role: templates are using this role."},
             status=400
         )
     

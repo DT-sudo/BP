@@ -7,7 +7,6 @@ URL routing for the scheduling app.
 
 Organization by prefix:
 - /manager/shifts/     → Main shift calendar and CRUD operations
-- /manager/templates/  → Shift template management (JSON API)
 - /manager/positions/  → Position/role management (JSON API)
 - /employee/shifts/    → Employee's assigned shifts view
 - /employee/unavailability/ → Employee availability management
@@ -34,14 +33,6 @@ urlpatterns = [
     path("manager/shifts/<int:shift_id>/update/", views.update_shift, name="update_shift"),
     path("manager/shifts/<int:shift_id>/delete/", views.delete_shift, name="delete_shift"),
     path("manager/shifts/<int:shift_id>/publish/", views.publish_shift, name="publish_shift"),
-    
-    # -------------------------------------------------------------------------
-    # MANAGER: Shift Templates (JSON API)
-    # -------------------------------------------------------------------------
-    path("manager/templates/json/", views.templates_list, name="templates_list"),
-    path("manager/templates/create/", views.template_create, name="template_create"),
-    path("manager/templates/<int:template_id>/update/", views.template_update, name="template_update"),
-    path("manager/templates/<int:template_id>/delete/", views.template_delete, name="template_delete"),
     
     # -------------------------------------------------------------------------
     # MANAGER: Positions/Roles (JSON API)
