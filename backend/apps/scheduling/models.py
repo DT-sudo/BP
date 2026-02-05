@@ -76,7 +76,7 @@ class Position(models.Model):
         """Validates and normalizes the position name."""
         name = (self.name or "").strip()
         if len(name) > 25:
-            raise ValidationError({"name": "Role name must be 25 characters or fewer."})
+            raise ValidationError({"name": "Role name must be max 25 characters."})
         self.name = name
 
     def __str__(self) -> str:

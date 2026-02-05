@@ -13,7 +13,7 @@ def main() -> None:
             "Did you forget to activate a virtual environment?"
         ) from exc
     execute_from_command_line(sys.argv)
-
+# ↓ Запускаем команду (в твоем случае "runserver")
 
 if __name__ == "__main__":
     main()

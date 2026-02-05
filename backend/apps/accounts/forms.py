@@ -1,3 +1,7 @@
+# Определяет формы для проверки (валидации) пользовательского ввода.
+# Проверяет, что данные корректны перед сохранением в БД.
+# Отображает полей в HTML форме
+
 from __future__ import annotations
 
 import re
@@ -14,16 +18,16 @@ PHONE_RE = re.compile(r"[0-9+()\-\s]{6,25}")
 
 
 def _split_full_name(full_name: str) -> tuple[str, str]:
-    parts = [p for p in (full_name or "").split() if p]
+    parts = []
+    for p in (full_name or "").split():
+        if p:
+            parts.append(p)
     first_name = parts[0] if parts else ""
     last_name = " ".join(parts[1:]) if len(parts) > 1 else ""
     return first_name, last_name
 
-
-class LoginForm(AuthenticationForm):
-    username = forms.CharField(label="Email / Username")
-
-
+    # Это форма для работы с моделью User
+    # Превращает User объект в HTML форму для браузера
 class EmployeeBaseForm(forms.ModelForm):
     full_name = forms.CharField(label="Full name", max_length=150)
 

@@ -3,6 +3,7 @@ from __future__ import annotations
 from django.contrib import messages
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.forms import AuthenticationForm
 from django.conf import settings
 from django.db import models
 from django.http import HttpRequest, HttpResponse, JsonResponse
@@ -16,10 +17,11 @@ from datetime import datetime, timedelta
 from apps.scheduling.models import Assignment, Position, Shift, ShiftStatus
 
 from .decorators import manager_required
-from .forms import CreateEmployeeForm, LoginForm, UpdateEmployeeForm
+from .forms import CreateEmployeeForm, UpdateEmployeeForm
 from .models import User, UserRole
 
-
+# utils
+# Преобразует объект User в словарь (JSON)
 def _employee_payload(employee: User) -> dict[str, object]:
     return {
         "id": employee.id,
@@ -33,14 +35,16 @@ def _employee_payload(employee: User) -> dict[str, object]:
         "position": employee.position.name if employee.position else "",
     }
 
-
+# выдает id сотрудниа или 404 ошибку, если не найден
+# оптимизацию SQL запросов
 def _get_employee_or_404(user_id: int, *, with_position: bool = False) -> User:
     qs = User.objects
     if with_position:
         qs = qs.select_related("position")
     return get_object_or_404(qs, pk=user_id, role=UserRole.EMPLOYEE)
 
-
+# Сохранить временный пароль в сессию браузера
+# Нужна для отображения новому сотруднику "вот твой пароль"
 def _store_one_time_credentials(request: HttpRequest, employee: User, temp_password: str) -> None:
     request.session["one_time_credentials"] = {
         "login": employee.email,
@@ -48,13 +52,18 @@ def _store_one_time_credentials(request: HttpRequest, employee: User, temp_passw
         "employee_id": employee.employee_id,
     }
 
-
+# GET /login/
+# → Показать HTML форму с полями email/password
+# POST /login/
+# email=john@example.com
+# password=mypassword
+# → Проверить, если правильно → залогинить → редирект на /home/
 @require_http_methods(["GET", "POST"])
 def login_view(request: HttpRequest) -> HttpResponse:
     if request.user.is_authenticated:
         return redirect("home")
 
-    form = LoginForm(request, data=request.POST or None)
+    form = AuthenticationForm(request, data=request.POST or None)
     if request.method == "POST" and form.is_valid():
         login(request, form.get_user())
         return redirect("home")
@@ -166,7 +175,7 @@ def demo_login(request: HttpRequest, role: str) -> HttpResponse:
     login(request, user, backend="django.contrib.auth.backends.ModelBackend")
     return redirect("home")
 
-
+# почему без параметра
 @manager_required
 @require_http_methods(["GET", "POST"])
 def manager_employees(request: HttpRequest) -> HttpResponse:

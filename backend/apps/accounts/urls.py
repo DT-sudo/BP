@@ -1,6 +1,7 @@
 from django.urls import path
 
 from . import views
+#  точки в>хода (URL) для приложения accounts
 
 urlpatterns = [
     path("", views.home, name="home"),

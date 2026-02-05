@@ -103,7 +103,7 @@ Server will be available at `http://127.0.0.1:8000/`
 - **SQLite Database** for development
 
 ### Frontend
-- **Vanilla JavaScript** (no framework, for diploma project)
+- **Vanilla JavaScript** (no framework)
 - **Responsive Design** with custom CSS
 - **Interactive Components**:
   - Manager shift calendar (week/month/day views)
@@ -118,7 +118,6 @@ Server will be available at `http://127.0.0.1:8000/`
 - 🔍 **Advanced Filtering** - Filter by position, status, availability
 - 🔎 **Search** - Search shifts by position, date, time, capacity
 - 👥 **Employee Management** - Add/edit/delete employees and assign shifts
-- 📋 **Shift Templates** - Reusable shift configurations
 - ⚙️ **Position Management** - Create and manage job roles
 
 ### For Employees
@@ -144,7 +143,7 @@ Server will be available at `http://127.0.0.1:8000/`
 The `frontend/static/js/manager-shifts/` folder contains 13 modular components:
 - Each module handles a specific feature
 - Global namespace exports for browser compatibility
-- No ES6 modules or build tools required (suitable for diploma project)
+- No ES6 modules or build tools required
 
 ### Django Settings
 - `STATIC_ROOT` points to `frontend/static/`
@@ -165,7 +164,3 @@ If demo data is loaded:
 - **Manager Shifts Logic**: `frontend/static/js/manager-shifts.js` (2500+ lines)
 - **Employee Management**: `frontend/static/js/manager-employees.js`
 - **Search Function**: Search implemented in both manager pages
-
-## License
-
-Educational project (Diploma work)

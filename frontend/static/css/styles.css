@@ -159,9 +159,11 @@ h4 { font-size: 1rem; font-weight: 600; }
   font-weight: 600;
 }
 
+.dropdown-item-static,
 .dropdown-item-static:hover,
 .month-picker-btn.active:hover {
   background-color: transparent;
+  cursor: default;
 }
 
 .header-avatar {
@@ -291,7 +293,7 @@ body.manager-shifts-page .main-content {
 .btn-outline:hover:not(:disabled),
 .btn-ghost:hover:not(:disabled),
 .modal-close:hover,
-.dropdown-item:hover,
+.dropdown-item:not(.dropdown-item-static):hover,
 .month-picker-btn:hover {
   background-color: var(--accent);
 }

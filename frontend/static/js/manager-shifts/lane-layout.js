@@ -7,6 +7,7 @@
 
   const Time = window.ManagerShiftsTime || {};
   const Config = window.ManagerShiftsConfig || {};
+  //  Utility to parse time strings like "HH:MM" into total minutes
   const { parseTimeToMinutes } = Time;
   const { TIME_GRID_HOUR_WIDTH_PX, TIME_GRID_HOUR_HEIGHT_PX, SHIFT_LANE_HEIGHT_PX, SHIFT_LANE_GAP_PX } = Config;
 

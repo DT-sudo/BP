@@ -7,6 +7,7 @@ import os
 BASE_DIR = Path(__file__).resolve().parent.parent
 PROJECT_ROOT = BASE_DIR.parent
 
+# Секретный ключ для шифрования сессий, CSRF токенов
 SECRET_KEY = os.environ.get("SECRET_KEY", "dev-secret-key-change-me")
 DEBUG = os.environ.get("DEBUG", "1") == "1"
 ALLOWED_HOSTS = [h for h in os.environ.get("ALLOWED_HOSTS", "").split(",") if h] or ["localhost", "127.0.0.1"]
@@ -21,16 +22,51 @@ INSTALLED_APPS = [
     "apps.accounts.apps.AccountsConfig",
     "apps.scheduling.apps.SchedulingConfig",
 ]
+
+# цепь филтров которые обрабатывают HTTP запросы и ответы
 # security/auth/session middleware
+#  Middleware запускаются автоматически для КАЖДОГО запроса!
 MIDDLEWARE = [
+    #   (проверка HTTPS, безопасность)
     "django.middleware.security.SecurityMiddleware",
+    #   (загрузит session из cookies)
     "django.contrib.sessions.middleware.SessionMiddleware",
+    #   (стандартная обработка)
     "django.middleware.common.CommonMiddleware",
+    #    (проверит CSRF токен от POST запроса)
     "django.middleware.csrf.CsrfViewMiddleware",
+    # ГЛАВНЫЙ!(загрузить request.user)
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    #   (загрузить flash сообщения)
     "django.contrib.messages.middleware.MessageMiddleware",
+    #    (защита от clickjacking)
+    #    return render(request, "auth/login.html", {...})
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
+# Ответ идет ВВЕРХ (UP) — в ОБРАТНОМ порядке:
+
+# 7️⃣ XFrameOptionsMiddleware
+#     (добавить header X-Frame-Options)
+#     ↓
+# 6️⃣ MessagesMiddleware
+#     (добавить сообщения в response)
+#     ↓
+# 5️⃣ AuthenticationMiddleware
+#     (может добавить что-то)
+#     ↓
+# 4️⃣ CsrfViewMiddleware
+#     (может добавить cookie)
+#     ↓
+# 3️⃣ CommonMiddleware
+#     (финальная обработка)
+#     ↓
+# 2️⃣ SessionMiddleware
+#     (сохранить session в cookies)
+#     ↓
+# 1️⃣ SecurityMiddleware
+#     (финальные проверки)
+#     ↓
+# Браузер получает HTTP 200 OK с ответом
 
 ROOT_URLCONF = "shiftflow.urls"
 
