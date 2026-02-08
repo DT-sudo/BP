@@ -34,7 +34,7 @@ from django.utils import timezone
 
 def _validate_time_range_and_capacity(*, start_time, end_time, capacity) -> None:
     """
-    Validates common constraints for shifts and templates.
+    Validates common constraints for shifts.
     
     Checks:
     - End time must be after start time
@@ -58,23 +58,20 @@ def _validate_time_range_and_capacity(*, start_time, end_time, capacity) -> None
 class Position(models.Model):
     """
     Represents a job role/position in the organization.
-    
     Examples: "Barista", "Cashier", "Shift Supervisor"
-    
     Each employee is assigned one position, and each shift requires
     employees of a specific position.
-    
     Soft-deactivation via is_active allows hiding positions without
     breaking existing shift/employee relationships.
     """
     name = models.CharField(max_length=100, unique=True)
-    is_active = models.BooleanField(default=True)  # Soft deactivation
+    is_active = models.BooleanField(default=True) 
 
     def clean(self) -> None:
         """Validates and normalizes the position name."""
         name = (self.name or "").strip()
         if len(name) > 25:
-            raise ValidationError({"name": "Role name must be max 25 characters."})
+            raise ValidationError({"name": "Position name must be max 25 characters."})
         self.name = name
 
     def __str__(self) -> str:
@@ -85,13 +82,13 @@ class Position(models.Model):
 # SHIFT MODEL
 # =============================================================================
 
+#     ShiftStatus — это по сути контейнер (класс-список) для статусов, который делает код удобнее, безопаснее и чище.
+#     Технически, можно было бы просто писать строки ("draft", "published") везде вручную, но: 
+#     С классом меньше ошибок (опечаток).
+#     Легче менять и поддерживать.
+#     Удобнее автодополнение и поиск по коду.
+#     Django автоматически даёт методы для работы с такими статусами.
 class ShiftStatus(models.TextChoices):
-    """
-    Workflow states for shifts.
-    
-    DRAFT - Not yet visible to employees; can be freely edited/deleted
-    PUBLISHED - Visible to assigned employees; changes notify them
-    """
     DRAFT = "draft", "Draft"
     PUBLISHED = "published", "Published"
 
@@ -237,10 +234,7 @@ class Assignment(models.Model):
 class EmployeeUnavailability(models.Model):
     """
     Records dates when an employee is unavailable to work.
-    
-    Employees can mark days they can't work (vacation, appointments, etc.).
-    The system prevents publishing shifts with unavailable employees assigned.
-    
+
     Simple design: one record per employee per day.
     Toggle on/off by creating/deleting records.
     """

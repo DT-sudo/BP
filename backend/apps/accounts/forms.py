@@ -7,7 +7,6 @@ from __future__ import annotations
 import re
 
 from django import forms
-from django.contrib.auth.forms import AuthenticationForm
 from django.core.exceptions import ValidationError
 
 from apps.scheduling.models import Position

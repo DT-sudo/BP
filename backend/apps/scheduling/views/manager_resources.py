@@ -96,7 +96,7 @@ def position_delete(request: HttpRequest, position_id: int) -> JsonResponse:
         position.delete()
     except ProtectedError:
         return JsonResponse(
-            {"ok": False, "error": "Cannot delete role: it is referenced by existing data."},
+            {"ok": False, "error": "Cannot delete position: it is referenced by existing data."},
             status=400,
         )
     

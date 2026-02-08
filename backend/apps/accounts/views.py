@@ -91,20 +91,20 @@ def home(request: HttpRequest) -> HttpResponse:
     return redirect("employee_shifts")
 
 
+# Оба юзера создаются в БД, но логинит только одного.
 @require_http_methods(["GET"])
 def demo_login(request: HttpRequest, role: str) -> HttpResponse:
-    if not settings.DEBUG:
-        messages.error(request, "Demo login is disabled when DEBUG is off.")
-        return redirect("login")
+    # if not settings.DEBUG:
+    #     messages.error(request, "Demo login is disabled when DEBUG is off.")
+    #     return redirect("login")
 
-    role = (role or "").lower()
-    if role not in ("manager", "employee"):
-        return redirect("login")
+    # role = (role or "").lower()
+    # if role not in ("manager", "employee"):
+    #     return redirect("login")
 
     demo_password = "demo12345!"
 
     barista, _ = Position.objects.get_or_create(name="Barista", defaults={"is_active": True})
-    cleaner, _ = Position.objects.get_or_create(name="Cleaner", defaults={"is_active": True})
 
     manager, _ = User.objects.get_or_create(
         username="manager_demo@example.com",
@@ -137,40 +137,6 @@ def demo_login(request: HttpRequest, role: str) -> HttpResponse:
     employee.position = employee.position or barista
     employee.set_password(demo_password)
     employee.save()
-
-    # Seed a few example shifts for the manager (published/draft + past/future).
-    today = timezone.localdate()
-    if not Shift.objects.filter(created_by=manager).exists():
-        past_shift = Shift.objects.create(
-            date=today - timedelta(days=3),
-            start_time=datetime.strptime("09:00", "%H:%M").time(),
-            end_time=datetime.strptime("13:00", "%H:%M").time(),
-            position=barista,
-            capacity=2,
-            status=ShiftStatus.PUBLISHED,
-            created_by=manager,
-        )
-        future_published = Shift.objects.create(
-            date=today + timedelta(days=2),
-            start_time=datetime.strptime("06:00", "%H:%M").time(),
-            end_time=datetime.strptime("14:00", "%H:%M").time(),
-            position=barista,
-            capacity=3,
-            status=ShiftStatus.PUBLISHED,
-            created_by=manager,
-        )
-        Shift.objects.create(
-            date=today + timedelta(days=3),
-            start_time=datetime.strptime("16:00", "%H:%M").time(),
-            end_time=datetime.strptime("22:00", "%H:%M").time(),
-            position=cleaner,
-            capacity=1,
-            status=ShiftStatus.DRAFT,
-            created_by=manager,
-        )
-        Assignment.objects.get_or_create(shift=past_shift, employee=employee)
-        Assignment.objects.get_or_create(shift=future_published, employee=employee)
-
     user = manager if role == "manager" else employee
     login(request, user, backend="django.contrib.auth.backends.ModelBackend")
     return redirect("home")
