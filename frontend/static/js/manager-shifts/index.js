@@ -20,8 +20,6 @@
 (function() {
   'use strict';
 
-  console.log('[ManagerShifts] Starting initialization...');
-
   // Check calendar-utils globals
   if (!window.parseJsonScript) {
     console.error('[ManagerShifts] Missing parseJsonScript from calendar-utils.js');
@@ -51,15 +49,11 @@
     return;
   }
 
-  console.log('[ManagerShifts] All modules loaded successfully');
-
   const { Config, Filters, EmployeePicker, Sidebar, BulkSelection, Calendar, PositionPalette, Modal, Layout } = modules;
 
   let managerCurrentShifts = [];
 
   function initManagerShifts() {
-    console.log('[ManagerShifts] initManagerShifts called');
-    
     const page = Config.getEl('managerShiftPage');
     if (!page) {
       console.error('[ManagerShifts] managerShiftPage element not found');
@@ -67,7 +61,6 @@
     }
 
     const pageData = page.dataset;
-    console.log('[ManagerShifts] Page data:', pageData);
     
     BulkSelection.setServerCanUndo(pageData.canUndo === '1');
 
@@ -92,23 +85,19 @@
     // Parse data from script tags
     const shifts = parseJsonScript('managerShiftsData', []);
     managerCurrentShifts = Array.isArray(shifts) ? shifts : [];
-    console.log('[ManagerShifts] Shifts loaded:', managerCurrentShifts.length);
     EmployeePicker.setManagerCurrentShifts(managerCurrentShifts);
     
     const employees = parseJsonScript('managerEmployeesData', []);
-    console.log('[ManagerShifts] Employees loaded:', employees?.length || 0);
     Sidebar.setManagerEmployees(Array.isArray(employees) ? employees : []);
     Sidebar.computeEmployeePeriodStats(managerCurrentShifts);
     
     const formState = parseJsonScript('shiftFormState', null);
 
     // Initialize components
-    console.log('[ManagerShifts] Initializing components...');
     Layout.initManagerMonthPicker(config);
     Filters.wireManagerMultiselectHooks();
     Sidebar.wireEmployeeSidebarControls();
-    console.log('[ManagerShifts] Rendering sidebar...');
-    Sidebar.renderEmployeeSidebar();;
+    Sidebar.renderEmployeeSidebar();
     Filters.wireManagerFiltersMultiselectClickThrough();
     EmployeePicker.wireEmployeeChipRemovals();
     EmployeePicker.initEmployeeBuckets();
@@ -123,22 +112,16 @@
     Sidebar.renderEmployeeSidebar();
 
     // Render calendar view
-    console.log('[ManagerShifts] Rendering calendar view:', config.view);
     Calendar.wireCalendarClicks('weekGrid');
     Calendar.wireCalendarClicks('monthGrid');
 
     if (config.view === 'month') {
-      console.log('[ManagerShifts] Rendering month grid');
       Calendar.renderMonthGrid(config, shifts);
     } else if (config.view === 'day') {
-      console.log('[ManagerShifts] Rendering day grid');
       Calendar.renderDayGrid(config, shifts);
     } else {
-      console.log('[ManagerShifts] Rendering week grid');
       Calendar.renderWeekGrid(config, shifts);
     }
-    
-    console.log('[ManagerShifts] Initialization complete');
     BulkSelection.updateSelectionUI();
     Layout.wireDayViewResizeReflow(config, managerCurrentShifts, Calendar.renderDayGrid);
 

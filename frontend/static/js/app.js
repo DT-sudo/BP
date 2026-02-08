@@ -3,6 +3,8 @@
  * CSRF handling, fetch helpers, toasts, modals, dropdowns, multiselect
  */
 (function () {
+  'use strict';
+
   function getById(id) {
     return document.getElementById(id);
   }

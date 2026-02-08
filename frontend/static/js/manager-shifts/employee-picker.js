@@ -10,7 +10,7 @@
 const PositionPalette = window.ManagerShiftsPositionPalette || {};
 const Filters = window.ManagerShiftsFilters || {};
 const { getEl, getPageData, getEmployeeCbs, createEmptyMessage } = Config;
-const { renderPositionLegend, collectPositionsFromDom } = PositionPalette;
+const { renderPositionLegend } = PositionPalette;
 const { rebuildPositionFilterOptions, updatePositionMulti } = Filters;
 
 // State

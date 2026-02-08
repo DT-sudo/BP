@@ -3,6 +3,8 @@
  * Date helpers, navigation, and grid rendering for calendar views
  */
 (function () {
+  'use strict';
+
   // Date formatting
   function toISODate(date) {
     const year = date.getFullYear();
