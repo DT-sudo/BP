@@ -1,0 +1,76 @@
+{# Shift Form Fields Partial - used in Create/Edit Shift modal #}
+<div class="flex gap-4">
+  <div class="form-group flex-1">
+    <label class="form-label" for="shiftDate">Date *</label>
+    <input type="date" class="form-input" id="shiftDate" name="date" required>
+  </div>
+  <div class="form-group flex-1">
+    <label class="form-label" for="shiftCapacity">Capacity *</label>
+    <input type="number" class="form-input" id="shiftCapacity" name="capacity" value="1" min="1" required>
+    <div class="form-error-message hidden" id="capacityError"></div>
+  </div>
+</div>
+
+<div class="flex gap-4">
+  <div class="form-group flex-1">
+    <label class="form-label" for="shiftStart">Start Time *</label>
+    <input type="time" class="form-input" id="shiftStart" name="start_time" value="09:00" required>
+  </div>
+  <div class="form-group flex-1">
+    <label class="form-label" for="shiftEnd">End Time *</label>
+    <input type="time" class="form-input" id="shiftEnd" name="end_time" value="17:00" required>
+  </div>
+</div>
+
+<div class="form-group">
+  <label class="form-label" for="shiftPositionMulti">Position *</label>
+  <select class="hidden" id="shiftPosition" name="position_id" required onchange="filterEmployeePicker()" aria-hidden="true" tabindex="-1">
+    <option value="">Select position...</option>
+    {% include "partials/options/positions.html" %}
+  </select>
+  <div class="multiselect multiselect-full" id="shiftPositionMulti">
+    <button class="btn btn-outline btn-sm multiselect-trigger" id="shiftPositionMultiTrigger" type="button" onclick="toggleMulti('shiftPositionMulti')" aria-haspopup="true" aria-expanded="false">
+      <span id="shiftPositionMultiLabel">Select position...</span>
+      {% include "partials/icons/chevron_down.html" with size=16 %}
+    </button>
+    <div class="multiselect-menu" role="menu" aria-label="Select position" id="shiftPositionMultiMenu">
+      <div class="text-sm text-muted multiselect-hint">No positions yet.</div>
+    </div>
+  </div>
+</div>
+
+<div class="form-group">
+  <label class="form-label" for="employeeMulti">Assign Employees</label>
+  <div class="multiselect multiselect-full" id="employeeMulti">
+    <button class="btn btn-outline btn-sm multiselect-trigger" id="employeeMultiTrigger" type="button" onclick="toggleMulti('employeeMulti')" aria-haspopup="true" aria-expanded="false">
+      <span class="multiselect-chips" id="employeeMultiChips">
+        <span class="multiselect-placeholder" id="employeeMultiPlaceholder">Select position first</span>
+      </span>
+      {% include "partials/icons/chevron_down.html" with size=16 %}
+    </button>
+    <div class="multiselect-menu" role="menu" aria-label="Select employees">
+      <div class="text-sm text-muted multiselect-hint" id="employeeMultiEmpty">Select position first</div>
+      <div id="employeeMultiList">
+        {% for e in employees %}
+          <label class="multiselect-item employee-item hidden" data-position-id="{{ e.position_id|default:'' }}" data-employee-name="{{ e.get_full_name|default:e.username|escape }}">
+            <input type="checkbox" name="employee_ids" value="{{ e.id }}" onchange="updateEmployeeMulti()" disabled>
+            {{ e.get_full_name|default:e.username }}
+          </label>
+        {% empty %}
+          <div class="text-sm text-muted multiselect-hint">No employees yet</div>
+        {% endfor %}
+      </div>
+      <div class="multiselect-actions">
+        <button class="btn btn-ghost btn-sm" type="button" onclick="selectAllEmployees(true)">Select all</button>
+        <button class="btn btn-ghost btn-sm" type="button" onclick="selectAllEmployees(false)">Clear</button>
+      </div>
+    </div>
+  </div>
+  <div class="form-error-message hidden" id="employeeAssignError"></div>
+</div>
+
+<label class="switch mt-3">
+  <input type="checkbox" id="publishImmediatelyCustom" name="publish" value="1">
+  <span class="switch-slider" aria-hidden="true"></span>
+  <span class="text-sm">Publish</span>
+</label>

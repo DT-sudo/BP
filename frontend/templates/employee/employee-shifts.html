@@ -9,56 +9,14 @@
 	  {% include "partials/header.html" with nav_active="employee_shifts" %}
 
 		  <main class="main-content main-content-tight-top">
-		    {% include "partials/employee_calendar_toolbar.html" with toolbar_variant="views" prev_aria_label="Previous period" next_aria_label="Next period" %}
+		    {% include "partials/employee_calendar_toolbar.html" with toolbar_variant="month_only" prev_aria_label="Previous period" next_aria_label="Next period" %}
 
-		    <!-- Month View -->
-		    <div class="card mt-3{% if view != 'month' %} hidden{% endif %}" id="monthView">
+		    <div class="card mt-3" id="monthView">
 		      <div class="calendar-grid calendar-grid-month" id="employeeMonthGrid" aria-label="Month calendar"></div>
 	    </div>
 
-	    <!-- Week View -->
-	    <div class="card mt-3{% if view != 'week' %} hidden{% endif %}" id="weekView">
-	      <div class="calendar-grid calendar-grid-week" id="employeeWeekGrid" aria-label="Week calendar"></div>
-	    </div>
-
-	    <!-- Upcoming shifts list (small, helpful for Month view) -->
-	    <div class="card mt-3">
-	      <div class="card-header card-header-tight">
-	        <h3 class="card-title">Upcoming shifts</h3>
-	      </div>
-      <div class="card-content">
-        <div class="table-container">
-	          <table class="table" aria-label="Upcoming shifts">
-	            <thead>
-	              <tr>
-	                <th>Date</th>
-	                <th>Time</th>
-	                <th>Hours</th>
-	              </tr>
-	            </thead>
-	            <tbody>
-	              {% for item in upcoming %}
-	                {% with s=item.shift %}
-	                  <tr style="cursor:pointer;" onclick="openShiftDetails({{ s.id }})">
-	                    <td>{{ s.date|date:"D, M j" }}</td>
-	                    <td>{{ s.start_time|time:"H:i" }}–{{ s.end_time|time:"H:i" }}</td>
-	                    <td>{{ item.hours|floatformat:1 }}h</td>
-	                  </tr>
-	                {% endwith %}
-	              {% empty %}
-	                <tr>
-	                  <td colspan="3" class="text-sm text-muted">No upcoming shifts.</td>
-	                </tr>
-	              {% endfor %}
-	            </tbody>
-	          </table>
-        </div>
-      </div>
-    </div>
-
   </main>
 
-  <!-- Month mini popup (compact) -->
   <div class="modal-overlay hidden" id="monthPopupModal">
     <div class="modal" style="max-width: 420px;">
       <div class="modal-header">
@@ -79,7 +37,6 @@
     </div>
   </div>
 
-  <!-- Shift Details Modal (read-only for employee) -->
   <div class="modal-overlay hidden" id="shiftDetailsModal">
     <div class="modal">
       <div class="modal-header">
@@ -102,10 +59,9 @@
     </div>
   </div>
   
-	  <script type="application/json" id="employeeShiftsData"> </script>
+	  <script type="application/json" id="employeeShiftsData">{{ shifts_json|safe }}</script>
 	  <div
 	    id="employeeShiftPage"
-    data-view="{{ view }}"
     data-anchor="{{ anchor|date:'Y-m-d' }}"
     data-start="{{ start|date:'Y-m-d' }}"
     data-end="{{ end|date:'Y-m-d' }}"

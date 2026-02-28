@@ -1,8 +1,3 @@
-/**
- * MANAGER SHIFTS - Position Color Palette System
- * Generates consistent colors for positions based on their ID
- */
-
 (function() {
   'use strict';
 
@@ -111,7 +106,6 @@ function renderPositionLegend(positions, shifts) {
 }
 
 window.ManagerShiftsPositionPalette = {
-  computePositionPalette,
   applyPositionPaletteToElement,
   collectPositionsFromDom,
   renderPositionLegend,

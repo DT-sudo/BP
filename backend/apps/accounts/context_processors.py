@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import Any
 
-
 def user_ui_context(request) -> dict[str, Any]:
     user = getattr(request, "user", None)
     if not user or not getattr(user, "is_authenticated", False):

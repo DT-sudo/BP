@@ -1,7 +1,3 @@
-/**
- * Employee Unavailability Calendar
- * Allows employees to mark dates when they're unavailable
- */
 const PAGE_ID = 'employeeUnavailabilityPage';
 const GRID_ID = 'employeeUnavailableMonthGrid';
 const LIST_ID = 'unavailableDaysList';
@@ -15,7 +11,6 @@ const NAV_OPTIONS = {
 
 let unavailableDays = new Set();
 
-// Navigation
 function prevPeriod() {
   if (window.calendarPrevPeriod) {
     window.calendarPrevPeriod(PAGE_ID, NAV_OPTIONS);
@@ -34,7 +29,6 @@ function goToToday() {
   }
 }
 
-// Format date for display
 function formatPrettyDate(isoDate) {
   const date = new Date(isoDate + 'T00:00:00');
   if (Number.isNaN(date.getTime())) return isoDate;
@@ -46,7 +40,6 @@ function formatPrettyDate(isoDate) {
   });
 }
 
-// Activate handler for click and keyboard
 function bindActivate(element, handler) {
   if (!element || typeof handler !== 'function') return;
 
@@ -64,7 +57,6 @@ function bindActivate(element, handler) {
   });
 }
 
-// Cell styling
 function setUnavailable(cell, isUnavailable) {
   if (cell) {
     cell.classList.toggle('calendar-cell-unavailable', !!isUnavailable);
@@ -77,7 +69,6 @@ function findCellByDate(isoDate) {
   return grid.querySelector('.calendar-cell[data-date="' + isoDate + '"]');
 }
 
-// Toggle unavailability
 async function toggleUnavailability(isoDate) {
   const page = document.getElementById(PAGE_ID);
   const url = page ? page.dataset.toggleUrl : null;
@@ -111,7 +102,6 @@ async function toggleUnavailability(isoDate) {
   }
 }
 
-// Render unavailable days list
 function renderUnavailableList() {
   const listContainer = document.getElementById(LIST_ID);
   if (!listContainer) return;
@@ -133,7 +123,6 @@ function renderUnavailableList() {
     const chip = document.createElement('span');
     chip.className = 'date-chip';
 
-    // Remove button
     const removeBtn = document.createElement('span');
     removeBtn.className = 'chip-remove';
     removeBtn.setAttribute('role', 'button');
@@ -141,14 +130,12 @@ function renderUnavailableList() {
     removeBtn.setAttribute('aria-label', 'Remove ' + prettyDate);
     removeBtn.textContent = 'x';
 
-    // Closure to capture isoDate
     (function (dateToToggle) {
       bindActivate(removeBtn, function () {
         toggleUnavailability(dateToToggle);
       });
     })(isoDate);
 
-    // Date text
     const dateText = document.createElement('span');
     dateText.className = 'chip-text';
     dateText.textContent = prettyDate;
@@ -161,7 +148,6 @@ function renderUnavailableList() {
   listContainer.appendChild(fragment);
 }
 
-// Render calendar grid
 function renderGrid(config) {
   const grid = document.getElementById(GRID_ID);
   if (!grid) return;
@@ -180,7 +166,6 @@ function renderGrid(config) {
           if (info.inMonth) {
             toggleUnavailability(info.iso);
           } else {
-            // Navigate to that month
             if (window.navigateWith) {
               window.navigateWith({ view: 'month', date: info.iso });
             }
@@ -191,12 +176,10 @@ function renderGrid(config) {
   }
 }
 
-// Initialize
 function init() {
   const page = document.getElementById(PAGE_ID);
   if (!page) return;
 
-  // Load initial data
   let initialData = window.parseJsonScript ? window.parseJsonScript('employeeUnavailableData', []) : [];
 
   if (Array.isArray(initialData)) {
@@ -205,7 +188,6 @@ function init() {
     unavailableDays = new Set();
   }
 
-  // Render
   renderGrid({
     anchor: page.dataset.anchor,
     today: page.dataset.today
@@ -213,7 +195,6 @@ function init() {
   renderUnavailableList();
 }
 
-// Auto-init
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init);
 } else {

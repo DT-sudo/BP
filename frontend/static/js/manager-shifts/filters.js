@@ -1,15 +1,9 @@
-/**
- * MANAGER SHIFTS - Filters & URL Builder
- * Manages filter dropdowns and URL construction for filter state
- */
-
 (function() {
   'use strict';
 
   const Config = window.ManagerShiftsConfig || {};
-const { getEl, getPositionCbs, createEmptyMessage, clearStyles } = Config;
+const { getEl, getPositionCbs, createEmptyMessage } = Config;
 
-// State
 let managerMultiselectHooksWired = false;
 
 function buildManagerFiltersUrl() {
@@ -27,7 +21,7 @@ function buildManagerFiltersUrl() {
   const positionBoxes = Array.from(form.querySelectorAll('#positionMulti input[type="checkbox"][name="positions"]'));
   if (positionBoxes.length) {
     const checkedCount = positionBoxes.filter((cb) => cb.checked).length;
-    if (checkedCount === 0 || checkedCount === positionBoxes.length) params.delete('positions');
+    if (checkedCount === positionBoxes.length) params.delete('positions');
   }
 
   if ((params.get('status') || '') === '') params.delete('status');
@@ -54,38 +48,6 @@ function markPositionMultiDirty() {
   ms.dataset.dirty = '1';
 }
 
-function resetManagerMonthPickerMenu(el) {
-  clearStyles(el?.querySelector?.('.multiselect-menu'), 'position', 'top', 'left', 'right', 'bottom', 'transform', 'maxWidth', 'width');
-}
-
-function positionManagerMonthPickerMenu(el) {
-  const trigger = el?.querySelector?.('.multiselect-trigger');
-  const label = el?.querySelector?.('#periodLabel');
-  const menu = el?.querySelector?.('.multiselect-menu');
-  if (!trigger || !menu) return;
-
-  const triggerRect = trigger.getBoundingClientRect();
-  const labelRect = (label || trigger).getBoundingClientRect();
-
-  menu.style.position = 'fixed';
-  menu.style.transform = '';
-  menu.style.width = '';
-  menu.style.maxWidth = `calc(100vw - 16px)`;
-
-  const menuWidth = Math.max(0, menu.offsetWidth || 0);
-  const margin = 8;
-  const vw = window.innerWidth || document.documentElement.clientWidth || 0;
-
-  const centerX = labelRect.left + labelRect.width / 2;
-  let left = centerX - menuWidth / 2;
-  left = Math.min(Math.max(margin, left), Math.max(margin, vw - menuWidth - margin));
-
-  menu.style.top = `${Math.round(triggerRect.bottom + 6)}px`;
-  menu.style.left = `${Math.round(left)}px`;
-  menu.style.right = 'auto';
-  menu.style.bottom = 'auto';
-}
-
 function wireManagerMultiselectHooks() {
   if (managerMultiselectHooksWired) return;
   managerMultiselectHooksWired = true;
@@ -98,22 +60,10 @@ function wireManagerMultiselectHooks() {
     if (id === 'positionMulti') refreshPositionsFromServer?.();
   });
 
-  document.addEventListener('multiselect:didopen', (e) => {
-    const id = e.detail?.id || '';
-    if (id !== 'managerMonthPicker') return;
-    const el = e.detail?.el;
-    window.requestAnimationFrame(() => positionManagerMonthPickerMenu(el));
-  });
-
   document.addEventListener('multiselect:didclose', (e) => {
     const id = e.detail?.id || '';
     const el = e.detail?.el;
     const reason = e.detail?.reason || '';
-
-    if (id === 'managerMonthPicker') {
-      resetManagerMonthPickerMenu(el);
-      return;
-    }
 
     if (id !== 'positionMulti') return;
     if (!['toggle', 'auto-close', 'escape'].includes(reason)) return;
@@ -226,18 +176,12 @@ function wireManagerFiltersMultiselectClickThrough() {
   }
 }
 
-// Global exports for HTML onclick handlers
 window.submitFilters = submitFilters;
 window.selectAllPositions = selectAllPositions;
 window.markPositionMultiDirty = markPositionMultiDirty;
 window.updatePositionMulti = updatePositionMulti;
 
 window.ManagerShiftsFilters = {
-  buildManagerFiltersUrl,
-  submitManagerFiltersForm,
-  submitFilters,
-  markPositionMultiDirty,
-  selectAllPositions,
   updatePositionMulti,
   rebuildPositionFilterOptions,
   wireManagerMultiselectHooks,

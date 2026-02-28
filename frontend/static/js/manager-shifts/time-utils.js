@@ -1,7 +1,3 @@
-/**
- * MANAGER SHIFTS - Time Utilities
- * Time parsing, formatting, and duration calculations
- */
 (function() {
   'use strict';
 
@@ -24,12 +20,6 @@
     return `${m}m`;
   }
 
-  function formatHoursCompact(minutes) {
-    const total = Math.max(0, parseInt(minutes, 10) || 0);
-    const rounded = Math.round((total / 60) * 10) / 10;
-    return `${String(rounded).replace(/\.0$/, '')}h`;
-  }
-
   function formatDateDMY(iso) {
     if (!iso) return '';
     const d = new Date(`${iso}T00:00:00`);
@@ -40,7 +30,6 @@
   window.ManagerShiftsTime = {
     parseTimeToMinutes,
     formatDurationMinutes,
-    formatHoursCompact,
     formatDateDMY,
   };
 })();

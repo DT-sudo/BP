@@ -1,8 +1,3 @@
-/**
- * MANAGER SHIFTS - Employee Picker
- * Manages employee selection in shift create/edit modal
- */
-
 (function() {
   'use strict';
 
@@ -13,7 +8,6 @@ const { getEl, getPageData, getEmployeeCbs, createEmptyMessage } = Config;
 const { renderPositionLegend } = PositionPalette;
 const { rebuildPositionFilterOptions, updatePositionMulti } = Filters;
 
-// State
 let employeeBuckets = null;
 let lastShiftPositionId = null;
 let managerCurrentShifts = [];
@@ -265,11 +259,9 @@ async function refreshPositionsFromServer() {
     updateShiftPositionMultiLabel();
     renderPositionLegend(positions, managerCurrentShifts);
   } catch (e) {
-    // ignore
   }
 }
 
-// Global exports for HTML onchange/onclick handlers
 window.selectAllEmployees = selectAllEmployees;
 window.filterEmployeePicker = filterEmployeePicker;
 window.updateEmployeeMulti = updateEmployeeMulti;
@@ -279,13 +271,9 @@ window.ManagerShiftsEmployeePicker = {
   initEmployeeBuckets,
   clearAllEmployeeSelections,
   updateEmployeeMulti,
-  selectAllEmployees,
   wireEmployeeChipRemovals,
   filterEmployeePicker,
-  rebuildShiftPositionOptions,
   updateShiftPositionMultiLabel,
-  setShiftPosition,
-  rebuildShiftPositionMultiOptions,
   refreshPositionsFromServer,
 };
 

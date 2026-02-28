@@ -1,8 +1,3 @@
-/**
- * MANAGER SHIFTS - Shift Modal & Details
- * Create/edit shift modal and shift details modal functionality
- */
-
 (function() {
   'use strict';
 
@@ -13,7 +8,6 @@ const { getEl, getPageData, pad2, getEmployeeCbs, initialsFromName } = Config;
 const { parseTimeToMinutes, formatDurationMinutes, formatDateDMY } = Time;
 const { refreshPositionsFromServer, filterEmployeePicker, clearAllEmployeeSelections, updateEmployeeMulti, updateShiftPositionMultiLabel } = EmployeePicker;
 
-// State
 let activeShiftId = null;
 let activeShiftData = null;
 
@@ -245,7 +239,6 @@ function confirmDeleteShift() {
   form.submit();
 }
 
-// Global exports
 window.openCreateShiftModal = openCreateShiftModal;
 window.openShiftDetails = openShiftDetails;
 window.editShift = editShift;
@@ -256,15 +249,8 @@ window.confirmDeleteShift = confirmDeleteShift;
 
 window.ManagerShiftsModal = {
   resetCreateShiftModal,
-  openCreateShiftModal,
   clearCreateShiftErrors,
   wireCreateShiftValidation,
-  openShiftDetails,
-  editShift,
-  publishShift,
-  deleteShift,
-  cancelDeleteShift,
-  confirmDeleteShift,
 };
 
 })();

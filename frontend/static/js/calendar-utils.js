@@ -1,11 +1,6 @@
-/**
- * Calendar Utilities
- * Date helpers, navigation, and grid rendering for calendar views
- */
 (function () {
   'use strict';
 
-  // Date formatting
   function toISODate(date) {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -22,7 +17,6 @@
     return date;
   }
 
-  // Date arithmetic
   function addDays(isoString, days) {
     const date = dateFromISO(isoString);
     if (!date) return isoString;
@@ -39,7 +33,6 @@
     return toISODate(date);
   }
 
-  // Navigation
   function navigateWith(params) {
     const url = new URL(window.location.href);
     const searchParams = url.searchParams;
@@ -104,7 +97,6 @@
     }
   }
 
-  // JSON parsing
   function parseJsonScript(id, fallback) {
     const element = document.getElementById(id);
     if (!element) return fallback;
@@ -116,7 +108,6 @@
     }
   }
 
-  // Display helpers
   function weekdayLabel(date) {
     return date.toLocaleDateString(undefined, { weekday: 'short' });
   }
@@ -127,7 +118,6 @@
 
   const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-  // Month grid rendering
   window.calendarRenderMonthGrid = function (gridOrId, options) {
     options = options || {};
 
@@ -153,7 +143,6 @@
 
     grid.innerHTML = '';
 
-    // Add weekday headers
     for (const label of weekdayLabels) {
       const headerCell = document.createElement('div');
       headerCell.className = 'calendar-header-cell';
@@ -161,7 +150,6 @@
       grid.appendChild(headerCell);
     }
 
-    // Add day cells (6 weeks x 7 days = 42 cells)
     for (let i = 0; i < 42; i++) {
       const cellDate = new Date(gridStart);
       cellDate.setDate(gridStart.getDate() + i);
@@ -185,7 +173,6 @@
       dateLabel.textContent = cellDate.getDate();
       cell.appendChild(dateLabel);
 
-      // Allow customization via callback
       if (onCell) {
         onCell(cell, { date: cellDate, iso: isoDate, inMonth: isInMonth });
       }
@@ -196,7 +183,6 @@
     return { anchorDate: anchor, gridStart: gridStart };
   };
 
-  // Export globals
   window.toISODate = toISODate;
   window.navigateWith = navigateWith;
   window.parseJsonScript = parseJsonScript;

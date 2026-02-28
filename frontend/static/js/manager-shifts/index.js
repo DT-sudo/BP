@@ -1,26 +1,6 @@
-/**
- * MANAGER SHIFTS - Main Entry Point
- * Initializes all modules and wires up the page
- * 
- * Module Load Order (important for dependencies):
- * 1. config.js         - Constants and utilities
- * 2. time-utils.js     - Time parsing functions  
- * 3. lane-layout.js    - Shift positioning algorithm
- * 4. position-palette.js   - Color system
- * 5. filters.js        - URL builder and dropdowns
- * 6. employee-picker.js - Employee selection
- * 7. sidebar.js        - Employee sidebar
- * 8. bulk-selection.js - Multi-select functionality
- * 9. calendar.js       - Calendar renderers
- * 10. shift-modal.js   - Create/edit/details modals
- * 11. layout.js        - Sticky headers and navigation
- * 12. index.js         - This file (initialization)
- */
-
 (function() {
   'use strict';
 
-  // Check calendar-utils globals
   if (!window.parseJsonScript) {
     console.error('[ManagerShifts] Missing parseJsonScript from calendar-utils.js');
     return;
@@ -30,13 +10,11 @@
     return;
   }
 
-  // Verify all modules loaded
   const modules = {
     Config: window.ManagerShiftsConfig,
     Filters: window.ManagerShiftsFilters,
     EmployeePicker: window.ManagerShiftsEmployeePicker,
     Sidebar: window.ManagerShiftsSidebar,
-    BulkSelection: window.ManagerShiftsBulkSelection,
     Calendar: window.ManagerShiftsCalendar,
     PositionPalette: window.ManagerShiftsPositionPalette,
     Modal: window.ManagerShiftsModal,
@@ -49,7 +27,7 @@
     return;
   }
 
-  const { Config, Filters, EmployeePicker, Sidebar, BulkSelection, Calendar, PositionPalette, Modal, Layout } = modules;
+  const { Config, Filters, EmployeePicker, Sidebar, Calendar, PositionPalette, Modal, Layout } = modules;
 
   let managerCurrentShifts = [];
 
@@ -61,28 +39,20 @@
     }
 
     const pageData = page.dataset;
-    
-    BulkSelection.setServerCanUndo(pageData.canUndo === '1');
 
     Layout.wireStickyOffsets();
-    BulkSelection.wireSelectionEscapeCancel();
 
-    // Force reload on back/forward cache
     window.addEventListener('pageshow', (e) => {
       if (e.persisted) window.location.reload();
     });
 
     const config = {
-      baseUrl: pageData.baseUrl,
       view: pageData.view,
       anchor: pageData.anchor,
       start: pageData.start,
-      end: pageData.end,
       today: pageData.today,
-      shiftDetailsUrlTemplate: pageData.shiftDetailsUrlTemplate,
     };
 
-    // Parse data from script tags
     const shifts = parseJsonScript('managerShiftsData', []);
     managerCurrentShifts = Array.isArray(shifts) ? shifts : [];
     EmployeePicker.setManagerCurrentShifts(managerCurrentShifts);
@@ -93,8 +63,6 @@
     
     const formState = parseJsonScript('shiftFormState', null);
 
-    // Initialize components
-    Layout.initManagerMonthPicker(config);
     Filters.wireManagerMultiselectHooks();
     Sidebar.wireEmployeeSidebarControls();
     Sidebar.renderEmployeeSidebar();
@@ -109,23 +77,16 @@
     
     PositionPalette.renderPositionLegend(PositionPalette.collectPositionsFromDom(), managerCurrentShifts);
     EmployeePicker.refreshPositionsFromServer();
-    Sidebar.renderEmployeeSidebar();
 
-    // Render calendar view
     Calendar.wireCalendarClicks('weekGrid');
     Calendar.wireCalendarClicks('monthGrid');
 
     if (config.view === 'month') {
       Calendar.renderMonthGrid(config, shifts);
-    } else if (config.view === 'day') {
-      Calendar.renderDayGrid(config, shifts);
     } else {
       Calendar.renderWeekGrid(config, shifts);
     }
-    BulkSelection.updateSelectionUI();
-    Layout.wireDayViewResizeReflow(config, managerCurrentShifts, Calendar.renderDayGrid);
 
-    // Restore form state if validation failed
     if (formState && typeof formState === 'object') {
       Modal.resetCreateShiftModal();
       Modal.clearCreateShiftErrors();
@@ -160,7 +121,6 @@
     }
   }
 
-  // Bootstrap
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initManagerShifts);
   } else {

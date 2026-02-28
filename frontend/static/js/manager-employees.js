@@ -1,10 +1,5 @@
-/**
- * Manager Employees Page
- * Employee CRUD, position management, and filtering
- */
 const POSITION_SELECT_IDS = ['positionFilter', 'addPosition', 'editPosition'];
 
-// Use global getById from app.js
 const getById = window.getById || ((id) => document.getElementById(id));
 
 function getPageData() {
@@ -29,7 +24,6 @@ function cancelAndClose(modalId, cleanup) {
   closeModal(modalId);
 }
 
-// Filtering
 function applyFilters() {
   let searchInput = getById('employeeSearch');
   let positionSelect = getById('positionFilter');
@@ -46,7 +40,6 @@ function applyFilters() {
   }
 }
 
-// Global alias for HTML onclick handlers
 window.applyEmployeeFilters = applyFilters;
 
 function updatePositionFilterLabel() {
@@ -76,7 +69,6 @@ function setPositionFilter(value) {
   }
 }
 
-// Form validation
 let currentEditId = null;
 let pendingDelete = null;
 
@@ -102,12 +94,10 @@ function validateEmployeeForm(prefix) {
   let errors = {};
   let fields = ['FullName', 'Email', 'Phone', 'Position'];
 
-  // Clear previous errors
   for (let i = 0; i < fields.length; i++) {
     setFieldError(prefix + fields[i], prefix + fields[i] + 'Error', null);
   }
 
-  // Get values
   let nameInput = getById(prefix + 'FullName');
   let emailInput = getById(prefix + 'Email');
   let phoneInput = getById(prefix + 'Phone');
@@ -118,7 +108,6 @@ function validateEmployeeForm(prefix) {
   let phone = phoneInput ? phoneInput.value.trim() : '';
   let position = positionInput ? positionInput.value : '';
 
-  // Validate
   if (!name) {
     errors.FullName = 'Full name is required.';
   }
@@ -139,7 +128,6 @@ function validateEmployeeForm(prefix) {
     errors.Position = 'Position is required.';
   }
 
-  // Show errors
   for (let field in errors) {
     setFieldError(prefix + field, prefix + field + 'Error', errors[field]);
   }
@@ -147,7 +135,6 @@ function validateEmployeeForm(prefix) {
   return Object.keys(errors).length === 0;
 }
 
-// Employee editing
 async function openEditEmployee(userId) {
   let pageData = getPageData();
   let url = pageData ? pageData.employeeDetailsUrlTemplate : null;
@@ -249,7 +236,6 @@ async function saveEmployeeEdits() {
       throw new Error('Update failed.');
     }
 
-    // Update table row
     let row = document.querySelector('.employee-row[data-user-id="' + employee.id + '"]');
     if (row) {
       row.dataset.position = employee.position_id != null ? employee.position_id : '';
@@ -277,7 +263,6 @@ async function saveEmployeeEdits() {
   }
 }
 
-// Password reset
 let pendingResetUrl = null;
 
 function openResetPassword(employeeId, login, url) {
@@ -305,7 +290,6 @@ function confirmResetPassword() {
   form.submit();
 }
 
-// Position management helpers
 function updatePositionSelects(positionId, positionName) {
   let positionIdStr = String(positionId);
 
@@ -317,12 +301,10 @@ function updatePositionSelects(positionId, positionName) {
     let existingOption = select.querySelector('option[value="' + positionIdStr + '"]');
 
     if (positionName === null) {
-      // Remove option
       if (existingOption) {
         existingOption.remove();
       }
     } else {
-      // Add or update option
       if (!existingOption) {
         existingOption = document.createElement('option');
         existingOption.value = positionIdStr;
@@ -350,7 +332,6 @@ async function addPosition() {
     let result = await postFormJson(url, { name: name, is_active: 'on' });
     let positionId = result.id;
 
-    // Add table row
     let row = document.createElement('tr');
     row.dataset.positionId = positionId;
     row.innerHTML = '<td class="position-name"></td>' +
@@ -442,15 +423,12 @@ async function confirmDeletePosition() {
   try {
     await postFormJson(urlFromTemplate(url, pendingPositionDelete.positionId), {});
 
-    // Remove table row
     if (pendingPositionDelete.row) {
       pendingPositionDelete.row.remove();
     }
 
-    // Update selects
     updatePositionSelects(pendingPositionDelete.positionId, null);
 
-    // Remove from filter multiselect
     let escapedId = pendingPositionDelete.positionId.replace(/["\\]/g, '\\$&');
     let radio = document.querySelector('#positionFilterMulti input[name="employeePositionChoice"][value="' + escapedId + '"]');
 
@@ -473,19 +451,16 @@ async function confirmDeletePosition() {
   }
 }
 
-// Event binding helper
 function bindOnce(element, key, setupFn) {
   if (!element || element.dataset[key]) return;
   element.dataset[key] = '1';
   setupFn(element);
 }
 
-// Initialize
 function init() {
   updatePositionFilterLabel();
   applyFilters();
 
-  // Wire add employee form validation
   bindOnce(getById('addEmployeeForm'), 'validated', function (form) {
     form.addEventListener('submit', function (event) {
       if (!validateEmployeeForm('add')) {
@@ -495,7 +470,6 @@ function init() {
     });
   });
 
-  // Wire new position input enter key
   bindOnce(getById('newPositionName'), 'enterWired', function (input) {
     input.addEventListener('keydown', function (event) {
       if (event.key === 'Enter') {
@@ -505,7 +479,6 @@ function init() {
     });
   });
 
-  // Wire delete position modal backdrop click
   bindOnce(getById('deletePositionModal'), 'backdropWired', function (modal) {
     modal.addEventListener('click', function (event) {
       if (event.target === modal) {

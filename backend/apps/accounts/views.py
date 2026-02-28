@@ -8,20 +8,15 @@ from django.conf import settings
 from django.db import models
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
-from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_http_methods
 
-from datetime import datetime, timedelta
-
-from apps.scheduling.models import Assignment, Position, Shift, ShiftStatus
+from apps.scheduling.models import Position
 
 from .decorators import manager_required
 from .forms import CreateEmployeeForm, UpdateEmployeeForm
 from .models import User, UserRole
 
-# utils
-# Преобразует объект User в словарь (JSON)
 def _employee_payload(employee: User) -> dict[str, object]:
     return {
         "id": employee.id,
@@ -35,16 +30,12 @@ def _employee_payload(employee: User) -> dict[str, object]:
         "position": employee.position.name if employee.position else "",
     }
 
-# выдает id сотрудниа или 404 ошибку, если не найден
-# оптимизацию SQL запросов
 def _get_employee_or_404(user_id: int, *, with_position: bool = False) -> User:
     qs = User.objects
     if with_position:
         qs = qs.select_related("position")
     return get_object_or_404(qs, pk=user_id, role=UserRole.EMPLOYEE)
 
-# Сохранить временный пароль в сессию браузера
-# Нужна для отображения новому сотруднику "вот твой пароль"
 def _store_one_time_credentials(request: HttpRequest, employee: User, temp_password: str) -> None:
     request.session["one_time_credentials"] = {
         "login": employee.email,
@@ -52,12 +43,6 @@ def _store_one_time_credentials(request: HttpRequest, employee: User, temp_passw
         "employee_id": employee.employee_id,
     }
 
-# GET /login/
-# → Показать HTML форму с полями email/password
-# POST /login/
-# email=john@example.com
-# password=mypassword
-# → Проверить, если правильно → залогинить → редирект на /home/
 @require_http_methods(["GET", "POST"])
 def login_view(request: HttpRequest) -> HttpResponse:
     if request.user.is_authenticated:
@@ -70,12 +55,10 @@ def login_view(request: HttpRequest) -> HttpResponse:
 
     return render(request, "auth/login.html", {"form": form, "show_demo": settings.DEBUG})
 
-
 @login_required
 def logout_view(request: HttpRequest) -> HttpResponse:
     logout(request)
     return redirect("login")
-
 
 @login_required
 def home(request: HttpRequest) -> HttpResponse:
@@ -90,17 +73,8 @@ def home(request: HttpRequest) -> HttpResponse:
         return redirect("manager_shifts")
     return redirect("employee_shifts")
 
-
-# Оба юзера создаются в БД, но логинит только одного.
 @require_http_methods(["GET"])
 def demo_login(request: HttpRequest, role: str) -> HttpResponse:
-    # if not settings.DEBUG:
-    #     messages.error(request, "Demo login is disabled when DEBUG is off.")
-    #     return redirect("login")
-
-    # role = (role or "").lower()
-    # if role not in ("manager", "employee"):
-    #     return redirect("login")
 
     demo_password = "demo12345!"
 
@@ -141,7 +115,6 @@ def demo_login(request: HttpRequest, role: str) -> HttpResponse:
     login(request, user, backend="django.contrib.auth.backends.ModelBackend")
     return redirect("home")
 
-# почему без параметра
 @manager_required
 @require_http_methods(["GET", "POST"])
 def manager_employees(request: HttpRequest) -> HttpResponse:
@@ -183,13 +156,11 @@ def manager_employees(request: HttpRequest) -> HttpResponse:
         {"employees": employees, "positions": positions, "form": form, "q": q, "position": position_id, "creds": creds},
     )
 
-
 @manager_required
 @require_http_methods(["GET"])
 def employee_details(request: HttpRequest, user_id: int) -> JsonResponse:
     employee = _get_employee_or_404(user_id, with_position=True)
     return JsonResponse(_employee_payload(employee))
-
 
 @manager_required
 @require_http_methods(["POST"])
@@ -206,7 +177,6 @@ def employee_update(request: HttpRequest, user_id: int) -> JsonResponse:
         }
     )
 
-
 @manager_required
 @require_http_methods(["POST"])
 def reset_employee_password(request: HttpRequest, user_id: int) -> HttpResponse:
@@ -217,7 +187,6 @@ def reset_employee_password(request: HttpRequest, user_id: int) -> HttpResponse:
 
     _store_one_time_credentials(request, employee, temp_password)
     return redirect("manager_employees")
-
 
 @manager_required
 @require_http_methods(["POST"])

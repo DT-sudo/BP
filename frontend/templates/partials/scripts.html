@@ -4,7 +4,6 @@
   <script src="{% static 'js/calendar-utils.js' %}?v={% now 'U' %}"></script>
 {% endif %}
 {% if page_script == "js/manager-shifts.js" %}
-  {# Load modular manager-shifts files in dependency order #}
   <script src="{% static 'js/manager-shifts/config.js' %}?v={% now 'U' %}"></script>
   <script src="{% static 'js/manager-shifts/time-utils.js' %}?v={% now 'U' %}"></script>
   <script src="{% static 'js/manager-shifts/lane-layout.js' %}?v={% now 'U' %}"></script>
@@ -12,7 +11,6 @@
   <script src="{% static 'js/manager-shifts/filters.js' %}?v={% now 'U' %}"></script>
   <script src="{% static 'js/manager-shifts/employee-picker.js' %}?v={% now 'U' %}"></script>
   <script src="{% static 'js/manager-shifts/sidebar.js' %}?v={% now 'U' %}"></script>
-  <script src="{% static 'js/manager-shifts/bulk-selection.js' %}?v={% now 'U' %}"></script>
   <script src="{% static 'js/manager-shifts/calendar.js' %}?v={% now 'U' %}"></script>
   <script src="{% static 'js/manager-shifts/shift-modal.js' %}?v={% now 'U' %}"></script>
   <script src="{% static 'js/manager-shifts/layout.js' %}?v={% now 'U' %}"></script>

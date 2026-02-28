@@ -1,7 +1,3 @@
-/**
- * Core Application Utilities
- * CSRF handling, fetch helpers, toasts, modals, dropdowns, multiselect
- */
 (function () {
   'use strict';
 
@@ -14,7 +10,6 @@
     return document.querySelectorAll(selector);
   }
 
-  // Cookie utilities
   function getCookie(name) {
     for (const cookie of (document.cookie || '').split(';')) {
       const trimmed = cookie.trim();
@@ -39,7 +34,6 @@
     return tpl;
   };
 
-  // Fetch helpers
   async function parseJsonResponse(response) {
     const payload = await response.json().catch(function () { return {}; });
 
@@ -81,7 +75,6 @@
     return parseJsonResponse(response);
   };
 
-  // Toast notifications
   window.showToast = function (type, title, description) {
     const container = getById('toastContainer');
     if (!container) return;
@@ -106,7 +99,6 @@
     }, duration);
   };
 
-  // Modal utilities
   function getZIndex(element) {
     const value = parseInt(getComputedStyle(element).zIndex, 10);
     return Number.isFinite(value) ? value : 0;
@@ -143,7 +135,6 @@
     }
   };
 
-  // Logout confirmation modal
   let pendingLogoutHref = null;
 
   function ensureLogoutModal() {
@@ -220,7 +211,6 @@
     });
   }
 
-  // Dropdown utilities
   function resetDropdownMenu(menu) {
     if (!menu) return;
     menu.classList.remove('dropdown-menu-fixed');
@@ -242,7 +232,6 @@
     const menu = dropdown ? dropdown.querySelector('.dropdown-menu') : null;
     if (!menu) return;
 
-    // Close other dropdowns
     const allMenus = queryAll('.dropdown-menu');
     for (const otherMenu of allMenus) {
       if (otherMenu !== menu) {
@@ -282,7 +271,6 @@
 
   window.toggleUserMenu = window.toggleDropdown;
 
-  // Multiselect utilities
   function emitMultiselectEvent(eventType, element, reason) {
     if (!element) return;
     document.dispatchEvent(new CustomEvent(eventType, {
@@ -346,14 +334,12 @@
     document.addEventListener('keydown', function (event) {
       if (event.key !== 'Escape') return;
 
-      // Close multiselects first
       if (document.querySelector('.multiselect.open')) {
         window.closeAllMultiselects('escape');
         event.preventDefault();
         return;
       }
 
-      // Then close top modal
       if (closeTopModal()) {
         event.preventDefault();
         event.stopPropagation();
@@ -425,7 +411,6 @@
     try {
       await navigator.clipboard.writeText(text);
     } catch (err) {
-      // Fallback for older browsers
       const textarea = document.createElement('textarea');
       textarea.value = text;
       document.body.appendChild(textarea);
@@ -435,7 +420,6 @@
     }
   };
 
-  // Initialize
   function init() {
     ensureLogoutModal();
     wireModalClose();

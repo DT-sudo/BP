@@ -9,7 +9,6 @@
   --background: hsl(210, 20%, 98%);
   --foreground: hsl(222, 47%, 11%);
   --card: hsl(0, 0%, 100%);
-  --card-foreground: hsl(222, 47%, 11%);
   --primary: hsl(221, 83%, 53%);
   --primary-foreground: hsl(0, 0%, 100%);
   --secondary: hsl(210, 40%, 96%);
@@ -26,14 +25,9 @@
   --radius: 0.5rem;
   
   /* Status Colors */
-  --success: hsl(142, 71%, 45%);
-  --success-foreground: hsl(0, 0%, 100%);
   --warning: hsl(38, 92%, 50%);
-  --warning-foreground: hsl(0, 0%, 100%);
   
   /* Shift Status */
-  --shift-draft: hsl(38, 92%, 50%);
-  --shift-draft-bg: hsl(38, 92%, 95%);
   --shift-published: hsl(142, 71%, 45%);
   --shift-published-bg: hsl(142, 71%, 95%);
   --shift-past: hsl(215, 16%, 75%);
@@ -43,11 +37,9 @@
   
   /* Interactive States */
   --hover-bg: hsl(210, 40%, 98%);
-  --hover-bg-dark: hsl(210, 40%, 97%);
   
   /* Info Color */
   --info: hsl(199, 89%, 48%);
-  --info-foreground: hsl(0, 0%, 100%);
   
   /* Shadows */
   --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.1);
@@ -160,8 +152,7 @@ h4 { font-size: 1rem; font-weight: 600; }
 }
 
 .dropdown-item-static,
-.dropdown-item-static:hover,
-.month-picker-btn.active:hover {
+.dropdown-item-static:hover {
   background-color: transparent;
   cursor: default;
 }
@@ -293,8 +284,7 @@ body.manager-shifts-page .main-content {
 .btn-outline:hover:not(:disabled),
 .btn-ghost:hover:not(:disabled),
 .modal-close:hover,
-.dropdown-item:not(.dropdown-item-static):hover,
-.month-picker-btn:hover {
+.dropdown-item:not(.dropdown-item-static):hover {
   background-color: var(--accent);
 }
 
@@ -340,26 +330,6 @@ body.manager-shifts-page .main-content {
   outline: none;
   border-color: var(--ring);
   box-shadow: 0 0 0 3px hsl(221, 83%, 53%, 0.1);
-}
-
-/* Search input with icon */
-.search-input-wrapper {
-  position: relative;
-  width: 100%;
-}
-
-.search-input-icon {
-  position: absolute;
-  left: 0.75rem;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--muted-foreground);
-  pointer-events: none;
-  display: flex;
-}
-
-.search-input-with-icon {
-  padding-left: 2.5rem;
 }
 
 .form-select {
@@ -424,8 +394,8 @@ body.manager-shifts-page .main-content {
   padding: 0.75rem;
 }
 
-.card-content-no-padding {
-  padding: 0;
+.card-content {
+  padding: 1.5rem;
 }
 
 /* ========================================
@@ -495,7 +465,7 @@ body.manager-shifts-page .main-content {
 }
 
 .table tr:hover td,
-.day-hour-cell:hover {
+.week-time-cell:hover {
   background-color: var(--hover-bg);
 }
 
@@ -549,18 +519,6 @@ body.manager-shifts-page .main-content {
   line-height: 1.15;
 }
 
-.employee-week-day-cell {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 0.5rem;
-}
-
-.employee-week-shift-chip {
-  flex: 1 1 0;
-  margin-bottom: 0;
-}
-
 .shift-chip-timed {
   position: absolute;
   margin: 0;
@@ -572,37 +530,8 @@ body.manager-shifts-page .main-content {
   box-shadow: var(--shadow-sm);
 }
 
-.shift-chip-selected {
-  box-shadow: 0 0 0 2px var(--primary), 0 2px 10px rgba(0, 0, 0, 0.12);
-  transform: translateY(-1px);
-  animation: shiftSelectPop 180ms cubic-bezier(0.2, 0.9, 0.2, 1);
-}
-
-.shift-chip-selected.shift-chip-draft {
-  box-shadow: 0 0 0 2px var(--primary), 0 2px 10px rgba(0, 0, 0, 0.12);
-}
-
 .shift-chip-employee-highlight {
   box-shadow: 0 0 0 2px var(--warning), 0 2px 10px rgba(0, 0, 0, 0.12);
-}
-
-.shift-chip-selected.shift-chip-employee-highlight {
-  box-shadow: 0 0 0 2px var(--primary), 0 0 0 4px var(--warning), 0 2px 10px rgba(0, 0, 0, 0.12);
-}
-
-body.selection-mode .shift-chip:hover {
-  box-shadow: 0 0 0 2px rgba(15, 23, 42, 0.16), 0 2px 10px rgba(0, 0, 0, 0.08);
-  transform: translateY(-1px);
-}
-
-body.selection-mode .shift-chip:active {
-  transform: translateY(0) scale(0.985);
-}
-
-@keyframes shiftSelectPop {
-  0% { transform: translateY(0) scale(0.98); }
-  65% { transform: translateY(-1px) scale(1.02); }
-  100% { transform: translateY(-1px) scale(1); }
 }
 
 .shift-chip-future,
@@ -777,10 +706,8 @@ body.selection-mode .shift-chip:active {
   text-align: center;
 }
 
-/* Unified toolbar classes - used by both manager and employee shift pages */
-.shifts-toolbar,
-.manager-shifts-toolbar,
-.employee-shifts-toolbar {
+/* Unified toolbar classes */
+.shifts-toolbar {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
@@ -788,9 +715,7 @@ body.selection-mode .shift-chip:active {
   overflow: visible;
 }
 
-.shifts-toolbar-left,
-.manager-shifts-toolbar-left,
-.employee-shifts-toolbar-left {
+.shifts-toolbar-left {
   justify-self: start;
   min-width: 0;
   display: flex;
@@ -800,26 +725,22 @@ body.selection-mode .shift-chip:active {
   white-space: normal;
 }
 
-.shifts-toolbar-center,
-.manager-shifts-toolbar-center,
-.employee-shifts-toolbar-center {
+.shifts-toolbar-center {
   justify-self: center;
   min-width: 0;
   max-width: 100%;
 }
 
-.shifts-toolbar-center .calendar-period,
-.manager-shifts-toolbar-center .calendar-period,
-.employee-shifts-toolbar-center .calendar-period {
+.shifts-toolbar-center .calendar-period {
   min-width: 0;
   max-width: clamp(160px, 32vw, 520px);
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+  margin: 0;
 }
 
-.shifts-toolbar-right,
-.manager-shifts-toolbar-right,
-.employee-shifts-toolbar-right {
+.shifts-toolbar-right {
   justify-self: end;
   min-width: 0;
   display: flex;
@@ -830,9 +751,7 @@ body.selection-mode .shift-chip:active {
   white-space: normal;
 }
 
-.shifts-toolbar-right .filters-row,
-.manager-shifts-toolbar-right .filters-row,
-.employee-shifts-toolbar-right .filters-row {
+.shifts-toolbar-right .filters-row {
   flex-wrap: wrap;
 }
 
@@ -858,19 +777,8 @@ body.selection-mode .shift-chip:active {
 }
 
 body.has-bottom-legend .manager-employee-sidebar {
-  height: var(--manager-calendar-fill-height, clamp(520px, 72vh, 980px));
-}
-
-.employee-sidebar-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  min-width: 0;
-}
-
-.employee-sidebar-header .card-title {
-  font-size: 1rem;
+  height: calc(100vh - 60px - 60px - 54px - 2rem);
+  min-height: 400px;
 }
 
 .employee-sidebar-controls {
@@ -893,14 +801,6 @@ body.has-bottom-legend .manager-employee-sidebar {
 .employee-sidebar-controls .form-input {
   padding: 0.375rem 0.625rem;
   font-size: 0.8125rem;
-}
-
-.employee-sidebar-controls .search-input-with-icon {
-  padding-left: 2rem;
-}
-
-.employee-sidebar-controls .search-input-icon {
-  left: 0.5rem;
 }
 
 .employee-sidebar-controls .form-select {
@@ -984,6 +884,7 @@ body.has-bottom-legend .manager-employee-sidebar {
   font-variant-numeric: tabular-nums;
   color: var(--muted-foreground);
   flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .employee-highlight-btn.btn-icon {
@@ -1018,14 +919,6 @@ body.has-bottom-legend .manager-employee-sidebar {
   overflow: hidden;
 }
 
-.calendar-grid-week {
-  grid-template-columns: repeat(7, 1fr);
-}
-
-.calendar-grid-week .calendar-cell {
-  min-height: clamp(240px, 46vh, 560px);
-}
-
 .calendar-grid-week-time {
   --week-hour-label-width: 72px;
   --week-time-hour-height: 56px;
@@ -1034,20 +927,6 @@ body.has-bottom-legend .manager-employee-sidebar {
   height: clamp(520px, 72vh, 980px);
   overflow: auto;
   position: relative;
-}
-
-/* Sticky header base pattern - used by calendar headers */
-.sticky-header-cell {
-  position: sticky;
-  top: 0;
-  background-color: var(--muted);
-  border-bottom: 1px solid var(--border);
-  border-right: 1px solid var(--border);
-  color: var(--foreground);
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
 }
 
 .week-time-corner,
@@ -1073,14 +952,9 @@ body.has-bottom-legend .manager-employee-sidebar {
 }
 
 .week-time-day-header {
-  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-.week-time-day-header:hover {
-  background-color: var(--hover-bg-dark);
 }
 
 .week-time-hour-label {
@@ -1106,11 +980,8 @@ body.has-bottom-legend .manager-employee-sidebar {
   background-color: var(--card);
 }
 
-.week-time-cell:hover {
-  background-color: var(--hover-bg);
-}
-
 .week-shifts-layer.week-shifts-layer-vertical {
+  position: relative;
   overflow: visible;
 }
 
@@ -1119,9 +990,7 @@ body.has-bottom-legend .manager-employee-sidebar {
 }
 
 .calendar-grid-month .calendar-header-cell:nth-child(7),
-.calendar-cell:nth-child(7n),
-.day-hour-cell:last-child,
-.day-hour-header:last-child {
+.calendar-cell:nth-child(7n) {
   border-right: none;
 }
 
@@ -1171,30 +1040,22 @@ body.has-bottom-legend .manager-employee-sidebar {
   min-height: 0;
   overflow: auto;
   padding: 0;
-}
-
-/* Apply thin-scrollbar styles to month grid cells */
-.calendar-grid-month .calendar-cell,
-.thin-scrollbar {
   scrollbar-gutter: stable;
   scrollbar-width: thin;
   scrollbar-color: rgba(15, 23, 42, 0.28) transparent;
 }
 
-.calendar-grid-month .calendar-cell::-webkit-scrollbar,
-.thin-scrollbar::-webkit-scrollbar {
+.calendar-grid-month .calendar-cell::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
-.calendar-grid-month .calendar-cell::-webkit-scrollbar-thumb,
-.thin-scrollbar::-webkit-scrollbar-thumb {
+.calendar-grid-month .calendar-cell::-webkit-scrollbar-thumb {
   background-color: rgba(15, 23, 42, 0.28);
   border-radius: 999px;
 }
 
-.calendar-grid-month .calendar-cell::-webkit-scrollbar-track,
-.thin-scrollbar::-webkit-scrollbar-track {
+.calendar-grid-month .calendar-cell::-webkit-scrollbar-track {
   background: transparent;
 }
 
@@ -1238,80 +1099,15 @@ body.has-bottom-legend .manager-employee-sidebar {
   opacity: 0.45;
 }
 
-/* Day View */
-.day-view {
-  display: grid;
-  grid-template-columns: repeat(24, minmax(0, 1fr));
-  grid-template-rows: 32px 1fr;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  height: clamp(520px, 72vh, 980px);
-  overflow: auto;
-  position: relative;
-}
-
-.day-hour-header {
-  padding: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--foreground);
-  background-color: var(--muted);
-  border-bottom: 1px solid var(--border);
-  border-right: 1px solid var(--border);
-  position: sticky;
-  top: 0;
-  z-index: 40;
-}
-
-.day-hour-cell {
-  min-height: 0;
-  border-right: 1px solid var(--border);
-  background-color: var(--card);
-  position: relative;
-  z-index: 0;
-}
-
-.week-shifts-layer,
-.day-shifts-layer {
+.week-shifts-layer {
   position: relative;
   z-index: 5;
   overflow: hidden;
   pointer-events: none;
 }
 
-.day-shifts-layer-horizontal {
-  overflow: visible;
-}
-
-.shift-chip.shift-chip-compact {
-  padding: 0.2rem 0.35rem;
-  margin-bottom: 0;
-  line-height: 1.05;
-}
-
-.shift-chip.shift-chip-compact .shift-chip-time,
-.shift-chip.shift-chip-compact .shift-chip-duration-row {
-  display: none;
-}
-
-.week-shifts-layer .shift-chip,
-.day-shifts-layer .shift-chip {
+.week-shifts-layer .shift-chip {
   pointer-events: auto;
-}
-
-.day-empty-state {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--muted-foreground);
-  font-size: 0.95rem;
-  pointer-events: none;
-  z-index: 3;
 }
 
 /* ========================================
@@ -1353,16 +1149,15 @@ body.has-bottom-legend #positionLegendCard .position-legend {
 }
 
 body.has-bottom-legend #weekView,
-body.has-bottom-legend #monthView,
-body.has-bottom-legend #dayView {
-  height: var(--manager-calendar-fill-height, clamp(520px, 72vh, 980px));
+body.has-bottom-legend #monthView {
+  height: calc(100vh - 60px - 60px - 54px - 2rem);
+  min-height: 400px;
   display: flex;
   flex-direction: column;
 }
 
 body.has-bottom-legend #weekGrid.calendar-grid-week-time,
-body.has-bottom-legend #monthGrid.calendar-grid-month,
-body.has-bottom-legend #dayGrid.day-view {
+body.has-bottom-legend #monthGrid.calendar-grid-month {
   flex: 1 1 auto;
   height: 100%;
 }
@@ -1376,12 +1171,6 @@ body.has-bottom-legend #monthGrid.calendar-grid-month {
 body.has-bottom-legend #monthGrid.calendar-grid-month .calendar-cell {
   padding: 0;
   overflow: auto;
-}
-
-body.has-bottom-legend #dayView .card-content-no-padding {
-  flex: 1 1 auto;
-  display: flex;
-  flex-direction: column;
 }
 
 .position-legend-item {
@@ -1475,6 +1264,7 @@ body.has-bottom-legend #dayView .card-content-no-padding {
 #createShiftModal .modal {
   overflow: visible;
   max-height: none;
+  max-width: 720px;
 }
 
 #createShiftModal .modal-header {
@@ -1509,6 +1299,43 @@ body.has-bottom-legend #dayView .card-content-no-padding {
   justify-content: flex-end;
   gap: 0.75rem;
   background-color: var(--card);
+}
+
+/* Modal size variant */
+.modal-lg {
+  max-width: 720px;
+}
+
+/* Multiselect/dropdown hint text inside menus */
+.multiselect-hint {
+  padding: .5rem .75rem;
+}
+
+/* Ghost icon button with destructive color */
+.btn-icon-destructive {
+  color: var(--destructive);
+}
+
+/* Employees page toolbar */
+.employees-toolbar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.employees-toolbar-group {
+  display: flex;
+  align-items: flex-end;
+  gap: 1rem;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.filter-group-grow {
+  flex: 1 1 auto;
+  min-width: 100px;
 }
 
 /* ========================================
@@ -1642,11 +1469,10 @@ body.has-bottom-legend #dayView .card-content-no-padding {
 .items-center { align-items: center; }
 .justify-between { justify-content: space-between; }
 .min-w-0 { min-width: 0; }
-.gap-2, .calendar-period-trigger { gap: 0.5rem; }
+.gap-2 { gap: 0.5rem; }
 .gap-3 { gap: 0.75rem; }
 .gap-4 { gap: 1rem; }
 .text-sm { font-size: 0.875rem; }
-.text-xs { font-size: 0.75rem; }
 .font-medium { font-weight: 500; }
 .form-input::placeholder,
 .text-muted,
@@ -1660,36 +1486,6 @@ body.has-bottom-legend #dayView .card-content-no-padding {
 .mb-3 { margin-bottom: 0.75rem; }
 .hidden { display: none !important; }
 
-/* Text truncation utility */
-.truncate {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* Flex centering utility */
-.flex-center {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* Tabular numbers for aligned digits */
-.tabular-nums {
-  font-variant-numeric: tabular-nums;
-}
-
-/* Uppercase with tracking (for table headers, calendar headers, etc.) */
-.uppercase-tracking {
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-/* Rounded full (pill shape) */
-.rounded-full {
-  border-radius: 9999px;
-}
-
 /* ========================================
    Responsive
    ======================================== */
@@ -1702,19 +1498,7 @@ body.has-bottom-legend #dayView .card-content-no-padding {
     gap: 0.5rem;
   }
 
-  .header-brand {
-    grid-column: 1;
-  }
-
-  .header-nav {
-    grid-column: 2;
-    justify-content: center;
-    justify-self: center;
-  }
-
   .header-user {
-    grid-column: 3;
-    justify-self: end;
     gap: 0.5rem;
     min-width: 0;
   }
@@ -1731,8 +1515,7 @@ body.has-bottom-legend #dayView .card-content-no-padding {
     padding: var(--page-padding);
   }
 
-  .manager-shifts-toolbar,
-  .employee-shifts-toolbar {
+  .shifts-toolbar {
     grid-template-columns: 1fr;
     grid-template-rows: auto auto auto;
     grid-template-areas:
@@ -1743,36 +1526,27 @@ body.has-bottom-legend #dayView .card-content-no-padding {
     gap: 0.75rem;
   }
 
-  .manager-shifts-toolbar-left,
-  .employee-shifts-toolbar-left {
+  .shifts-toolbar-left {
     grid-area: left;
     justify-self: stretch;
-    flex-wrap: wrap;
-    white-space: normal;
   }
 
-  .manager-shifts-toolbar-center,
-  .employee-shifts-toolbar-center {
+  .shifts-toolbar-center {
     grid-area: center;
-    justify-self: center;
     text-align: center;
   }
 
-  .manager-shifts-toolbar-center .calendar-period,
-  .employee-shifts-toolbar-center .calendar-period {
+  .shifts-toolbar-center .calendar-period {
     max-width: 100%;
     white-space: normal;
     overflow: visible;
     text-overflow: clip;
+    margin: 0;
   }
 
-  .manager-shifts-toolbar-right,
-  .employee-shifts-toolbar-right {
+  .shifts-toolbar-right {
     grid-area: right;
     justify-self: stretch;
-    justify-content: flex-end;
-    flex-wrap: wrap;
-    white-space: normal;
   }
   
   .calendar-cell {
@@ -1789,8 +1563,7 @@ body.has-bottom-legend #dayView .card-content-no-padding {
 }
 
 @media (max-width: 1024px) {
-  .manager-shifts-toolbar-center .calendar-period,
-  .employee-shifts-toolbar-center .calendar-period {
+  .shifts-toolbar-center .calendar-period {
     max-width: clamp(140px, 26vw, 360px);
   }
 }
@@ -1820,49 +1593,6 @@ body.has-bottom-legend #dayView .card-content-no-padding {
   justify-content: space-between;
 }
 
-.month-picker-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.5rem 0.5rem 0.25rem;
-  border-bottom: 1px solid var(--border);
-}
-
-.month-picker-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0.25rem;
-  padding: 0.5rem;
-}
-
-.month-picker-btn {
-  width: 100%;
-  padding: 0.5rem 0.5rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--background);
-  color: var(--foreground);
-  cursor: pointer;
-  font-size: 0.875rem;
-}
-
-.month-picker-btn.active {
-  border-color: var(--primary);
-  background-color: transparent;
-  color: var(--primary);
-  box-shadow: inset 0 0 0 1px var(--primary);
-}
-
-.month-picker-btn:focus-visible {
-  outline: 2px solid var(--primary);
-  outline-offset: 2px;
-}
-
-.month-picker-btn.current:not(.active) {
-  color: var(--primary);
-  font-weight: 600;
-}
-
 #shiftPositionMultiMenu {
   max-height: 280px;
   overflow-y: auto;
@@ -1879,7 +1609,6 @@ body.has-bottom-legend #dayView .card-content-no-padding {
 }
 
 /* Base chip component - used by employee-chip, date-chip, etc. */
-.chip,
 .employee-chip,
 .date-chip {
   display: inline-flex;
@@ -1894,7 +1623,6 @@ body.has-bottom-legend #dayView .card-content-no-padding {
   line-height: 1.25;
 }
 
-.chip .chip-remove,
 .employee-chip .chip-remove,
 .date-chip .chip-remove {
   display: inline-flex;
@@ -1908,19 +1636,16 @@ body.has-bottom-legend #dayView .card-content-no-padding {
   flex: 0 0 auto;
 }
 
-.chip .chip-remove:hover,
 .employee-chip .chip-remove:hover,
 .date-chip .chip-remove:hover {
   background: rgba(0, 0, 0, 0.1);
 }
 
-.chip .chip-text,
 .employee-chip .chip-text,
 .date-chip .chip-text {
   white-space: nowrap;
 }
 
-.chip-list,
 .date-chip-list {
   display: flex;
   flex-wrap: wrap;
@@ -2068,7 +1793,6 @@ body.has-bottom-legend #dayView .card-content-no-padding {
   background: var(--primary);
 }
 
-.toast.success .toast-dot { background: var(--primary); }
 .toast.error .toast-dot { background: var(--destructive); }
 .toast.info .toast-dot { background: var(--info); }
 

@@ -12,8 +12,8 @@
 	  <main class="main-content main-content-tight-top">
 	    <!-- Filter Bar (filters + navigation + actions) -->
 	    <div class="card page-toolbar-card">
-	      <div class="manager-shifts-toolbar">
-	        <div class="manager-shifts-toolbar-left">
+      <div class="shifts-toolbar">
+        <div class="shifts-toolbar-left">
 	          <form class="filters-row manager-shifts-filters" id="managerFiltersForm" method="get" action="{% url 'manager_shifts' %}">
 	            <input type="hidden" name="view" value="{{ view }}">
 	            <input type="hidden" name="date" value="{{ anchor|date:'Y-m-d' }}">
@@ -43,7 +43,7 @@
 		                      {{ p.name }}
 		                    </label>
 		                  {% empty %}
-		                    <div class="text-sm text-muted" style="padding: .5rem .75rem;">No positions yet. Add positions in Employees → Manage positions.</div>
+		                    <div class="text-sm text-muted multiselect-hint">No positions yet. Add positions in Employees → Manage positions.</div>
 		                  {% endfor %}
 		                  <div class="multiselect-actions multiselect-actions-right">
 		                    <button class="btn btn-ghost btn-sm" type="button" onclick="selectAllPositions(false); markPositionMultiDirty(); updatePositionMulti()">Clear</button>
@@ -73,125 +73,53 @@
           </form>
         </div>
 
-        <div class="manager-shifts-toolbar-center">
-	          {% if view == 'month' %}
-	            <div class="multiselect min-w-0" id="managerMonthPicker">
-		              <button class="btn btn-ghost btn-sm multiselect-trigger calendar-period-trigger" type="button" onclick="toggleMulti('managerMonthPicker')" aria-haspopup="true" aria-expanded="false">
-		                <span class="calendar-period" id="periodLabel" style="min-width: auto; text-align: center; white-space: nowrap; margin: 0;">{{ period_label }}</span>
-		                {% include "partials/icons/chevron_down.html" with size=16 %}
-		              </button>
-	              <div class="multiselect-menu" role="menu" aria-label="Choose month" style="min-width: 260px;">
-		                <div class="month-picker-header">
-		                  <button class="btn btn-ghost btn-icon" type="button" onclick="managerMonthPickerPrevYear()" aria-label="Previous year">
-		                    {% include "partials/icons/chevron_left.html" with size=18 %}
-		                  </button>
-		                  <div class="font-medium" id="managerMonthPickerYearLabel">—</div>
-		                  <button class="btn btn-ghost btn-icon" type="button" onclick="managerMonthPickerNextYear()" aria-label="Next year">
-		                    {% include "partials/icons/chevron_right.html" with size=18 %}
-		                  </button>
-		                </div>
-	                <div class="month-picker-grid" id="managerMonthPickerGrid"></div>
-	              </div>
-	            </div>
-	          {% else %}
-	            <div class="calendar-period" id="periodLabel" style="min-width: auto; text-align: center; white-space: nowrap; margin: 0;">{{ period_label }}</div>
-	          {% endif %}
-	        </div>
+        <div class="shifts-toolbar-center">
+          <div class="calendar-period" id="periodLabel">{{ period_label }}</div>
+        </div>
 
-	        <div class="manager-shifts-toolbar-right">
+	        <div class="shifts-toolbar-right">
 		          {% include "partials/calendar_nav.html" with prev_aria_label="Previous period" next_aria_label="Next period" %}
 
             <div class="multiselect min-w-0" id="viewMulti">
 	              <button class="btn btn-outline btn-sm multiselect-trigger" type="button" onclick="toggleMulti('viewMulti')" aria-haspopup="true" aria-expanded="false">
 	                <span id="viewMultiLabel">
-	                  {% if view == 'day' %}Day{% elif view == 'week' %}Week{% else %}Month{% endif %}
+	                  {% if view == 'week' %}Week{% else %}Month{% endif %}
 	                </span>
 	                {% include "partials/icons/chevron_down.html" with size=16 %}
 	              </button>
               <div class="multiselect-menu" role="menu" aria-label="View">
-                <label class="multiselect-item"><input type="radio" name="viewChoice" value="day" {% if view == 'day' %}checked{% endif %} onchange="switchView(this.value)"> Day</label>
                 <label class="multiselect-item"><input type="radio" name="viewChoice" value="week" {% if view == 'week' %}checked{% endif %} onchange="switchView(this.value)"> Week</label>
                 <label class="multiselect-item"><input type="radio" name="viewChoice" value="month" {% if view == 'month' %}checked{% endif %} onchange="switchView(this.value)"> Month</label>
               </div>
             </div>
 
-            <button class="btn btn-outline btn-sm" type="button" id="selectModeBtn" onclick="toggleSelectMode()">Select</button>
-
-            <button class="btn btn-outline btn-icon" type="button" id="undoSelectBtn" onclick="undoToolbar()" aria-label="Undo">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M3 7v6h6"/>
-                <path d="M21 17a9 9 0 0 0-15-6l-3 3"/>
-              </svg>
-            </button>
-
-	            <button class="btn btn-outline btn-icon" type="button" onclick="toolbarDelete()" aria-label="Delete">
-	              {% include "partials/icons/trash.html" with size=16 %}
-	            </button>
-
 	          <button class="btn btn-primary" type="button" onclick="openCreateShiftModal()">
 	            {% include "partials/icons/plus.html" with size=16 %}
 	            Add
 	          </button>
-
-            <form id="deleteDraftsForm" method="post" action="{% url 'manager_shifts' %}?view={{ view }}&date={{ anchor|date:'Y-m-d' }}" class="hidden">
-              {% csrf_token %}
-              <input type="hidden" name="action" value="delete_drafts">
-            </form>
-
-            <form id="publishAllDraftsForm" method="post" action="{% url 'manager_shifts' %}?view={{ view }}&date={{ anchor|date:'Y-m-d' }}" style="display: inline-flex;">
+	          <form id="publishAllForm" method="post" action="{% url 'publish_all_shifts' %}" style="display: inline;">
 	            {% csrf_token %}
-	            <input type="hidden" name="action" value="publish">
-	            <button class="btn btn-outline" type="button" id="publishToolbarBtn" onclick="toolbarPublish()" title="Publishes all Draft shifts in the currently visible period (Day/Week/Month), or selected shifts in Select mode.">
-	              Publish
-	            </button>
+	            <input type="hidden" name="view" value="{{ view }}">
+	            <input type="hidden" name="date" value="{{ anchor|date:'Y-m-d' }}">
+	            <button class="btn btn-outline" type="submit">Publish All</button>
 	          </form>
-
-            <form id="publishSelectedForm" method="post" action="{% url 'manager_shifts' %}?view={{ view }}&date={{ anchor|date:'Y-m-d' }}" class="hidden">
-              {% csrf_token %}
-              <input type="hidden" name="action" value="publish_selected">
-              <input type="hidden" name="shift_ids" id="publishSelectedIds" value="">
-            </form>
-
-            <form id="deleteSelectedForm" method="post" action="{% url 'manager_shifts' %}?view={{ view }}&date={{ anchor|date:'Y-m-d' }}" class="hidden">
-              {% csrf_token %}
-              <input type="hidden" name="action" value="delete_selected">
-              <input type="hidden" name="shift_ids" id="deleteSelectedIds" value="">
-            </form>
 	        </div>
 	      </div>
 	    </div>
 
     <div class="manager-calendar-layout">
-      <!-- Employees Sidebar -->
       <aside class="card manager-employee-sidebar mt-3" id="managerEmployeeSidebar">
         <div class="card-header card-header-tight">
-          <div class="employee-sidebar-header">
-            <h3 class="card-title">Employees</h3>
-            <span class="text-sm text-muted" id="employeeSidebarMeta"></span>
-          </div>
+          <h3 class="card-title">Employees</h3>
         </div>
 
         <div class="card-content-compact employee-sidebar-controls">
-          <div class="form-group">
-            <div class="search-input-wrapper">
-              <span class="search-input-icon">{% include "partials/icons/search.html" with size=18 %}</span>
-              <input class="form-input search-input-with-icon" id="employeeSidebarSearch" type="search" placeholder="Employee name" autocomplete="off">
-            </div>
-          </div>
-
           <div class="form-group">
             <label class="form-label" for="employeeSidebarPosition">Position</label>
             <select class="form-select" id="employeeSidebarPosition">
               <option value="">All positions</option>
               <option value="__none__">Unassigned</option>
               {% include "partials/options/positions.html" %}
-            </select>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label" for="employeeSidebarSort">Sort</label>
-            <select class="form-select" id="employeeSidebarSort">
-              <option value="hours_asc">Hours (least busy)</option>
             </select>
           </div>
         </div>
@@ -209,18 +137,11 @@
         <div class="card mt-3{% if view != 'month' %} hidden{% endif %}" id="monthView">
           <div class="calendar-grid calendar-grid-month" id="monthGrid" aria-label="Month schedule"></div>
         </div>
-
-        <!-- Day Calendar View -->
-        <div class="card mt-3{% if view != 'day' %} hidden{% endif %}" id="dayView">
-          <div class="card-content card-content-no-padding">
-            <div id="dayGrid" class="day-view" aria-label="Day schedule"></div>
-          </div>
-        </div>
       </div>
     </div>
 
     <!-- Position Color Legend -->
-    <div class="card mt-4" id="positionLegendCard">
+    <div class="card mt-3" id="positionLegendCard">
       <div class="card-content card-content-compact">
         <div class="position-legend" id="positionLegend" aria-label="Position color legend"></div>
       </div>
@@ -229,7 +150,7 @@
 
   <!-- Create Shift Modal -->
   <div class="modal-overlay hidden" id="createShiftModal">
-    <div class="modal" style="max-width: 720px;">
+      <div class="modal">
       <div class="modal-header">
         <h2 class="modal-title" id="createShiftTitle">Create Shift</h2>
         <button class="modal-close" onclick="closeModal('createShiftModal')" aria-label="Close">
@@ -240,81 +161,7 @@
       <div class="modal-body">
         <form id="createShiftForm" method="post" action="{% url 'create_shift' %}" data-create-action="{% url 'create_shift' %}">
           {% csrf_token %}
-          <div class="flex gap-4">
-            <div class="form-group flex-1">
-              <label class="form-label" for="shiftDate">Date *</label>
-              <input type="date" class="form-input" id="shiftDate" name="date" required>
-            </div>
-            <div class="form-group flex-1">
-              <label class="form-label" for="shiftCapacity">Capacity *</label>
-              <input type="number" class="form-input" id="shiftCapacity" name="capacity" value="1" min="1" required>
-              <div class="form-error-message hidden" id="capacityError"></div>
-            </div>
-          </div>
-
-          <div class="flex gap-4">
-            <div class="form-group flex-1">
-              <label class="form-label" for="shiftStart">Start Time *</label>
-              <input type="time" class="form-input" id="shiftStart" name="start_time" value="09:00" required>
-            </div>
-            <div class="form-group flex-1">
-              <label class="form-label" for="shiftEnd">End Time *</label>
-              <input type="time" class="form-input" id="shiftEnd" name="end_time" value="17:00" required>
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label" for="shiftPositionMulti">Position *</label>
-            <select class="hidden" id="shiftPosition" name="position_id" required onchange="filterEmployeePicker()" aria-hidden="true" tabindex="-1">
-              <option value="">Select position...</option>
-              {% include "partials/options/positions.html" %}
-            </select>
-            <div class="multiselect multiselect-full" id="shiftPositionMulti">
-              <button class="btn btn-outline btn-sm multiselect-trigger" id="shiftPositionMultiTrigger" type="button" onclick="toggleMulti('shiftPositionMulti')" aria-haspopup="true" aria-expanded="false">
-                <span id="shiftPositionMultiLabel">Select position...</span>
-                {% include "partials/icons/chevron_down.html" with size=16 %}
-              </button>
-              <div class="multiselect-menu" role="menu" aria-label="Select position" id="shiftPositionMultiMenu">
-                <div class="text-sm text-muted" style="padding: .5rem .75rem;">No positions yet.</div>
-              </div>
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label" for="employeeMulti">Assign Employees</label>
-            <div class="multiselect multiselect-full" id="employeeMulti">
-              <button class="btn btn-outline btn-sm multiselect-trigger" id="employeeMultiTrigger" type="button" onclick="toggleMulti('employeeMulti')" aria-haspopup="true" aria-expanded="false">
-                <span class="multiselect-chips" id="employeeMultiChips">
-                  <span class="multiselect-placeholder" id="employeeMultiPlaceholder">Select position first</span>
-                </span>
-                {% include "partials/icons/chevron_down.html" with size=16 %}
-              </button>
-              <div class="multiselect-menu" role="menu" aria-label="Select employees">
-                <div class="text-sm text-muted" id="employeeMultiEmpty" style="padding: .5rem .75rem;">Select position first</div>
-                <div id="employeeMultiList">
-                  {% for e in employees %}
-                    <label class="multiselect-item employee-item hidden" data-position-id="{{ e.position_id|default:'' }}" data-employee-name="{{ e.get_full_name|default:e.username|escape }}">
-                      <input type="checkbox" name="employee_ids" value="{{ e.id }}" onchange="updateEmployeeMulti()" disabled>
-                      {{ e.get_full_name|default:e.username }}
-                    </label>
-                  {% empty %}
-                    <div class="text-sm text-muted" style="padding: .5rem .75rem;">No employees yet</div>
-                  {% endfor %}
-                </div>
-                <div class="multiselect-actions">
-                  <button class="btn btn-ghost btn-sm" type="button" onclick="selectAllEmployees(true)">Select all</button>
-                  <button class="btn btn-ghost btn-sm" type="button" onclick="selectAllEmployees(false)">Clear</button>
-                </div>
-              </div>
-            </div>
-            <div class="form-error-message hidden" id="employeeAssignError"></div>
-          </div>
-
-          <label class="switch mt-3">
-            <input type="checkbox" id="publishImmediatelyCustom" name="publish" value="1">
-            <span class="switch-slider" aria-hidden="true"></span>
-            <span class="text-sm">Publish</span>
-          </label>
+          {% include "partials/shift_form_fields.html" with employees=employees %}
         </form>
       </div>
 
@@ -324,12 +171,6 @@
       </div>
     </div>
   </div>
-
-  <!-- Delete Drafts Confirm Modal -->
-  {% include "partials/confirm_modal.html" with modal_id="deleteDraftsModal" title="Delete draft shifts" message="Delete all draft shifts in the current period?" confirm_text="Yes, delete" confirm_form="deleteDraftsForm" destructive=True %}
-
-  <!-- Delete Selected Confirm Modal -->
-  {% include "partials/confirm_modal.html" with modal_id="deleteSelectedModal" title="Delete selected shifts" message="Delete the selected shifts?" confirm_text="Yes, delete" confirm_form="deleteSelectedForm" destructive=True %}
 
   <!-- Delete Shift Confirm Modal -->
   {% include "partials/confirm_modal.html" with modal_id="deleteShiftConfirmModal" title="Delete shift" message="Delete this shift: <strong id='deleteShiftConfirmTitle'>—</strong> ?" confirm_text="Yes, delete" cancel_action="cancelDeleteShift()" confirm_action="confirmDeleteShift()" destructive=True %}
@@ -390,13 +231,10 @@
   {% endif %}
   <div
     id="managerShiftPage"
-    data-base-url="{% url 'manager_shifts' %}"
     data-view="{{ view }}"
     data-anchor="{{ anchor|date:'Y-m-d' }}"
     data-start="{{ start|date:'Y-m-d' }}"
-    data-end="{{ end|date:'Y-m-d' }}"
     data-today="{{ today|date:'Y-m-d' }}"
-    data-can-undo="{% if can_undo %}1{% else %}0{% endif %}"
     data-shift-details-url-template="{% url 'shift_details' 0 %}"
     data-shift-update-url-template="{% url 'update_shift' 0 %}"
     data-shift-delete-url-template="{% url 'delete_shift' 0 %}"
@@ -407,9 +245,6 @@
     {% csrf_token %}
   </form>
   <form id="publishShiftForm" method="post">
-    {% csrf_token %}
-  </form>
-  <form id="undoLastActionForm" method="post" action="{% url 'undo_last_action' %}" class="hidden">
     {% csrf_token %}
   </form>
 

@@ -1,15 +1,3 @@
-"""
-=============================================================================
-EMPLOYEE VIEWS
-=============================================================================
-
-Views for employee-facing functionality:
-- employee_shifts_view() - Employee's assigned shifts calendar
-- employee_unavailability_view() - Mark unavailable dates calendar
-- employee_unavailability_toggle() - Toggle date availability (AJAX)
-
-=============================================================================
-"""
 from __future__ import annotations
 
 import json
@@ -25,40 +13,17 @@ from apps.accounts.decorators import employee_required
 
 from ..models import EmployeeUnavailability
 from ..services import shifts_for_employee
-from .helpers import _parse_date, _parse_required_date, _week_bounds, _month_bounds
-
-
-# =============================================================================
-# MY SHIFTS
-# =============================================================================
-
+from .helpers import _parse_date, _parse_required_date, _month_bounds
 
 @employee_required
 @require_http_methods(["GET"])
 def employee_shifts_view(request: HttpRequest) -> HttpResponse:
-    """
-    Employee's "My Shifts" calendar view.
     
-    Shows only PUBLISHED shifts assigned to this employee.
-    Supports week and month views (default: month).
-    
-    Also displays an "upcoming shifts" sidebar with the next 5 shifts
-    including calculated hours for each.
-    """
     today = timezone.localdate()
-    view = (request.GET.get("view") or "month").lower()
     anchor = _parse_date(request.GET.get("date"), today)
     
-    if view == "week":
-        start, end = _week_bounds(anchor)
-        if start.month == end.month and start.year == end.year:
-            period_label = f"{start.strftime('%B %-d')}–{end.strftime('%-d')}"
-        else:
-            period_label = f"{start.strftime('%B %-d')}–{end.strftime('%B %-d')}"
-    else:
-        view = "month"
-        start, end = _month_bounds(anchor)
-        period_label = anchor.strftime("%B %Y")
+    start, end = _month_bounds(anchor)
+    period_label = anchor.strftime("%B %Y")
 
     shift_qs = shifts_for_employee(employee_id=request.user.id, start=start, end=end)
     shifts_payload = [
@@ -72,48 +37,24 @@ def employee_shifts_view(request: HttpRequest) -> HttpResponse:
         }
         for s in shift_qs
     ]
-
-    # Build upcoming shifts list
-    upcoming = list(shift_qs.filter(date__gte=today).order_by("date", "start_time")[:5])
-    upcoming_items = []
-    for s in upcoming:
-        start_minutes = s.start_time.hour * 60 + s.start_time.minute
-        end_minutes = s.end_time.hour * 60 + s.end_time.minute
-        hours = max(0, end_minutes - start_minutes) / 60
-        upcoming_items.append({"shift": s, "hours": hours})
     
     return render(
         request,
         "employee/employee-shifts.html",
         {
-            "view": view,
             "anchor": anchor,
             "start": start,
             "end": end,
             "period_label": period_label,
             "today": today,
             "shifts_json": json.dumps(shifts_payload, cls=DjangoJSONEncoder),
-            "upcoming": upcoming_items,
         },
     )
-
-
-# =============================================================================
-# UNAVAILABILITY
-# =============================================================================
-
 
 @employee_required
 @require_http_methods(["GET"])
 def employee_unavailability_view(request: HttpRequest) -> HttpResponse:
-    """
-    Employee's unavailability calendar view.
     
-    Displays a month calendar where employees can click days to toggle
-    their availability. Unavailable days are highlighted.
-    
-    Only supports month view (makes sense for availability planning).
-    """
     today = timezone.localdate()
     anchor = _parse_date(request.GET.get("date"), today)
     start, end = _month_bounds(anchor)
@@ -143,19 +84,10 @@ def employee_unavailability_view(request: HttpRequest) -> HttpResponse:
         },
     )
 
-
 @employee_required
 @require_http_methods(["POST"])
 def employee_unavailability_toggle(request: HttpRequest) -> JsonResponse:
-    """
-    Toggles unavailability for a specific date.
     
-    If employee is marked unavailable on that date, removes the record.
-    If employee is available, creates an unavailability record.
-    
-    Returns {ok: true, date: 'DD-MM-YYYY', unavailable: true/false}.
-    Called via AJAX when clicking a calendar day.
-    """
     try:
         day = _parse_required_date(request.POST.get("date"), "date")
     except ValidationError as exc:

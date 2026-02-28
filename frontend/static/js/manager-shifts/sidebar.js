@@ -1,23 +1,17 @@
-/**
- * MANAGER SHIFTS - Employee Sidebar
- * Employee list with search, filter, sort, and shift highlighting
- */
-
 (function() {
   'use strict';
 
   const Config = window.ManagerShiftsConfig || {};
-const Time = window.ManagerShiftsTime || {};
 const PositionPalette = window.ManagerShiftsPositionPalette || {};
+const Time = window.ManagerShiftsTime || {};
 const { getEl, initialsFromName } = Config;
-const { parseTimeToMinutes, formatHoursCompact } = Time;
 const { applyPositionPaletteToElement } = PositionPalette;
+const { parseTimeToMinutes } = Time;
 
-// State
 let managerEmployees = [];
 let managerEmployeePeriodStats = {
+  shiftIdsByEmployeeId: new Map(),
   minutesByEmployeeId: new Map(),
-  shiftIdsByEmployeeId: new Map()
 };
 let activeEmployeeHighlightId = null;
 let employeeSidebarControlsWired = false;
@@ -27,28 +21,29 @@ function setManagerEmployees(employees) {
 }
 
 function computeEmployeePeriodStats(shifts) {
-  const minutesByEmployeeId = new Map();
   const shiftIdsByEmployeeId = new Map();
+  const minutesByEmployeeId = new Map();
 
   (Array.isArray(shifts) ? shifts : []).forEach((s) => {
     if (!s) return;
     const shiftId = String(s.id ?? '');
     if (!shiftId) return;
 
-    const durationMinutes = Math.max(0, parseTimeToMinutes(s.end_time) - parseTimeToMinutes(s.start_time));
+    const duration = Math.max(0, parseTimeToMinutes(s.end_time) - parseTimeToMinutes(s.start_time));
     const assignedIds = Array.isArray(s.assigned_employee_ids) ? s.assigned_employee_ids : [];
 
     assignedIds.forEach((eid) => {
       const employeeId = String(eid ?? '');
       if (!employeeId) return;
 
-      minutesByEmployeeId.set(employeeId, (minutesByEmployeeId.get(employeeId) || 0) + durationMinutes);
       if (!shiftIdsByEmployeeId.has(employeeId)) shiftIdsByEmployeeId.set(employeeId, new Set());
       shiftIdsByEmployeeId.get(employeeId).add(shiftId);
+
+      minutesByEmployeeId.set(employeeId, (minutesByEmployeeId.get(employeeId) || 0) + duration);
     });
   });
 
-  managerEmployeePeriodStats = { minutesByEmployeeId, shiftIdsByEmployeeId };
+  managerEmployeePeriodStats = { shiftIdsByEmployeeId, minutesByEmployeeId };
   return managerEmployeePeriodStats;
 }
 
@@ -99,9 +94,7 @@ function wireEmployeeSidebarControls() {
   if (employeeSidebarControlsWired) return;
   employeeSidebarControlsWired = true;
 
-  getEl('employeeSidebarSearch')?.addEventListener('input', renderEmployeeSidebar);
   getEl('employeeSidebarPosition')?.addEventListener('change', renderEmployeeSidebar);
-  getEl('employeeSidebarSort')?.addEventListener('change', renderEmployeeSidebar);
 }
 
 function renderEmployeeSidebar() {
@@ -109,11 +102,7 @@ function renderEmployeeSidebar() {
   const list = getEl('employeeSidebarList');
   if (!sidebar || !list) return;
 
-  const query = (getEl('employeeSidebarSearch')?.value || '').trim().toLowerCase();
   const filterPosition = getEl('employeeSidebarPosition')?.value || '';
-  const sortMode = getEl('employeeSidebarSort')?.value || 'hours_asc';
-
-  const minutesById = managerEmployeePeriodStats?.minutesByEmployeeId || new Map();
 
   const filtered = (Array.isArray(managerEmployees) ? managerEmployees : []).filter((e) => {
     if (!e) return false;
@@ -127,35 +116,15 @@ function renderEmployeeSidebar() {
     .map((e) => {
       const id = String(e.id ?? '');
       const name = String(e.name || '');
+      const minutes = managerEmployeePeriodStats?.minutesByEmployeeId?.get(id) || 0;
       return {
         ...e,
         _id: id,
         _name: name,
-        _minutes: minutesById.get(id) || 0,
-        _search: `${name} ${String(e.position || '')}`.trim().toLowerCase(),
+        _minutes: minutes,
       };
     })
-    .filter((e) => {
-      if (!query) return true;
-      return e._search.includes(query);
-    });
-
-  if (sortMode === 'hours_asc') {
-    enriched.sort(
-      (a, b) =>
-        a._minutes - b._minutes ||
-        a._name.localeCompare(b._name) ||
-        String(a._id).localeCompare(String(b._id)),
-    );
-  } else {
-    enriched.sort((a, b) => a._name.localeCompare(b._name) || String(a._id).localeCompare(String(b._id)));
-  }
-
-  const meta = getEl('employeeSidebarMeta');
-  if (meta) {
-    const total = Array.isArray(managerEmployees) ? managerEmployees.length : 0;
-    meta.textContent = total ? `${enriched.length}/${total}` : '';
-  }
+    .sort((a, b) => a._name.localeCompare(b._name) || String(a._id).localeCompare(String(b._id)));
 
   list.innerHTML = '';
   if (!enriched.length) {
@@ -196,12 +165,14 @@ function renderEmployeeSidebar() {
     badge.textContent = positionLabel;
     if (e.position_id) applyPositionPaletteToElement(badge, e.position_id);
 
-    const hours = document.createElement('span');
-    hours.className = 'employee-sidebar-hours';
-    hours.textContent = formatHoursCompact(e._minutes);
-
     sub.appendChild(badge);
-    sub.appendChild(hours);
+    if (e._minutes > 0) {
+      const hours = document.createElement('span');
+      hours.className = 'employee-sidebar-hours';
+      const rounded = Math.round((e._minutes / 60) * 10) / 10;
+      hours.textContent = `${String(rounded).replace(/\.0$/, '')}h`;
+      sub.appendChild(hours);
+    }
     metaDiv.appendChild(name);
     metaDiv.appendChild(sub);
 
@@ -236,7 +207,6 @@ window.ManagerShiftsSidebar = {
   setManagerEmployees,
   computeEmployeePeriodStats,
   applyEmployeeShiftHighlight,
-  toggleEmployeeHighlight,
   wireEmployeeSidebarControls,
   renderEmployeeSidebar,
 };

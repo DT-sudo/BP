@@ -1,7 +1,3 @@
-{# Confirm Modal Partial - For delete/destructive action confirmations #}
-{# Usage: include "partials/confirm_modal.html" with modal_id="..." title="..." message="..." ... #}
-{# Parameters: modal_id, title, message, message_detail, message_detail_id, message_footer #}
-{# confirm_text, cancel_text, cancel_action, confirm_action, confirm_form, destructive, modal_size #}
 <div class="modal-overlay hidden" id="{{ modal_id }}">
   <div class="modal" style="max-width: {{ modal_size|default:'520px' }};">
     <div class="modal-header">

@@ -29,8 +29,8 @@ from .manager_shifts import (
     update_shift,
     delete_shift,
     publish_shift,
+    publish_all_shifts,
     shift_details,
-    undo_last_action,
 )
 
 # Manager resource views (positions)
@@ -55,8 +55,8 @@ __all__ = [
     "update_shift",
     "delete_shift",
     "publish_shift",
+    "publish_all_shifts",
     "shift_details",
-    "undo_last_action",
     # Manager resources
     "positions_list",
     "position_create",

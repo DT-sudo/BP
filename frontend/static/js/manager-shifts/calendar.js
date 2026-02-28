@@ -1,42 +1,30 @@
-/**
- * MANAGER SHIFTS - Calendar Renderers
- * Renders week, month, and day calendar views
- */
-
 (function() {
   'use strict';
 
-  // Safe imports with fallbacks
   const Config = window.ManagerShiftsConfig || {};
 const Time = window.ManagerShiftsTime || {};
 const LaneLayout = window.ManagerShiftsLaneLayout || {};
 const PositionPalette = window.ManagerShiftsPositionPalette || {};
 const Sidebar = window.ManagerShiftsSidebar || {};
-const BulkSelection = window.ManagerShiftsBulkSelection || {};
 
-const { getEl, escapeHtml, TIME_GRID_HOUR_HEIGHT_PX, TIME_GRID_HOUR_WIDTH_PX, SHIFT_LANE_GAP_PX } = Config;
+const { getEl, escapeHtml, TIME_GRID_HOUR_HEIGHT_PX } = Config;
 const { parseTimeToMinutes, formatDurationMinutes } = Time;
-const { computeShiftLaneLayout, applyTimedShiftChipVertical, applyTimedShiftChipHorizontalDynamic, autoScrollWeekGridToEarliestShift } = LaneLayout;
+const { computeShiftLaneLayout, applyTimedShiftChipVertical } = LaneLayout;
 const { applyPositionPaletteToElement } = PositionPalette;
 const { applyEmployeeShiftHighlight } = Sidebar;
-const { isSelectionMode, getSelectedShiftIds, toggleChipSelected } = BulkSelection;
 
-// Calendar-utils globals
 const toISODate = window.toISODate;
 const navigateWith = window.navigateWith;
 const weekdayLabel = window.weekdayLabel;
 const dayNumber = window.dayNumber;
 
-// Helper function to render a shift chip
 function renderShiftChip(shift) {
   const chip = document.createElement('div');
-  const selectedShiftIds = getSelectedShiftIds();
   chip.className = `shift-chip ${shift.is_past ? 'shift-chip-past' : 'shift-chip-future'} ${
     shift.status === 'draft' ? 'shift-chip-draft' : 'shift-chip-published'
   }`;
   chip.dataset.shiftId = String(shift.id);
   if (shift.status !== 'draft') applyPositionPaletteToElement(chip, shift.position_id);
-  if (selectedShiftIds.has(String(shift.id))) chip.classList.add('shift-chip-selected');
 
   const time = `${shift.start_time}-${shift.end_time}`;
   const duration = formatDurationMinutes(parseTimeToMinutes(shift.end_time) - parseTimeToMinutes(shift.start_time));
@@ -51,10 +39,6 @@ function renderShiftChip(shift) {
 
   chip.addEventListener('click', (e) => {
     e.stopPropagation();
-    if (isSelectionMode()) {
-      toggleChipSelected(chip);
-      return;
-    }
     window.openShiftDetails?.(shift.id);
   });
   return chip;
@@ -62,13 +46,11 @@ function renderShiftChip(shift) {
 
 function renderMonthShiftChip(shift) {
   const chip = document.createElement('div');
-  const selectedShiftIds = getSelectedShiftIds();
   chip.className = `shift-chip manager-month-shift-chip ${shift.is_past ? 'shift-chip-past' : 'shift-chip-future'} ${
     shift.status === 'draft' ? 'shift-chip-draft' : 'shift-chip-published'
   }`;
   chip.dataset.shiftId = String(shift.id);
   if (shift.status !== 'draft') applyPositionPaletteToElement(chip, shift.position_id);
-  if (selectedShiftIds.has(String(shift.id))) chip.classList.add('shift-chip-selected');
 
   chip.innerHTML = `
     <div class="manager-month-shift-row">
@@ -83,10 +65,6 @@ function renderMonthShiftChip(shift) {
 
   chip.addEventListener('click', (e) => {
     e.stopPropagation();
-    if (isSelectionMode()) {
-      toggleChipSelected(chip);
-      return;
-    }
     window.openShiftDetails?.(shift.id);
   });
 
@@ -133,11 +111,6 @@ function renderWeekGrid(config, shifts) {
     header.dataset.date = iso;
     header.style.gridRow = '1';
     header.style.gridColumn = String(idx + 2);
-    header.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      navigateWith({ view: 'day', date: iso });
-    });
     grid.appendChild(header);
   });
 
@@ -185,7 +158,6 @@ function renderWeekGrid(config, shifts) {
   });
 
   applyEmployeeShiftHighlight();
-  autoScrollWeekGridToEarliestShift(grid, shifts, hourHeightPx);
 }
 
 function renderMonthGrid(config, shifts) {
@@ -257,81 +229,6 @@ function renderMonthGrid(config, shifts) {
   applyEmployeeShiftHighlight();
 }
 
-function renderDayGrid(config, shifts) {
-  const grid = getEl('dayGrid');
-  if (!grid) return;
-  grid.innerHTML = '';
-
-  const dayShifts = shifts.filter((s) => s.date === config.anchor);
-  const laneInfo = computeShiftLaneLayout(dayShifts);
-
-  const rect = grid.getBoundingClientRect();
-  const hourWidthPx = rect.width > 0 ? rect.width / 24 : TIME_GRID_HOUR_WIDTH_PX;
-  grid.style.setProperty('--day-hour-width', `${hourWidthPx}px`);
-
-  const headerHeight = 32;
-  const availableBodyHeight = Math.max(120, Math.floor((grid.clientHeight || rect.height || 0) - headerHeight));
-  const lanes = Math.max(1, laneInfo.laneCount || 1);
-  const laneGapPx = SHIFT_LANE_GAP_PX;
-  const maxHeightPerLane = Math.floor((availableBodyHeight - (lanes + 1) * laneGapPx) / lanes);
-  const laneHeightPx = Math.max(14, maxHeightPerLane);
-
-  for (let hour = 0; hour < 24; hour++) {
-    const hourStr = `${String(hour).padStart(2, '0')}:00`;
-
-    const header = document.createElement('div');
-    header.className = 'day-hour-header';
-    header.textContent = hourStr;
-    header.dataset.hour = hourStr;
-    header.style.gridRow = '1';
-    header.style.gridColumn = String(hour + 1);
-    header.addEventListener('click', (e) => {
-      e.stopPropagation();
-      window.openCreateShiftModal?.(config.anchor, hourStr);
-    });
-    grid.appendChild(header);
-
-    const cell = document.createElement('div');
-    cell.className = 'day-hour-cell';
-    cell.dataset.date = config.anchor;
-    cell.dataset.hour = hourStr;
-    cell.style.gridRow = '2';
-    cell.style.gridColumn = String(hour + 1);
-    cell.addEventListener('click', (e) => {
-      if (e.target.closest('.shift-chip')) return;
-      window.openCreateShiftModal?.(config.anchor, hourStr);
-    });
-    grid.appendChild(cell);
-  }
-
-  if (!dayShifts.length) {
-    const empty = document.createElement('div');
-    empty.className = 'day-empty-state';
-    empty.textContent = 'There is no shifts for today';
-    empty.style.gridColumn = '1 / -1';
-    empty.style.gridRow = '2';
-    grid.appendChild(empty);
-  }
-
-  const layer = document.createElement('div');
-  layer.className = 'day-shifts-layer day-shifts-layer-horizontal';
-  layer.dataset.date = config.anchor;
-  layer.style.gridColumn = '1 / -1';
-  layer.style.gridRow = '2';
-
-  dayShifts.forEach((s) => {
-    const chip = renderShiftChip(s);
-    chip.classList.add('shift-chip-compact');
-    const laneIndex = laneInfo.laneById.get(String(s.id)) ?? 0;
-    applyTimedShiftChipHorizontalDynamic(chip, s, 0, laneIndex, laneInfo.laneCount, hourWidthPx, laneHeightPx, laneGapPx);
-    layer.appendChild(chip);
-  });
-
-  grid.appendChild(layer);
-
-  applyEmployeeShiftHighlight();
-}
-
 function wireCalendarClicks(containerId) {
   const el = getEl(containerId);
   if (!el) return;
@@ -339,6 +236,7 @@ function wireCalendarClicks(containerId) {
     if (e.target.closest('.shift-chip')) return;
     const cell = e.target.closest('[data-date]');
     if (!cell) return;
+    if (cell.classList.contains('week-time-day-header')) return;
     if (cell.classList.contains('calendar-cell-other-month')) {
       navigateWith({ view: 'month', date: cell.dataset.date });
       return;
@@ -349,11 +247,8 @@ function wireCalendarClicks(containerId) {
 }
 
 window.ManagerShiftsCalendar = {
-  renderShiftChip,
-  renderMonthShiftChip,
   renderWeekGrid,
   renderMonthGrid,
-  renderDayGrid,
   wireCalendarClicks,
 };
 

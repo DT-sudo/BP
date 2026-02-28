@@ -11,9 +11,9 @@
   <main class="main-content main-content-tight-top">
     <!-- Top controls -->
     <div class="card page-toolbar-card">
-      <div class="filters-row" style="align-items: flex-end; justify-content: space-between; flex-wrap: nowrap;">
-        <div class="filters-row" style="align-items: flex-end; flex-wrap: nowrap; min-width: 0;">
-        <div class="filter-group" style="flex: 1 1 auto; min-width: 100px;">
+      <div class="employees-toolbar">
+        <div class="employees-toolbar-group">
+        <div class="filter-group filter-group-grow">
           <input class="form-input" id="employeeSearch" placeholder="Search" oninput="applyEmployeeFilters()" value="{{ q|default:'' }}">
         </div>
 
@@ -28,7 +28,7 @@
         </div>
         </div>
 
-        <div class="filters-row" style="align-items: flex-end; justify-content: flex-end; flex-wrap: nowrap;">
+        <div class="filters-row">
           <button class="btn btn-primary" type="button" onclick="openModal('addEmployeeModal')">
             {% include "partials/icons/plus.html" with size=16 %}
             Add employee
@@ -36,7 +36,6 @@
           <button class="btn btn-outline" type="button" onclick="openModal('positionModal')">Manage positions</button>
         </div>
       </div>
-    </div>
 
     <!-- Employee Table -->
     <div class="card mt-4 employee-table-card">
@@ -59,7 +58,7 @@
               <th>Position</th>
               <th>Email</th>
               <th>Phone</th>
-              <th style="width: 80px;">Actions</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody id="employeeTbody">
@@ -67,7 +66,7 @@
               <tr class="employee-row" data-position="{{ e.position_id|default:'' }}" data-user-id="{{ e.id }}">
                 <td>
                   {% with fi=e.first_name|slice:":1" li=e.last_name|slice:":1" %}
-                    <div class="header-avatar" style="width: 2rem; height: 2rem;">
+                    <div class="employee-avatar">
                       {% if fi or li %}
                         {{ fi }}{{ li }}
                       {% else %}
@@ -260,7 +259,7 @@
 
 	  <!-- Manage Positions Modal -->
 	  <div class="modal-overlay hidden" id="positionModal">
-	    <div class="modal" style="max-width: 720px;">
+	    <div class="modal modal-lg">
       <div class="modal-header">
         <h2 class="modal-title">Manage positions</h2>
         <button class="modal-close" onclick="closeModal('positionModal')" aria-label="Close">
@@ -268,10 +267,12 @@
         </button>
       </div>
       <div class="modal-body">
-        <div class="card mt-4" style="padding: 1rem;">
+        <div class="card mt-4">
+          <div class="card-content-compact">
           <div class="flex gap-2">
             <input class="form-input" id="newPositionName" placeholder="New position name (e.g., Barista)">
             <button class="btn btn-primary btn-sm" onclick="addPosition()">Add position</button>
+          </div>
           </div>
         </div>
 
@@ -289,7 +290,7 @@
 		                  <td class="position-name">{{ p.name }}</td>
 		                  <td class="position-actions-cell">
 		                    <button class="btn btn-outline btn-sm" type="button" onclick="renamePosition(this)">Rename</button>
-		                    <button class="btn btn-ghost btn-icon" type="button" onclick="deletePosition(this)" aria-label="Delete position" title="Delete" style="color: var(--destructive);">
+		                    <button class="btn btn-ghost btn-icon btn-icon-destructive" type="button" onclick="deletePosition(this)" aria-label="Delete position" title="Delete">
 		                      {% include "partials/icons/trash.html" with size=18 %}
 		                    </button>
 		                  </td>
