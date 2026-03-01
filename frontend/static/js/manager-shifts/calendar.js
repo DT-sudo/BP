@@ -97,9 +97,17 @@ function renderWeekGrid(config, shifts) {
     laneLayoutByDate.set(dateKey, computeShiftLaneLayout(dayShifts));
   });
 
+  const colWidths = weekDays.map(({ iso }) => {
+    const laneCount = (laneLayoutByDate.get(iso) || { laneCount: 1 }).laneCount;
+    const colSpan = Math.max(1, Math.ceil(laneCount / 2));
+    return colSpan === 1
+      ? 'var(--week-day-col-width)'
+      : `calc(${colSpan} * var(--week-day-col-width))`;
+  });
+  grid.style.gridTemplateColumns = `var(--week-hour-label-width) ${colWidths.join(' ')}`;
+
   const corner = document.createElement('div');
   corner.className = 'week-time-corner';
-  corner.textContent = '';
   corner.style.gridColumn = '1';
   corner.style.gridRow = '1';
   grid.appendChild(corner);
@@ -120,7 +128,6 @@ function renderWeekGrid(config, shifts) {
     const label = document.createElement('div');
     label.className = 'week-time-hour-label';
     label.textContent = hourStr;
-    label.dataset.hour = hourStr;
     label.style.gridColumn = '1';
     label.style.gridRow = String(hour + 2);
     grid.appendChild(label);
@@ -165,9 +172,7 @@ function renderMonthGrid(config, shifts) {
   if (!grid) return;
   grid.innerHTML = '';
 
-  const anchor = new Date(`${config.anchor}T00:00:00`);
-  const startFallback = new Date(`${config.start}T00:00:00`);
-  const anchorDate = Number.isNaN(anchor.getTime()) ? startFallback : anchor;
+  const anchorDate = new Date(`${config.anchor}T00:00:00`);
 
   const anchorMonth = anchorDate.getMonth();
   const anchorYear = anchorDate.getFullYear();

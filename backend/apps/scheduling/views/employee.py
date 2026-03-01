@@ -5,23 +5,24 @@ import json
 from django.core.exceptions import ValidationError
 from django.core.serializers.json import DjangoJSONEncoder
 from django.http import HttpRequest, HttpResponse, JsonResponse
-from django.shortcuts import render
+from django.shortcuts import redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
 from apps.accounts.decorators import employee_required
 
-from ..models import EmployeeUnavailability
+from ..models import Assignment, EmployeeUnavailability
 from ..services import shifts_for_employee
 from .helpers import _parse_date, _parse_required_date, _month_bounds
+
 
 @employee_required
 @require_http_methods(["GET"])
 def employee_shifts_view(request: HttpRequest) -> HttpResponse:
-    
+
     today = timezone.localdate()
     anchor = _parse_date(request.GET.get("date"), today)
-    
     start, end = _month_bounds(anchor)
     period_label = anchor.strftime("%B %Y")
 
@@ -37,27 +38,6 @@ def employee_shifts_view(request: HttpRequest) -> HttpResponse:
         }
         for s in shift_qs
     ]
-    
-    return render(
-        request,
-        "employee/employee-shifts.html",
-        {
-            "anchor": anchor,
-            "start": start,
-            "end": end,
-            "period_label": period_label,
-            "today": today,
-            "shifts_json": json.dumps(shifts_payload, cls=DjangoJSONEncoder),
-        },
-    )
-
-@employee_required
-@require_http_methods(["GET"])
-def employee_unavailability_view(request: HttpRequest) -> HttpResponse:
-    
-    today = timezone.localdate()
-    anchor = _parse_date(request.GET.get("date"), today)
-    start, end = _month_bounds(anchor)
 
     unavailable_days = list(
         EmployeeUnavailability.objects.filter(
@@ -69,25 +49,38 @@ def employee_unavailability_view(request: HttpRequest) -> HttpResponse:
 
     return render(
         request,
-        "employee/employee-unavailability.html",
+        "employee/employee-shifts.html",
         {
-            "view": "month",
             "anchor": anchor,
             "start": start,
             "end": end,
-            "period_label": anchor.strftime("%B %Y"),
+            "period_label": period_label,
             "today": today,
+            "toggle_url": reverse("employee_unavailability_toggle"),
+            "shifts_json": json.dumps(shifts_payload, cls=DjangoJSONEncoder),
             "unavailable_json": json.dumps(
                 [d.isoformat() for d in unavailable_days],
-                cls=DjangoJSONEncoder
+                cls=DjangoJSONEncoder,
             ),
         },
     )
 
+
+@employee_required
+@require_http_methods(["GET"])
+def employee_unavailability_view(request: HttpRequest) -> HttpResponse:
+    """Availability page merged into My Shifts — redirect accordingly."""
+    date_param = request.GET.get("date")
+    target = reverse("employee_shifts")
+    if date_param:
+        target = f"{target}?date={date_param}"
+    return redirect(target)
+
+
 @employee_required
 @require_http_methods(["POST"])
 def employee_unavailability_toggle(request: HttpRequest) -> JsonResponse:
-    
+
     try:
         day = _parse_required_date(request.POST.get("date"), "date")
     except ValidationError as exc:
@@ -98,13 +91,33 @@ def employee_unavailability_toggle(request: HttpRequest) -> JsonResponse:
             msg = str(exc)
         return JsonResponse({"ok": False, "error": msg}, status=400)
 
+    today = timezone.localdate()
+
+    # Rule 1: only tomorrow or later
+    if day <= today:
+        return JsonResponse(
+            {"ok": False, "error": "Only dates from tomorrow onwards can be marked as unavailable."},
+            status=400,
+        )
+
+    # Rule 2: cannot mark a day with an active shift assignment
+    has_shift = Assignment.objects.filter(
+        employee_id=request.user.id,
+        shift__date=day,
+    ).exists()
+    if has_shift:
+        return JsonResponse(
+            {"ok": False, "error": "You have a shift assigned on this day."},
+            status=400,
+        )
+
     obj = EmployeeUnavailability.objects.filter(
         employee_id=request.user.id, date=day
     ).first()
-    
+
     if obj:
         obj.delete()
-        return JsonResponse({"ok": True, "date": day.strftime("%d-%m-%Y"), "unavailable": False})
+        return JsonResponse({"ok": True, "date": day.isoformat(), "unavailable": False})
 
     EmployeeUnavailability.objects.create(employee_id=request.user.id, date=day)
-    return JsonResponse({"ok": True, "date": day.strftime("%d-%m-%Y"), "unavailable": True})
+    return JsonResponse({"ok": True, "date": day.isoformat(), "unavailable": True})

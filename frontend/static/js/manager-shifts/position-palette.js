@@ -37,7 +37,6 @@ function collectPositionsFromDom() {
 }
 
 function renderPositionLegend(positions, shifts) {
-  const card = getEl('positionLegendCard');
   const root = getEl('positionLegend');
   if (!root) return;
   root.innerHTML = '';
@@ -61,12 +60,9 @@ function renderPositionLegend(positions, shifts) {
     .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
 
   if (!visiblePositions.length && !hasDraft) {
-    card?.classList.add('hidden');
-    window.requestAnimationFrame(() => window.managerSyncStickyOffsets?.());
+    window.requestAnimationFrame(() => window.ManagerShiftsLayout?.syncLayout?.());
     return;
   }
-
-  card?.classList.remove('hidden');
 
   if (hasDraft) {
     const draftItem = document.createElement('div');
@@ -102,7 +98,7 @@ function renderPositionLegend(positions, shifts) {
     root.appendChild(item);
   });
 
-  window.requestAnimationFrame(() => window.managerSyncStickyOffsets?.());
+  window.requestAnimationFrame(() => window.ManagerShiftsLayout?.syncLayout?.());
 }
 
 window.ManagerShiftsPositionPalette = {

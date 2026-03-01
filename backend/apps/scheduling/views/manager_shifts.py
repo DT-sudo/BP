@@ -26,7 +26,7 @@ from .helpers import (
 
 
 def _serialize_shifts(shifts):
-    """Serialize shifts using Django values() for efficiency."""
+    """Serialize shift model instances to a list of dicts for JSON output."""
     result = []
     for s in shifts:
         assigned_ids = [a.employee_id for a in s.assignments.all()]
@@ -139,7 +139,7 @@ def create_shift(request: HttpRequest) -> HttpResponse:
 @require_http_methods(["POST"])
 def update_shift(request: HttpRequest, shift_id: int) -> HttpResponse:
     
-    shift = get_object_or_404(Shift.objects.active(), pk=shift_id, created_by=request.user)
+    shift = get_object_or_404(Shift.objects, pk=shift_id, created_by=request.user)
     return _save_shift_from_post(
         request,
         shift=shift,
@@ -152,11 +152,10 @@ def update_shift(request: HttpRequest, shift_id: int) -> HttpResponse:
 @require_http_methods(["POST"])
 def delete_shift(request: HttpRequest, shift_id: int) -> HttpResponse:
     
-    shift = get_object_or_404(Shift.objects.active(), pk=shift_id, created_by=request.user)
-    shift.is_deleted = True
-    shift.save(update_fields=["is_deleted", "updated_at"])
+    shift = get_object_or_404(Shift.objects, pk=shift_id, created_by=request.user)
+    shift.delete()
     messages.success(request, "Shift deleted.")
-    return _redirect_back(request, "manager_shifts")
+    return _redirect_back(request)
 
 
 @manager_required
@@ -172,7 +171,7 @@ def publish_all_shifts(request: HttpRequest) -> HttpResponse:
     else:
         start, end = _week_bounds(anchor)
     
-    drafts = Shift.objects.active().filter(
+    drafts = Shift.objects.filter(
         created_by=request.user,
         status=ShiftStatus.DRAFT,
         date__gte=start,
@@ -201,7 +200,7 @@ def publish_all_shifts(request: HttpRequest) -> HttpResponse:
 @require_http_methods(["POST"])
 def publish_shift(request: HttpRequest, shift_id: int) -> HttpResponse:
     
-    shift = get_object_or_404(Shift.objects.active(), pk=shift_id, created_by=request.user)
+    shift = get_object_or_404(Shift.objects, pk=shift_id, created_by=request.user)
     if shift.status != ShiftStatus.PUBLISHED:
         if shift.assignments.filter(employee__unavailability__date=shift.date).exists():
             messages.error(request, "Cannot publish shift: one or more assigned employees are unavailable that day.")
@@ -218,7 +217,7 @@ def publish_shift(request: HttpRequest, shift_id: int) -> HttpResponse:
 def shift_details(request: HttpRequest, shift_id: int) -> JsonResponse:
     
     shift = get_object_or_404(
-        Shift.objects.active().select_related("position"),
+        Shift.objects.select_related("position"),
         pk=shift_id,
         created_by=request.user,
     )

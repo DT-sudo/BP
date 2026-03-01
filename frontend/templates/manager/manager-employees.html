@@ -36,9 +36,10 @@
           <button class="btn btn-outline" type="button" onclick="openModal('positionModal')">Manage positions</button>
         </div>
       </div>
+    </div>
 
     <!-- Employee Table -->
-    <div class="card mt-4 employee-table-card">
+    <div class="card mt-3 employee-table-card">
       <div class="table-container table-container-scrollable">
         <table class="table table-fixed table-sticky-header" aria-label="Employee list">
           <colgroup>
@@ -223,7 +224,7 @@
 
   <!-- One-time Credentials Modal -->
   {% if creds %}
-    <div class="modal-overlay" id="credentialsModal" data-autoshow="1">
+    <div class="modal-overlay" id="credentialsModal">
       <div class="modal" style="max-width: 560px;">
         <div class="modal-header">
           <h2 class="modal-title">Credentials (shown once)</h2>

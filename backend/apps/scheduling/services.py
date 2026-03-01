@@ -18,7 +18,7 @@ def _manager_shifts_qs(
     end: date | None = None,
 ):
     
-    qs = Shift.objects.active().filter(created_by_id=manager_id)
+    qs = Shift.objects.filter(created_by_id=manager_id)
     if start is not None:
         qs = qs.filter(date__gte=start)
     if end is not None:
@@ -33,7 +33,7 @@ def validate_shift_capacity(shift: Shift, desired_assigned_count: int) -> None:
 def validate_employee_no_overlap(employee_id: int, shift: Shift) -> None:
     
     overlapping = (
-        Shift.objects.active().filter(assignments__employee_id=employee_id, date=shift.date)
+        Shift.objects.filter(assignments__employee_id=employee_id, date=shift.date)
         .exclude(id=shift.id)
         .only("id", "start_time", "end_time", "position", "date")
     )
@@ -107,7 +107,7 @@ def shifts_for_manager(
 def shifts_for_employee(*, employee_id: int, start: date, end: date):
     
     return (
-        Shift.objects.active().filter(
+        Shift.objects.filter(
             assignments__employee_id=employee_id,
             date__gte=start,
             date__lte=end,

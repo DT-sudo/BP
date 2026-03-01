@@ -1,11 +1,40 @@
-/* ========================================
-   ShiftSync - Static CSS Export
-   Enterprise Shift Management System
-   ======================================== */
+/* ============================================================
+   ShiftSync – Styles
+   ============================================================
+   Sections (in order):
+     1.  Design Tokens (CSS variables)
+     2.  Reset & Base
+     3.  Layout & Page Structure
+     4.  Navigation
+     5.  Buttons
+     6.  Form Controls
+     7.  Cards
+     8.  Tables
+     9.  Badges
+    10.  Dropdown & Multiselect
+    11.  Tag Chips  (employee-chip / date-chip)
+    12.  Switch
+    13.  Shift Chips
+    14.  Calendar – Shared
+    15.  Calendar – Toolbar
+    16.  Calendar – Week View
+    17.  Calendar – Month View
+    18.  Manager Shifts Page  (layout + employee sidebar + position legend)
+    19.  Modals
+    20.  Toast Notifications
+    21.  Team Page  (employees toolbar + filters + empty state)
+    22.  Auth Page
+    23.  Utility Classes
+    24.  Responsive Breakpoints
+   ============================================================ */
 
-/* CSS Variables */
+
+/* ============================================================
+   1. Design Tokens
+   ============================================================ */
+
 :root {
-  /* Blue Theme */
+  /* Palette */
   --background: hsl(210, 20%, 98%);
   --foreground: hsl(222, 47%, 11%);
   --card: hsl(0, 0%, 100%);
@@ -15,44 +44,49 @@
   --secondary-foreground: hsl(222, 47%, 11%);
   --muted: hsl(210, 40%, 96%);
   --muted-foreground: hsl(215, 16%, 47%);
-  --accent: hsl(210, 40%, 96%);
-  --accent-foreground: hsl(222, 47%, 11%);
   --destructive: hsl(0, 84%, 60%);
   --destructive-foreground: hsl(0, 0%, 100%);
   --border: hsl(214, 32%, 91%);
-  --input: hsl(214, 32%, 91%);
-  --ring: hsl(221, 83%, 53%);
   --radius: 0.5rem;
-  
-  /* Status Colors */
+
+  /* Status */
   --warning: hsl(38, 92%, 50%);
-  
-  /* Shift Status */
+  --info: hsl(199, 89%, 48%);
+
+  /* Shift status */
   --shift-published: hsl(142, 71%, 45%);
   --shift-published-bg: hsl(142, 71%, 95%);
   --shift-past: hsl(215, 16%, 75%);
   --shift-past-bg: hsl(210, 40%, 96%);
   --shift-future: hsl(221, 83%, 53%);
   --shift-future-bg: hsl(221, 83%, 96%);
-  
-  /* Interactive States */
+
+  /* Interactive */
   --hover-bg: hsl(210, 40%, 98%);
-  
-  /* Info Color */
-  --info: hsl(199, 89%, 48%);
-  
+
   /* Shadows */
   --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.1);
   --shadow-md: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
   --shadow-lg: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
   --shadow-header: 0 10px 22px -18px rgba(0, 0, 0, 0.18);
+
+  /* Layout constants */
+  --legend-bar-height: 42px;
 }
 
-/* Reset & Base */
+
+/* ============================================================
+   2. Reset & Base
+   ============================================================ */
+
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+}
+
+html {
+  overflow-y: scroll;
 }
 
 body {
@@ -63,22 +97,17 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-html {
-  overflow-y: scroll;
-  scrollbar-gutter: stable;
-}
-
-/* Typography */
-h1 { font-size: 2rem; font-weight: 700; }
+h1 { font-size: 2rem;   font-weight: 700; }
 h2 { font-size: 1.5rem; font-weight: 600; }
-h3 { font-size: 1.25rem; font-weight: 600; }
-h4 { font-size: 1rem; font-weight: 600; }
+h3 { font-size: 1.25rem;font-weight: 600; }
 
-/* ========================================
-   Layout Components
-   ======================================== */
 
-/* Header */
+/* ============================================================
+   3. Layout & Page Structure
+   ============================================================ */
+
+/* ── Header ── */
+
 .header {
   background-color: var(--card);
   border-bottom: 1px solid var(--border);
@@ -100,15 +129,19 @@ h4 { font-size: 1rem; font-weight: 600; }
   grid-column: 1;
 }
 
-.header-logo {
-  width: 1.75rem;
-  height: 1.75rem;
+.header-logo,
+.header-avatar {
   background-color: var(--primary);
-  border-radius: var(--radius);
   display: flex;
   align-items: center;
   justify-content: center;
   color: var(--primary-foreground);
+}
+
+.header-logo {
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: var(--radius);
 }
 
 .header-title {
@@ -135,67 +168,22 @@ h4 { font-size: 1rem; font-weight: 600; }
 }
 
 .header-user-trigger {
-  display: inline-flex;
-  align-items: center;
   gap: 0;
   padding: 0;
-}
-
-.dropdown-item-static {
-  cursor: default;
-  color: var(--muted-foreground);
-}
-
-.dropdown-item-title {
-  color: var(--foreground);
-  font-weight: 600;
-}
-
-.dropdown-item-static,
-.dropdown-item-static:hover {
-  background-color: transparent;
-  cursor: default;
 }
 
 .header-avatar {
   width: 2.125rem;
   height: 2.125rem;
-  background-color: var(--primary);
   border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--primary-foreground);
   font-size: 0.75rem;
   font-weight: 600;
 }
 
-/* Navigation Links */
-.nav-link {
-  padding: 0.4rem 0.75rem;
-  border-radius: var(--radius);
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: var(--muted-foreground);
-  text-decoration: none;
-  transition: all 0.2s;
-}
+/* ── Main Content ── */
 
-.nav-link:hover {
-  background-color: var(--accent);
-  color: var(--accent-foreground);
-}
-
-.nav-link.active {
-  background-color: transparent;
-  color: var(--foreground);
-  border-bottom: 2px solid var(--primary);
-  border-radius: 0;
-}
-
-/* Main Content */
 .main-content {
-  --page-padding: 1.5rem;
+  --page-padding: 1rem;
   padding: var(--page-padding);
 }
 
@@ -203,9 +191,7 @@ h4 { font-size: 1rem; font-weight: 600; }
   padding-top: 0;
 }
 
-body.manager-shifts-page .main-content {
-  --page-padding: 1rem;
-}
+/* ── Sticky page-level toolbar card ── */
 
 .card.page-toolbar-card {
   position: sticky;
@@ -228,9 +214,37 @@ body.manager-shifts-page .main-content {
   margin-bottom: 0;
 }
 
-/* ========================================
-   Button Components
-   ======================================== */
+
+/* ============================================================
+   4. Navigation
+   ============================================================ */
+
+.nav-link {
+  padding: 0.4rem 0.75rem;
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--muted-foreground);
+  text-decoration: none;
+  transition: all 0.2s;
+}
+
+.nav-link:hover {
+  background-color: var(--muted);
+  color: var(--foreground);
+}
+
+.nav-link.active {
+  background-color: transparent;
+  color: var(--foreground);
+  border-bottom: 2px solid var(--primary);
+  border-radius: 0;
+}
+
+
+/* ============================================================
+   5. Buttons
+   ============================================================ */
 
 .btn {
   display: inline-flex;
@@ -261,10 +275,14 @@ body.manager-shifts-page .main-content {
   background-color: hsl(221, 83%, 45%);
 }
 
-.btn-outline {
+.btn-outline,
+.btn-ghost {
   background-color: transparent;
-  border: 1px solid var(--border);
   color: var(--foreground);
+}
+
+.btn-outline {
+  border: 1px solid var(--border);
 }
 
 .btn-destructive {
@@ -276,16 +294,12 @@ body.manager-shifts-page .main-content {
   background-color: hsl(0, 84%, 50%);
 }
 
-.btn-ghost {
-  background-color: transparent;
-  color: var(--foreground);
-}
-
+/* Shared hover for outline / ghost / modal-close / dropdown items */
 .btn-outline:hover:not(:disabled),
 .btn-ghost:hover:not(:disabled),
 .modal-close:hover,
 .dropdown-item:not(.dropdown-item-static):hover {
-  background-color: var(--accent);
+  background-color: var(--muted);
 }
 
 .btn-sm {
@@ -299,9 +313,21 @@ body.manager-shifts-page .main-content {
   height: 2.25rem;
 }
 
-/* ========================================
-   Form Components
-   ======================================== */
+/* Icon button with destructive colour (ghost + red icon) */
+.btn-icon-destructive {
+  color: var(--destructive);
+}
+
+/* Full-width button helper */
+.btn-full {
+  width: 100%;
+  justify-content: center;
+}
+
+
+/* ============================================================
+   6. Form Controls
+   ============================================================ */
 
 .form-group {
   margin-bottom: 1rem;
@@ -315,31 +341,29 @@ body.manager-shifts-page .main-content {
   margin-bottom: 0.375rem;
 }
 
-.form-input {
+.form-input,
+.form-select {
   width: 100%;
-  padding: 0.5rem 0.75rem;
   font-size: 0.875rem;
-  border: 1px solid var(--input);
+  border: 1px solid var(--border);
   border-radius: var(--radius);
   background-color: var(--card);
   color: var(--foreground);
+}
+
+.form-input {
+  padding: 0.5rem 0.75rem;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .form-input:focus {
   outline: none;
-  border-color: var(--ring);
+  border-color: var(--primary);
   box-shadow: 0 0 0 3px hsl(221, 83%, 53%, 0.1);
 }
 
 .form-select {
-  width: 100%;
   padding: 0.5rem 2rem 0.5rem 0.75rem;
-  font-size: 0.875rem;
-  border: 1px solid var(--input);
-  border-radius: var(--radius);
-  background-color: var(--card);
-  color: var(--foreground);
   cursor: pointer;
   appearance: none;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
@@ -357,14 +381,16 @@ body.manager-shifts-page .main-content {
   margin-top: 0.25rem;
 }
 
+/* Multiselect trigger error state */
 .multiselect.form-error .multiselect-trigger {
   border-color: var(--destructive);
   box-shadow: 0 0 0 3px hsl(0, 84%, 60%, 0.12);
 }
 
-/* ========================================
-   Card Components
-   ======================================== */
+
+/* ============================================================
+   7. Cards
+   ============================================================ */
 
 .card {
   background-color: var(--card);
@@ -379,9 +405,7 @@ body.manager-shifts-page .main-content {
 }
 
 .card-header.card-header-tight {
-  padding-top: 10px;
-  padding-bottom: 10px;
-  padding-left: 16px;
+  padding: 0.625rem 1.5rem 0.625rem 1rem;
 }
 
 .card-title {
@@ -390,17 +414,18 @@ body.manager-shifts-page .main-content {
   color: var(--foreground);
 }
 
-.card-content-compact {
-  padding: 0.75rem;
-}
-
 .card-content {
   padding: 1.5rem;
 }
 
-/* ========================================
-   Table Components
-   ======================================== */
+.card-content-compact {
+  padding: 0.75rem;
+}
+
+
+/* ============================================================
+   8. Tables
+   ============================================================ */
 
 .table-container {
   overflow-x: auto;
@@ -411,14 +436,11 @@ body.manager-shifts-page .main-content {
   overflow-y: auto;
 }
 
+/* Table with sticky header row */
 .table-sticky-header thead {
   position: sticky;
   top: 0;
   z-index: 10;
-}
-
-.table-sticky-header th {
-  background-color: var(--muted);
 }
 
 .table {
@@ -438,8 +460,13 @@ body.manager-shifts-page .main-content {
   white-space: nowrap;
 }
 
-.table th {
+.table th,
+.table td {
   padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.table th {
   text-align: left;
   font-size: 0.75rem;
   font-weight: 600;
@@ -447,15 +474,17 @@ body.manager-shifts-page .main-content {
   letter-spacing: 0.05em;
   color: var(--muted-foreground);
   background-color: var(--muted);
-  border-bottom: 1px solid var(--border);
 }
 
 .table td {
-  padding: 0.75rem 1rem;
-  border-bottom: 1px solid var(--border);
   color: var(--foreground);
 }
 
+.table tr:hover td {
+  background-color: var(--hover-bg);
+}
+
+/* Action cell inside a table row (flex row of buttons) */
 .position-actions-cell {
   display: flex;
   align-items: center;
@@ -464,14 +493,15 @@ body.manager-shifts-page .main-content {
   height: 100%;
 }
 
-.table tr:hover td,
-.week-time-cell:hover {
-  background-color: var(--hover-bg);
+/* Prevents dropdown menus inside table cells from being clipped */
+.table-actions-cell {
+  overflow: visible !important;
 }
 
-/* ========================================
-   Badge Components
-   ======================================== */
+
+/* ============================================================
+   9. Badges
+   ============================================================ */
 
 .badge {
   display: inline-flex;
@@ -495,14 +525,290 @@ body.manager-shifts-page .main-content {
 }
 
 .badge-outline {
-  background-color: transparent;
   border-color: var(--border);
   color: var(--foreground);
 }
 
-/* ========================================
-   Shift Chips
-   ======================================== */
+
+/* ============================================================
+   10. Dropdown & Multiselect
+   ============================================================ */
+
+/* ── Shared positioning container ── */
+
+.dropdown,
+.multiselect {
+  position: relative;
+  display: inline-block;
+}
+
+/* ── Dropdown menu panel ── */
+
+.dropdown-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 2000;
+  min-width: 160px;
+  margin-top: 0.25rem;
+  background-color: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  display: none;
+}
+
+.dropdown-menu.open,
+.multiselect.open .multiselect-menu {
+  display: block;
+}
+
+/* Higher z-index for dropdowns that escape table stacking contexts */
+.dropdown-menu-fixed {
+  z-index: 3000;
+}
+
+/* ── Dropdown items ── */
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  color: var(--foreground);
+  text-decoration: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+}
+
+.dropdown-item-destructive {
+  color: var(--destructive);
+}
+
+/* Static (non-interactive) dropdown item variants */
+.dropdown-item-static {
+  cursor: default;
+  color: var(--muted-foreground);
+}
+
+.dropdown-item-title {
+  color: var(--foreground);
+  font-weight: 600;
+}
+
+.dropdown-divider {
+  height: 1px;
+  background-color: var(--border);
+  margin: 0.25rem 0;
+}
+
+/* ── Multiselect trigger (button that opens the menu) ── */
+
+.multiselect-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.multiselect-full {
+  display: block;
+  width: 100%;
+}
+
+.multiselect-full .multiselect-trigger {
+  width: 100%;
+  justify-content: space-between;
+}
+
+/* Selected-chips area inside the trigger */
+.multiselect-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem;
+  flex: 1;
+  min-height: 1.25rem;
+}
+
+/* ── Multiselect dropdown menu ── */
+
+.multiselect-menu {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  left: 0;
+  min-width: 220px;
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
+  padding: 0.5rem;
+  z-index: 1000;
+  display: none;
+}
+
+/* Scrollable position list inside the shift-create modal */
+#shiftPositionMultiMenu {
+  max-height: 280px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.multiselect-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.multiselect-item:hover {
+  background: var(--muted);
+}
+
+/* Hint text shown inside an empty multiselect menu */
+.multiselect-hint {
+  padding: 0.5rem 0.75rem;
+}
+
+/* ── Multiselect action bar (apply/clear buttons) ── */
+
+.multiselect-actions {
+  display: flex;
+  justify-content: flex-start;
+  gap: 0.5rem;
+  border-top: 1px solid var(--border);
+  padding-top: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.multiselect-actions .btn-primary {
+  margin-left: auto;
+}
+
+.multiselect-actions-right {
+  justify-content: flex-end;
+}
+
+.multiselect-actions-right .btn-primary {
+  margin-left: 0;
+}
+
+
+/* ============================================================
+   11. Tag Chips  (employee-chip / date-chip)
+   ============================================================ */
+
+/* Base pill-shaped tag used for employee selections and unavailable-day list */
+.employee-chip,
+.date-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
+  background: var(--secondary);
+  color: var(--secondary-foreground);
+  border: 1px solid var(--border);
+  font-size: 0.75rem;
+  line-height: 1.25;
+}
+
+.chip-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 9999px;
+  background: rgba(0, 0, 0, 0.05);
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+
+.chip-remove:hover {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.chip-text {
+  white-space: nowrap;
+}
+
+/* Wrapping container for a list of date chips */
+.date-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+}
+
+
+/* ============================================================
+   12. Switch  (toggle input)
+   ============================================================ */
+
+.switch {
+  display: inline-flex;
+  position: relative;
+  align-items: center;
+  gap: 0.6rem;
+  cursor: pointer;
+  user-select: none;
+  line-height: 1;
+}
+
+/* Hide native checkbox visually */
+.switch input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+
+.switch-slider {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 24px;
+  background: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  position: relative;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+
+.switch-slider::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  transition: transform 120ms ease;
+}
+
+.switch input:checked + .switch-slider {
+  background: var(--primary);
+  border-color: hsl(221, 83%, 53%, 0.45);
+}
+
+.switch input:checked + .switch-slider::after {
+  transform: translateX(20px);
+}
+
+
+/* ============================================================
+   13. Shift Chips
+   ============================================================ */
+
+/* ── Base chip ── */
 
 .shift-chip {
   display: block;
@@ -519,20 +825,23 @@ body.manager-shifts-page .main-content {
   line-height: 1.15;
 }
 
-.shift-chip-timed {
-  position: absolute;
-  margin: 0;
-  z-index: 1;
-  overflow: visible;
-}
-
 .shift-chip:hover {
   box-shadow: var(--shadow-sm);
 }
 
+/* Absolutely-positioned variant used in the week timed view */
+.shift-chip-timed {
+  position: absolute;
+  margin: 0;
+  z-index: 1;
+}
+
+/* Highlight ring when an employee is selected in the sidebar */
 .shift-chip-employee-highlight {
   box-shadow: 0 0 0 2px var(--warning), 0 2px 10px rgba(0, 0, 0, 0.12);
 }
+
+/* ── Colour variants ── */
 
 .shift-chip-future,
 .shift-chip-published {
@@ -553,6 +862,7 @@ body.manager-shifts-page .main-content {
   border: 2px dashed var(--border);
 }
 
+/* Position-coloured chip (colour injected via inline CSS variables) */
 .shift-chip-position {
   background-color: var(--position-bg);
   color: var(--position-fg);
@@ -562,6 +872,8 @@ body.manager-shifts-page .main-content {
 .shift-chip-past.shift-chip-position {
   opacity: 0.75;
 }
+
+/* ── Content layout inside a chip ── */
 
 .shift-chip-header {
   display: flex;
@@ -603,6 +915,8 @@ body.manager-shifts-page .main-content {
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
+
+/* ── Manager month-view chips (compact card-in-cell layout) ── */
 
 #monthGrid .manager-month-shift-list {
   display: flex;
@@ -673,6 +987,8 @@ body.manager-shifts-page .main-content {
   text-overflow: ellipsis;
 }
 
+/* ── Responsive chip content via CSS Container Queries ── */
+
 @container (max-width: 150px) {
   #monthGrid .manager-month-shift-sep,
   #monthGrid .manager-month-shift-time {
@@ -687,9 +1003,56 @@ body.manager-shifts-page .main-content {
 }
 
 
-/* ========================================
-   Calendar Components
-   ======================================== */
+/* ============================================================
+   14. Calendar – Shared
+   ============================================================ */
+
+/* ── Base grid wrapper ── */
+
+.calendar-grid {
+  display: grid;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+/* ── Header row cells (day-of-week labels) ── */
+
+.calendar-header-cell,
+.week-time-corner,
+.week-time-day-header {
+  padding: 0.75rem;
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--foreground);
+  background-color: var(--muted);
+  border-bottom: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+}
+
+/* ── Day cells ── */
+
+.calendar-cell {
+  min-height: 120px;
+  padding: 0.5rem;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  background-color: var(--card);
+}
+
+/* ── Date number label inside each cell ── */
+
+.calendar-date {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--foreground);
+  margin-bottom: 0.5rem;
+}
+
+/* ── Navigation controls and period label (shared by all calendar pages) ── */
 
 .calendar-nav,
 .filter-group {
@@ -706,7 +1069,37 @@ body.manager-shifts-page .main-content {
   text-align: center;
 }
 
-/* Unified toolbar classes */
+/* ── Cell state modifiers ── */
+
+/* Today highlight */
+.calendar-cell-today {
+  background-color: var(--shift-future-bg);
+}
+
+/* Employee-marked unavailable day */
+.calendar-cell-unavailable {
+  background-color: hsl(0, 84%, 97%);
+  box-shadow: inset 0 0 0 2px hsl(0, 84%, 60%, 0.2);
+}
+
+/* Date label colour override for unavailable cells in month view */
+.calendar-grid-month .calendar-cell.calendar-cell-unavailable .calendar-date {
+  color: var(--destructive);
+}
+
+/* Days that fall outside the displayed month */
+.calendar-cell-other-month .calendar-date {
+  color: var(--muted-foreground);
+  font-weight: 500;
+  opacity: 0.45;
+}
+
+
+/* ============================================================
+   15. Calendar – Toolbar
+   ============================================================ */
+
+/* Three-zone grid: [filters/nav] [period label] [right controls] */
 .shifts-toolbar {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
@@ -715,14 +1108,20 @@ body.manager-shifts-page .main-content {
   overflow: visible;
 }
 
-.shifts-toolbar-left {
-  justify-self: start;
+.shifts-toolbar-left,
+.shifts-toolbar-right {
   min-width: 0;
   display: flex;
   align-items: center;
   gap: 0.75rem;
   flex-wrap: wrap;
-  white-space: normal;
+}
+
+.shifts-toolbar-left  { justify-self: start; }
+
+.shifts-toolbar-right {
+  justify-self: end;
+  justify-content: flex-end;
 }
 
 .shifts-toolbar-center {
@@ -740,24 +1139,188 @@ body.manager-shifts-page .main-content {
   margin: 0;
 }
 
-.shifts-toolbar-right {
-  justify-self: end;
-  min-width: 0;
+
+/* ============================================================
+   16. Calendar – Week View
+   ============================================================ */
+
+/* ── Grid definition ── */
+
+.calendar-grid-week-time {
+  --week-hour-label-width: 72px;
+  --week-day-col-width: 240px;
+  --week-time-hour-height: 56px;
+  grid-template-columns: var(--week-hour-label-width) repeat(7, var(--week-day-col-width));
+  grid-template-rows: auto repeat(24, var(--week-time-hour-height));
+  height: clamp(520px, 72vh, 980px);
+  overflow: auto;
+  position: relative;
+}
+
+/* ── Sticky header: top-left corner & day headers ── */
+
+.week-time-corner,
+.week-time-day-header {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+}
+
+/* Corner cell is also sticky horizontally */
+.week-time-corner {
+  left: 0;
+  z-index: 60;
+}
+
+.week-time-day-header {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-  white-space: normal;
+  justify-content: center;
 }
 
-.shifts-toolbar-right .filters-row {
-  flex-wrap: wrap;
+/* ── Sticky hour labels on the left ── */
+
+.week-time-hour-label {
+  position: sticky;
+  left: 0;
+  z-index: 25;
+  background-color: var(--muted);
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  color: var(--foreground);
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.25rem 0.5rem;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  font-variant-numeric: tabular-nums;
 }
 
-/* ========================================
-   Manager Employees Sidebar
-   ======================================== */
+/* ── Body cells ── */
+
+.week-time-cell {
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  background-color: var(--card);
+}
+
+.week-time-cell:hover {
+  background-color: var(--hover-bg);
+}
+
+/* ── Absolutely-positioned layer that holds timed shift chips ── */
+
+.week-shifts-layer {
+  position: relative;
+  z-index: 5;
+  pointer-events: none;
+}
+
+/* Re-enable pointer events for chips inside the vertical (timed) layer */
+.week-shifts-layer-vertical .shift-chip {
+  pointer-events: auto;
+}
+
+
+/* ============================================================
+   17. Calendar – Month View
+   ============================================================ */
+
+/* ── Grid definition ── */
+
+.calendar-grid-month {
+  grid-template-columns: repeat(7, 1fr);
+  grid-template-rows: 32px repeat(6, minmax(140px, 1fr));
+  height: clamp(520px, 72vh, 980px);
+  overflow: auto;
+  --slot-scrollbar-safe: 8px;
+}
+
+/* ── Header cells ── */
+
+.calendar-grid-month .calendar-header-cell {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+}
+
+/* Inside #monthGrid the header cells are centred flex containers */
+#monthGrid.calendar-grid-month .calendar-header-cell {
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Remove right border on the last column */
+.calendar-grid-month .calendar-header-cell:nth-child(7),
+.calendar-cell:nth-child(7n) {
+  border-right: none;
+}
+
+/* ── Day cells ── */
+
+.calendar-grid-month .calendar-cell {
+  min-height: 0;
+  overflow: auto;
+  padding: 0;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(15, 23, 42, 0.28) transparent;
+}
+
+.calendar-grid-month .calendar-cell::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.calendar-grid-month .calendar-cell::-webkit-scrollbar-thumb {
+  background-color: rgba(15, 23, 42, 0.28);
+  border-radius: 999px;
+}
+
+.calendar-grid-month .calendar-cell::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* ── Date label inside month cells ── */
+
+.calendar-grid-month .calendar-date {
+  margin-bottom: 0;
+  padding: 0.25rem 0.25rem 0.15rem;
+}
+
+/* ── Shift chips inside month cells (account for scrollbar gutter) ── */
+
+.calendar-grid-month .calendar-cell > .shift-chip {
+  margin: 0 calc(0.25rem + var(--slot-scrollbar-safe)) 0.15rem 0.25rem;
+}
+
+/* ── Stretch grids to fill the view container ── */
+
+body.manager-shifts-page #weekGrid.calendar-grid-week-time,
+body.manager-shifts-page #monthGrid.calendar-grid-month {
+  flex: 1 1 auto;
+  height: 100%;
+}
+
+body.manager-shifts-page #monthGrid.calendar-grid-month {
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+
+/* ============================================================
+   18. Manager Shifts Page  (layout · sidebar · position legend)
+   ============================================================ */
+
+/* ── Page-level override ── */
+
+body.manager-shifts-page .main-content {
+  padding-bottom: var(--legend-bar-height);
+}
+
+/* ── Two-column layout: sidebar + main calendar ── */
 
 .manager-calendar-layout {
   display: grid;
@@ -770,14 +1333,16 @@ body.manager-shifts-page .main-content {
   min-width: 0;
 }
 
+/* ── Employee sidebar ── */
+
 .manager-employee-sidebar {
   min-width: 0;
   display: flex;
   flex-direction: column;
 }
 
-body.has-bottom-legend .manager-employee-sidebar {
-  height: calc(100vh - 60px - 60px - 54px - 2rem);
+body.manager-shifts-page .manager-employee-sidebar {
+  height: var(--manager-calendar-fill-height, calc(100vh - 60px - 60px - 54px - 2rem));
   min-height: 400px;
 }
 
@@ -823,13 +1388,14 @@ body.has-bottom-legend .manager-employee-sidebar {
 
 .employee-sidebar-item {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   gap: 0.75rem;
   padding: 0.5rem;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background-color: var(--card);
+  cursor: pointer;
 }
 
 .employee-sidebar-item.active {
@@ -887,23 +1453,14 @@ body.has-bottom-legend .manager-employee-sidebar {
   white-space: nowrap;
 }
 
-.employee-highlight-btn.btn-icon {
-  width: 2rem;
-  height: 2rem;
-  padding: 0.375rem;
-}
 
-.employee-highlight-btn.active {
-  border-color: hsl(38, 92%, 50%, 0.65);
-  box-shadow: 0 0 0 3px hsl(38, 92%, 50%, 0.12);
-}
-
+/* Collapse sidebar to full-width on medium screens */
 @media (max-width: 1024px) {
   .manager-calendar-layout {
     grid-template-columns: 1fr;
   }
 
-  body.has-bottom-legend .manager-employee-sidebar {
+  body.manager-shifts-page .manager-employee-sidebar {
     height: auto;
   }
 
@@ -912,265 +1469,15 @@ body.has-bottom-legend .manager-employee-sidebar {
   }
 }
 
-.calendar-grid {
-  display: grid;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  overflow: hidden;
-}
-
-.calendar-grid-week-time {
-  --week-hour-label-width: 72px;
-  --week-time-hour-height: 56px;
-  grid-template-columns: var(--week-hour-label-width) repeat(7, minmax(0, 1fr));
-  grid-template-rows: auto repeat(24, var(--week-time-hour-height));
-  height: clamp(520px, 72vh, 980px);
-  overflow: auto;
-  position: relative;
-}
-
-.week-time-corner,
-.week-time-day-header {
-  position: sticky;
-  top: 0;
-  z-index: 30;
-  background-color: var(--muted);
-  border-bottom: 1px solid var(--border);
-  border-right: 1px solid var(--border);
-  color: var(--foreground);
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  padding: 0.75rem;
-  text-align: center;
-}
-
-.week-time-corner {
-  left: 0;
-  z-index: 60;
-}
-
-.week-time-day-header {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.week-time-hour-label {
-  position: sticky;
-  left: 0;
-  z-index: 25;
-  background-color: var(--muted);
-  border-right: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
-  color: var(--foreground);
-  font-size: 0.75rem;
-  font-weight: 600;
-  padding: 0.25rem 0.5rem;
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  font-variant-numeric: tabular-nums;
-}
-
-.week-time-cell {
-  border-right: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
-  background-color: var(--card);
-}
-
-.week-shifts-layer.week-shifts-layer-vertical {
-  position: relative;
-  overflow: visible;
-}
-
-.week-shifts-layer-vertical .shift-chip {
-  pointer-events: auto;
-}
-
-.calendar-grid-month .calendar-header-cell:nth-child(7),
-.calendar-cell:nth-child(7n) {
-  border-right: none;
-}
-
-.calendar-grid-month {
-  grid-template-columns: repeat(7, 1fr);
-  grid-template-rows: 32px repeat(6, minmax(140px, 1fr));
-  height: clamp(520px, 72vh, 980px);
-  overflow: auto;
-  --slot-scrollbar-safe: 8px;
-}
-
-.calendar-grid-month .calendar-header-cell {
-  position: sticky;
-  top: 0;
-  z-index: 40;
-}
-
-#monthGrid.calendar-grid-month .calendar-header-cell {
-  padding: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.calendar-header-cell {
-  padding: 0.75rem;
-  text-align: center;
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--foreground);
-  background-color: var(--muted);
-  border-bottom: 1px solid var(--border);
-  border-right: 1px solid var(--border);
-}
-
-.calendar-cell {
-  min-height: 120px;
-  padding: 0.5rem;
-  border-right: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
-  background-color: var(--card);
-}
-
-.calendar-grid-month .calendar-cell {
-  min-height: 0;
-  overflow: auto;
-  padding: 0;
-  scrollbar-gutter: stable;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(15, 23, 42, 0.28) transparent;
-}
-
-.calendar-grid-month .calendar-cell::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-.calendar-grid-month .calendar-cell::-webkit-scrollbar-thumb {
-  background-color: rgba(15, 23, 42, 0.28);
-  border-radius: 999px;
-}
-
-.calendar-grid-month .calendar-cell::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.calendar-grid-month .calendar-date {
-  margin-bottom: 0;
-  padding: 0.25rem 0.25rem 0.15rem;
-}
-
-.calendar-grid-month .calendar-cell > .shift-chip {
-  margin: 0 calc(0.25rem + var(--slot-scrollbar-safe)) 0.15rem 0.25rem;
-}
-
-.calendar-cell-today {
-  background-color: var(--shift-future-bg);
-}
-
-.calendar-cell-busy {
-  pointer-events: none;
-  opacity: 0.75;
-}
-
-.calendar-cell-unavailable {
-  background-color: hsl(0, 84%, 97%);
-  box-shadow: inset 0 0 0 2px hsl(0, 84%, 60%, 0.2);
-}
-
-.calendar-grid-month .calendar-cell.calendar-cell-unavailable .calendar-date {
-  color: var(--destructive);
-}
-
-.calendar-date {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--foreground);
-  margin-bottom: 0.5rem;
-}
-
-.calendar-cell-other-month .calendar-date {
-  color: var(--muted-foreground);
-  font-weight: 500;
-  opacity: 0.45;
-}
-
-.week-shifts-layer {
-  position: relative;
-  z-index: 5;
-  overflow: hidden;
-  pointer-events: none;
-}
-
-.week-shifts-layer .shift-chip {
-  pointer-events: auto;
-}
-
-/* ========================================
-   Position Legend
-   ======================================== */
+/* ── Position Legend ── */
 
 .position-legend {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.75rem 1rem;
+  gap: 0.25rem 1rem;
   align-items: center;
-}
-
-body.has-bottom-legend .main-content {
-  padding-bottom: 0;
-}
-
-body.has-bottom-legend #positionLegendCard {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 44;
-  margin: 0;
-  border-left: none;
-  border-right: none;
-  border-bottom: none;
-  border-radius: 0;
-  box-shadow: 0 -10px 20px rgba(0, 0, 0, 0.06);
-}
-
-body.has-bottom-legend #positionLegendCard .card-content {
-  padding: 0.6rem var(--page-padding);
-}
-
-body.has-bottom-legend #positionLegendCard .position-legend {
   justify-content: center;
-  gap: 0.35rem 1rem;
-}
-
-body.has-bottom-legend #weekView,
-body.has-bottom-legend #monthView {
-  height: calc(100vh - 60px - 60px - 54px - 2rem);
-  min-height: 400px;
-  display: flex;
-  flex-direction: column;
-}
-
-body.has-bottom-legend #weekGrid.calendar-grid-week-time,
-body.has-bottom-legend #monthGrid.calendar-grid-month {
-  flex: 1 1 auto;
-  height: 100%;
-}
-
-body.has-bottom-legend #monthGrid.calendar-grid-month {
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  grid-template-rows: 32px repeat(6, minmax(140px, 1fr));
-  overflow: auto;
-}
-
-body.has-bottom-legend #monthGrid.calendar-grid-month .calendar-cell {
-  padding: 0;
-  overflow: auto;
+  overflow: hidden;
 }
 
 .position-legend-item {
@@ -1200,9 +1507,39 @@ body.has-bottom-legend #monthGrid.calendar-grid-month .calendar-cell {
   border-style: dashed;
 }
 
-/* ========================================
-   Modal/Dialog Components
-   ======================================== */
+/* ── Fixed bottom legend bar ── */
+
+#positionLegendBar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--legend-bar-height);
+  z-index: 44;
+  background-color: var(--card);
+  border-top: 1px solid var(--border);
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 1rem;
+  overflow: hidden;
+}
+
+body.manager-shifts-page #weekView,
+body.manager-shifts-page #monthView {
+  height: var(--manager-calendar-fill-height, calc(100vh - 60px - 60px - 54px - 2rem));
+  min-height: 400px;
+  display: flex;
+  flex-direction: column;
+}
+
+
+/* ============================================================
+   19. Modals
+   ============================================================ */
+
+/* ── Overlay backdrop ── */
 
 .modal-overlay {
   position: fixed;
@@ -1212,9 +1549,10 @@ body.has-bottom-legend #monthGrid.calendar-grid-month .calendar-cell {
   align-items: center;
   justify-content: center;
   padding: 1rem;
-  box-sizing: border-box;
   z-index: 5000;
 }
+
+/* ── Modal panel ── */
 
 .modal {
   background-color: var(--card);
@@ -1234,7 +1572,6 @@ body.has-bottom-legend #monthGrid.calendar-grid-month .calendar-cell {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background-color: var(--card);
 }
 
 .modal-title {
@@ -1260,6 +1597,21 @@ body.has-bottom-legend #monthGrid.calendar-grid-month .calendar-cell {
   overflow-y: auto;
   flex: 1 1 auto;
 }
+
+.modal-footer {
+  padding: 1.5rem;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+/* Size variant */
+.modal-lg {
+  max-width: 720px;
+}
+
+/* ── Create-shift modal overrides (wider panel, no overflow clipping) ── */
 
 #createShiftModal .modal {
   overflow: visible;
@@ -1292,78 +1644,80 @@ body.has-bottom-legend #monthGrid.calendar-grid-month .calendar-cell {
   border-bottom-right-radius: var(--radius);
 }
 
-.modal-footer {
-  padding: 1.5rem;
-  border-top: 1px solid var(--border);
+
+/* ============================================================
+   20. Toast Notifications
+   ============================================================ */
+
+.toast-container {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
   display: flex;
-  justify-content: flex-end;
+  flex-direction: column;
+  gap: 0.5rem;
+  z-index: 6000;
+}
+
+.toast {
+  min-width: 260px;
+  max-width: 420px;
+  padding: 0.75rem 0.875rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--background);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12);
+  display: flex;
+  align-items: flex-start;
   gap: 0.75rem;
-  background-color: var(--card);
 }
 
-/* Modal size variant */
-.modal-lg {
-  max-width: 720px;
+.toast-title {
+  font-weight: 700;
 }
 
-/* Multiselect/dropdown hint text inside menus */
-.multiselect-hint {
-  padding: .5rem .75rem;
+.toast-desc {
+  color: var(--muted-foreground);
+  font-size: 0.875rem;
+  margin-top: 0.125rem;
 }
 
-/* Ghost icon button with destructive color */
-.btn-icon-destructive {
-  color: var(--destructive);
+.toast-dot {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 999px;
+  margin-top: 0.25rem;
+  background: var(--primary);
 }
 
-/* Employees page toolbar */
-.employees-toolbar {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 1rem;
-  flex-wrap: wrap;
-}
+.toast.error .toast-dot { background: var(--destructive); }
+.toast.info  .toast-dot { background: var(--info); }
 
+
+/* ============================================================
+   21. Team Page  (employees toolbar · filters · empty state)
+   ============================================================ */
+
+/* ── Employees-page top toolbar ── */
+
+.employees-toolbar,
 .employees-toolbar-group {
   display: flex;
   align-items: flex-end;
   gap: 1rem;
   flex-wrap: wrap;
-  min-width: 0;
 }
 
+.employees-toolbar       { justify-content: space-between; }
+.employees-toolbar-group { min-width: 0; }
+
+/* Grow modifier for a filter input to fill available space */
 .filter-group-grow {
   flex: 1 1 auto;
   min-width: 100px;
 }
 
-/* ========================================
-   Auth Helpers
-   ======================================== */
-
-.divider {
-  display: flex;
-  align-items: center;
-  margin: 1.5rem 0;
-}
-
-.divider-line {
-  flex: 1;
-  height: 1px;
-  background-color: var(--border);
-}
-
-.divider-text {
-  padding: 0 1rem;
-  font-size: 0.75rem;
-  color: var(--muted-foreground);
-  text-transform: uppercase;
-}
-
-/* ========================================
-   Filters & Search
-   ======================================== */
+/* ── Generic filter / search row ── */
 
 .filters-row {
   display: flex;
@@ -1372,9 +1726,7 @@ body.has-bottom-legend #monthGrid.calendar-grid-month .calendar-cell {
   flex-wrap: wrap;
 }
 
-/* ========================================
-   Empty State
-   ======================================== */
+/* ── Empty state placeholder ── */
 
 .empty-state {
   display: flex;
@@ -1397,407 +1749,7 @@ body.has-bottom-legend #monthGrid.calendar-grid-month .calendar-cell {
   margin-bottom: 1rem;
 }
 
-/* ========================================
-   Dropdown Menu
-   ======================================== */
-
-.dropdown,
-.multiselect {
-  position: relative;
-  display: inline-block;
-}
-
-.dropdown-menu {
-  position: absolute;
-  top: 100%;
-  right: 0;
-  z-index: 2000;
-  min-width: 160px;
-  margin-top: 0.25rem;
-  background-color: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-md);
-  display: none;
-}
-
-.table-actions-cell {
-  overflow: visible !important;
-}
-
-.dropdown-menu.open,
-.multiselect.open .multiselect-menu {
-  display: block;
-}
-
-.dropdown-menu-fixed {
-  z-index: 3000;
-}
-
-.dropdown-item {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  width: 100%;
-  padding: 0.5rem 0.75rem;
-  font-size: 0.875rem;
-  color: var(--foreground);
-  text-decoration: none;
-  background: none;
-  border: none;
-  cursor: pointer;
-  text-align: left;
-}
-
-.dropdown-item-destructive {
-  color: var(--destructive);
-}
-
-.dropdown-divider {
-  height: 1px;
-  background-color: var(--border);
-  margin: 0.25rem 0;
-}
-
-/* ========================================
-   Utilities
-   ======================================== */
-
-.flex { display: flex; }
-.flex-1 { flex: 1; }
-.flex-col { flex-direction: column; }
-.items-center { align-items: center; }
-.justify-between { justify-content: space-between; }
-.min-w-0 { min-width: 0; }
-.gap-2 { gap: 0.5rem; }
-.gap-3 { gap: 0.75rem; }
-.gap-4 { gap: 1rem; }
-.text-sm { font-size: 0.875rem; }
-.font-medium { font-weight: 500; }
-.form-input::placeholder,
-.text-muted,
-.multiselect-placeholder { color: var(--muted-foreground); }
-.mb-0 { margin-bottom: 0; }
-.mt-1 { margin-top: 0.25rem; }
-.mt-2 { margin-top: 0.5rem; }
-.mt-3 { margin-top: 0.75rem; }
-.mt-4, .demo-login-section { margin-top: 1rem; }
-.mb-2 { margin-bottom: 0.5rem; }
-.mb-3 { margin-bottom: 0.75rem; }
-.hidden { display: none !important; }
-
-/* ========================================
-   Responsive
-   ======================================== */
-
-@media (max-width: 768px) {
-  .header {
-    padding: 0.4rem 0.75rem;
-    grid-template-columns: auto 1fr auto;
-    align-items: center;
-    gap: 0.5rem;
-  }
-
-  .header-user {
-    gap: 0.5rem;
-    min-width: 0;
-  }
-
-  .header-user > .text-sm {
-    max-width: 14ch;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .main-content {
-    --page-padding: 1rem;
-    padding: var(--page-padding);
-  }
-
-  .shifts-toolbar {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto auto auto;
-    grid-template-areas:
-      "center"
-      "left"
-      "right";
-    overflow-x: visible;
-    gap: 0.75rem;
-  }
-
-  .shifts-toolbar-left {
-    grid-area: left;
-    justify-self: stretch;
-  }
-
-  .shifts-toolbar-center {
-    grid-area: center;
-    text-align: center;
-  }
-
-  .shifts-toolbar-center .calendar-period {
-    max-width: 100%;
-    white-space: normal;
-    overflow: visible;
-    text-overflow: clip;
-    margin: 0;
-  }
-
-  .shifts-toolbar-right {
-    grid-area: right;
-    justify-self: stretch;
-  }
-  
-  .calendar-cell {
-    min-height: 80px;
-  }
-  
-  .table {
-    font-size: 0.75rem;
-  }
-  
-  .table th, .table td {
-    padding: 0.5rem;
-  }
-}
-
-@media (max-width: 1024px) {
-  .shifts-toolbar-center .calendar-period {
-    max-width: clamp(140px, 26vw, 360px);
-  }
-}
-
-@media (max-width: 480px) {
-  .header-user > .text-sm {
-    display: none;
-  }
-
-  .nav-link {
-    padding: 0.5rem 0.75rem;
-  }
-}
-
-/* ========================================
-   Additions (Multi-select, Toasts)
-======================================== */
-
-/* Multi-select dropdown (checkbox list) */
-.multiselect-full {
-  display: block;
-  width: 100%;
-}
-
-.multiselect-full .multiselect-trigger {
-  width: 100%;
-  justify-content: space-between;
-}
-
-#shiftPositionMultiMenu {
-  max-height: 280px;
-  overflow-y: auto;
-  overflow-x: hidden;
-}
-
-.multiselect-chips {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.375rem;
-  flex: 1;
-  min-height: 1.25rem;
-}
-
-/* Base chip component - used by employee-chip, date-chip, etc. */
-.employee-chip,
-.date-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.375rem;
-  padding: 0.125rem 0.5rem;
-  border-radius: 9999px;
-  background: var(--secondary);
-  color: var(--secondary-foreground);
-  border: 1px solid var(--border);
-  font-size: 0.75rem;
-  line-height: 1.25;
-}
-
-.employee-chip .chip-remove,
-.date-chip .chip-remove {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1rem;
-  height: 1rem;
-  border-radius: 9999px;
-  background: rgba(0, 0, 0, 0.05);
-  cursor: pointer;
-  flex: 0 0 auto;
-}
-
-.employee-chip .chip-remove:hover,
-.date-chip .chip-remove:hover {
-  background: rgba(0, 0, 0, 0.1);
-}
-
-.employee-chip .chip-text,
-.date-chip .chip-text {
-  white-space: nowrap;
-}
-
-.date-chip-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.375rem;
-}
-
-.multiselect-trigger {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  cursor: pointer;
-  user-select: none;
-}
-
-.multiselect-menu {
-  position: absolute;
-  top: calc(100% + 0.5rem);
-  left: 0;
-  min-width: 220px;
-  background: var(--background);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: 0 12px 28px rgba(0,0,0,0.12);
-  padding: 0.5rem;
-  z-index: 1000;
-  display: none;
-}
-
-.multiselect-item {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0.5rem;
-  border-radius: var(--radius);
-  cursor: pointer;
-}
-
-.multiselect-item:hover { background: var(--muted); }
-
-.multiselect-actions {
-  display: flex;
-  justify-content: flex-start;
-  gap: 0.5rem;
-  border-top: 1px solid var(--border);
-  padding-top: 0.5rem;
-  margin-top: 0.5rem;
-}
-
-.multiselect-actions .btn-primary {
-  margin-left: auto;
-}
-
-.multiselect-actions-right {
-  justify-content: flex-end;
-}
-
-.multiselect-actions-right .btn-primary {
-  margin-left: 0;
-}
-
-/* Switch */
-.switch {
-  display: inline-flex;
-  position: relative;
-  align-items: center;
-  gap: 0.6rem;
-  cursor: pointer;
-  user-select: none;
-  line-height: 1;
-}
-
-.switch input {
-  position: absolute;
-  opacity: 0;
-  width: 1px;
-  height: 1px;
-}
-
-.switch-slider {
-  display: inline-block;
-  flex: 0 0 auto;
-  width: 44px;
-  height: 24px;
-  background: var(--muted);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  position: relative;
-  transition: background 120ms ease, border-color 120ms ease;
-}
-
-.switch-slider::after {
-  content: "";
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 20px;
-  height: 20px;
-  background: var(--background);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  transition: transform 120ms ease;
-}
-
-.switch input:checked + .switch-slider {
-  background: var(--primary);
-  border-color: hsl(221, 83%, 53%, 0.45);
-}
-
-.switch input:checked + .switch-slider::after {
-  transform: translateX(20px);
-}
-
-/* Toasts */
-.toast-container {
-  position: fixed;
-  right: 1rem;
-  bottom: 1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  z-index: 100;
-}
-
-.toast {
-  min-width: 260px;
-  max-width: 420px;
-  padding: 0.75rem 0.875rem;
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
-  background: var(--background);
-  box-shadow: 0 10px 25px rgba(0,0,0,0.12);
-  display: flex;
-  align-items: flex-start;
-  gap: 0.75rem;
-}
-
-.toast-title { font-weight: 700; }
-.toast-desc { color: var(--muted-foreground); font-size: 0.875rem; margin-top: 0.125rem; }
-
-.toast-dot {
-  width: 0.75rem;
-  height: 0.75rem;
-  border-radius: 999px;
-  margin-top: 0.25rem;
-  background: var(--primary);
-}
-
-.toast.error .toast-dot { background: var(--destructive); }
-.toast.info .toast-dot { background: var(--info); }
-
-
-/* Small helper for inline preview boxes */
+/* Inline form preview box (used in manage-positions modal) */
 .preview-box {
   border: 1px dashed var(--border);
   border-radius: var(--radius);
@@ -1805,12 +1757,19 @@ body.has-bottom-legend #monthGrid.calendar-grid-month .calendar-cell {
   background: linear-gradient(180deg, var(--muted), transparent);
 }
 
-/* Auth (Login) page */
+
+/* ============================================================
+   22. Auth Page
+   ============================================================ */
+
+/* ── Page background ── */
+
 .auth-body {
   min-height: 100vh;
-  background: radial-gradient(1200px 600px at 20% 10%, rgba(59,130,246,0.18), transparent 60%),
-              radial-gradient(900px 500px at 80% 30%, rgba(16,185,129,0.14), transparent 60%),
-              var(--background);
+  background:
+    radial-gradient(1200px 600px at 20% 10%, rgba(59, 130, 246, 0.18), transparent 60%),
+    radial-gradient(900px  500px at 80% 30%, rgba(16, 185, 129, 0.14), transparent 60%),
+    var(--background);
 }
 
 .auth-container {
@@ -1821,13 +1780,15 @@ body.has-bottom-legend #monthGrid.calendar-grid-month .calendar-cell {
   padding: 1.5rem;
 }
 
+/* ── Login card ── */
+
 .auth-card {
   width: 100%;
   max-width: 420px;
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: calc(var(--radius) + 0.5rem);
-  box-shadow: 0 20px 50px rgba(0,0,0,0.10);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.10);
   padding: 1.75rem;
 }
 
@@ -1842,7 +1803,7 @@ body.has-bottom-legend #monthGrid.calendar-grid-month .calendar-cell {
   width: 48px;
   height: 48px;
   border-radius: 14px;
-  background: rgba(59,130,246,0.12);
+  background: rgba(59, 130, 246, 0.12);
   color: var(--primary);
   display: grid;
   place-items: center;
@@ -1871,6 +1832,144 @@ body.has-bottom-legend #monthGrid.calendar-grid-month .calendar-cell {
   color: var(--muted-foreground);
 }
 
-.auth-form { margin-top: 0.75rem; }
+.auth-form {
+  margin-top: 0.75rem;
+}
 
-.btn-full { width: 100%; justify-content: center; }
+/* ── Divider ("or" separator between form sections) ── */
+
+.divider {
+  display: flex;
+  align-items: center;
+  margin: 1.5rem 0;
+}
+
+.divider-line {
+  flex: 1;
+  height: 1px;
+  background-color: var(--border);
+}
+
+.divider-text {
+  padding: 0 1rem;
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+  text-transform: uppercase;
+}
+
+
+/* ============================================================
+   23. Utility Classes
+   ============================================================ */
+
+.flex            { display: flex; }
+.flex-1          { flex: 1; }
+.flex-col        { flex-direction: column; }
+.items-center    { align-items: center; }
+.justify-between { justify-content: space-between; }
+.min-w-0         { min-width: 0; }
+.gap-2           { gap: 0.5rem; }
+.gap-3           { gap: 0.75rem; }
+.gap-4           { gap: 1rem; }
+.text-sm         { font-size: 0.875rem; }
+.font-medium     { font-weight: 500; }
+.mb-0            { margin-bottom: 0; }
+.mt-1            { margin-top: 0.25rem; }
+.mt-2            { margin-top: 0.5rem; }
+.mt-3            { margin-top: 0.75rem; }
+.mt-4            { margin-top: 1rem; }
+.mb-2            { margin-bottom: 0.5rem; }
+.mb-3            { margin-bottom: 0.75rem; }
+.hidden          { display: none !important; }
+
+/* Muted placeholder / helper text */
+.form-input::placeholder,
+.text-muted,
+.multiselect-placeholder {
+  color: var(--muted-foreground);
+}
+
+/* demo-login section spacing (login page) */
+.demo-login-section {
+  margin-top: 1rem;
+}
+
+
+/* ============================================================
+   24. Responsive Breakpoints
+   ============================================================ */
+
+/* ── ≤ 1024px  (already handled inline for the manager sidebar above) ── */
+
+@media (max-width: 1024px) {
+  .shifts-toolbar-center .calendar-period {
+    max-width: clamp(140px, 26vw, 360px);
+  }
+}
+
+/* ── ≤ 768px ── */
+
+@media (max-width: 768px) {
+  .header {
+    padding: 0.4rem 0.75rem;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .header-user {
+    gap: 0.5rem;
+    min-width: 0;
+  }
+
+  .header-user > .text-sm {
+    max-width: 14ch;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Toolbar stacks vertically: period on top, then left controls, then right */
+  .shifts-toolbar {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto;
+    grid-template-areas:
+      "center"
+      "left"
+      "right";
+    gap: 0.75rem;
+  }
+
+  .shifts-toolbar-left   { grid-area: left;   justify-self: stretch; }
+  .shifts-toolbar-center { grid-area: center; text-align: center; }
+  .shifts-toolbar-right  { grid-area: right;  justify-self: stretch; }
+
+  .shifts-toolbar-center .calendar-period {
+    max-width: 100%;
+    white-space: normal;
+    overflow: visible;
+  }
+
+  .table {
+    font-size: 0.75rem;
+  }
+
+  .table th,
+  .table td {
+    padding: 0.5rem;
+  }
+}
+
+/* ── ≤ 480px ── */
+
+@media (max-width: 480px) {
+  .header-user > .text-sm {
+    display: none;
+  }
+
+  .nav-link {
+    padding: 0.5rem 0.75rem;
+  }
+}
+
+

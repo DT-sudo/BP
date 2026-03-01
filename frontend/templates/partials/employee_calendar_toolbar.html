@@ -1,7 +1,6 @@
 <div class="card page-toolbar-card">
   <div class="shifts-toolbar">
     <div class="shifts-toolbar-left">
-      {% include "partials/calendar_nav.html" with prev_aria_label=prev_aria_label next_aria_label=next_aria_label %}
     </div>
 
     <div class="shifts-toolbar-center">
@@ -9,7 +8,7 @@
     </div>
 
     <div class="shifts-toolbar-right">
-      <div class="text-sm text-muted">{{ toolbar_right_text|default:'' }}</div>
+      {% include "partials/calendar_nav.html" with prev_aria_label=prev_aria_label next_aria_label=next_aria_label %}
     </div>
   </div>
 </div>

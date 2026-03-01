@@ -55,12 +55,7 @@ function syncEmployeeSidebarActiveState() {
     const id = row.dataset.employeeId || '';
     const active = !!activeEmployeeHighlightId && id === String(activeEmployeeHighlightId);
     row.classList.toggle('active', active);
-
-    const btn = row.querySelector('.employee-highlight-btn');
-    if (btn) {
-      btn.classList.toggle('active', active);
-      btn.setAttribute('aria-pressed', String(active));
-    }
+    row.setAttribute('aria-pressed', String(active));
   }
 }
 
@@ -140,9 +135,14 @@ function renderEmployeeSidebar() {
   enriched.forEach((e) => {
     const row = document.createElement('div');
     row.className = 'employee-sidebar-item';
-    row.setAttribute('role', 'listitem');
+    row.setAttribute('role', 'button');
+    row.setAttribute('tabindex', '0');
+    row.setAttribute('aria-label', `Highlight shifts for ${e._name || 'employee'}`);
+    row.setAttribute('aria-pressed', 'false');
     row.dataset.employeeId = e._id;
     if (e.position_id !== null && e.position_id !== undefined) row.dataset.positionId = String(e.position_id);
+    row.addEventListener('click', () => toggleEmployeeHighlight(e._id));
+    row.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); toggleEmployeeHighlight(e._id); } });
 
     const avatar = document.createElement('div');
     avatar.className = 'employee-avatar';
@@ -176,26 +176,8 @@ function renderEmployeeSidebar() {
     metaDiv.appendChild(name);
     metaDiv.appendChild(sub);
 
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'btn btn-outline btn-icon employee-highlight-btn';
-    btn.setAttribute('aria-label', `Highlight shifts for ${e._name || 'employee'}`);
-    btn.setAttribute('aria-pressed', 'false');
-    btn.innerHTML = `
-      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <circle cx="12" cy="12" r="10"></circle>
-        <circle cx="12" cy="12" r="3"></circle>
-      </svg>
-    `;
-    btn.addEventListener('click', (ev) => {
-      ev.preventDefault();
-      ev.stopPropagation();
-      toggleEmployeeHighlight(e._id);
-    });
-
     row.appendChild(avatar);
     row.appendChild(metaDiv);
-    row.appendChild(btn);
     frag.appendChild(row);
   });
 

@@ -1,7 +1,3 @@
-"""
-Simplified helper functions for scheduling views.
-Uses Django Forms for validation instead of manual parsing.
-"""
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta

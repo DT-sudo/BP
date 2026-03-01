@@ -3,7 +3,7 @@
 <head>
   {% include "partials/head.html" with page_title="ShiftSync - Shift Management" page_description="ShiftSync - Manage employee shifts" %}
 	</head>
-	<body class="has-bottom-legend manager-shifts-page">
+	<body class="manager-shifts-page">
 	  {% include "partials/toast_messages.html" %}
 
 	  {% include "partials/header.html" with nav_active="manager_shifts" %}
@@ -140,13 +140,11 @@
       </div>
     </div>
 
-    <!-- Position Color Legend -->
-    <div class="card mt-3" id="positionLegendCard">
-      <div class="card-content card-content-compact">
-        <div class="position-legend" id="positionLegend" aria-label="Position color legend"></div>
-      </div>
-    </div>
   </main>
+
+  <div id="positionLegendBar">
+    <div class="position-legend" id="positionLegend" aria-label="Position color legend"></div>
+  </div>
 
   <!-- Create Shift Modal -->
   <div class="modal-overlay hidden" id="createShiftModal">
@@ -173,7 +171,7 @@
   </div>
 
   <!-- Delete Shift Confirm Modal -->
-  {% include "partials/confirm_modal.html" with modal_id="deleteShiftConfirmModal" title="Delete shift" message="Delete this shift: <strong id='deleteShiftConfirmTitle'>—</strong> ?" confirm_text="Yes, delete" cancel_action="cancelDeleteShift()" confirm_action="confirmDeleteShift()" destructive=True %}
+  {% include "partials/confirm_modal.html" with modal_id="deleteShiftConfirmModal" title="Delete shift" message="Delete this shift: <strong id='deleteShiftConfirmTitle'></strong> ?" confirm_text="Yes, delete" cancel_action="cancelDeleteShift()" confirm_action="confirmDeleteShift()" destructive=True %}
 
   <!-- Shift Details Modal -->
   <div class="modal-overlay hidden" id="shiftDetailsModal">
@@ -181,7 +179,7 @@
       <div class="modal-header">
         <div class="flex items-center gap-3">
           <h2 class="modal-title" id="detailsTitle">Shift Details</h2>
-          <span class="badge badge-outline" id="detailsStatus">Draft</span>
+          <span class="badge badge-outline" id="detailsStatus"></span>
         </div>
         <button class="modal-close" onclick="closeModal('shiftDetailsModal')" aria-label="Close">
           {% include "partials/icons/x.html" %}
@@ -198,22 +196,20 @@
             <path d="M4 11v10"/>
           </svg>
           <div>
-            <div class="font-medium" id="detailsDate">Monday, January 13, 2025</div>
-            <div class="text-sm text-muted" id="detailsTime">9:00 AM - 5:00 PM</div>
-            <div class="text-sm text-muted" id="detailsDuration">Duration: —</div>
+            <div class="font-medium" id="detailsDate"></div>
+            <div class="text-sm text-muted" id="detailsTime"></div>
+            <div class="text-sm text-muted" id="detailsDuration"></div>
           </div>
         </div>
 
         <div class="flex items-center gap-3 mt-4">
-          <span class="badge badge-default" id="detailsPosition">Barista</span>
-          <span class="text-sm text-muted" id="detailsCapacity">Capacity: 2/3 filled</span>
+          <span class="badge badge-default" id="detailsPosition"></span>
+          <span class="text-sm text-muted" id="detailsCapacity"></span>
         </div>
 
         <div class="mt-4">
           <p class="font-medium mb-2">Assigned Employees:</p>
-          <div class="flex flex-col gap-2" id="detailsEmployees">
-            <!-- filled by JS -->
-          </div>
+          <div class="flex flex-col gap-2" id="detailsEmployees"></div>
         </div>
       </div>
       <div class="modal-footer">

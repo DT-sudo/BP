@@ -12,7 +12,6 @@
       <a href="{% url 'manager_employees' %}" class="nav-link{% if nav_active == 'manager_employees' %} active{% endif %}">Team</a>
     {% elif request.user.is_authenticated %}
       <a href="{% url 'employee_shifts' %}" class="nav-link{% if nav_active == 'employee_shifts' %} active{% endif %}">My Shifts</a>
-      <a href="{% url 'employee_unavailability' %}" class="nav-link{% if nav_active == 'employee_unavailability' %} active{% endif %}">Availability</a>
     {% endif %}
   </nav>
 

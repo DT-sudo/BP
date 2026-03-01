@@ -78,4 +78,6 @@ class CreateEmployeeForm(EmployeeBaseForm):
         return user
 
 class UpdateEmployeeForm(EmployeeBaseForm):
-    pass
+    """Update an existing employee. Inherits all validation from EmployeeBaseForm.
+    Kept separate from CreateEmployeeForm so that save() does not overwrite role/is_staff.
+    """

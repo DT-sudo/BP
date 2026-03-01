@@ -33,10 +33,6 @@ class ShiftStatus(models.TextChoices):
     DRAFT = "draft", "Draft"
     PUBLISHED = "published", "Published"
 
-class ShiftQuerySet(models.QuerySet):
-    def active(self):
-        return self.filter(is_deleted=False)
-
 class Shift(models.Model):
     date = models.DateField()
     start_time = models.TimeField()
@@ -52,7 +48,6 @@ class Shift(models.Model):
         choices=ShiftStatus.choices, 
         default=ShiftStatus.DRAFT
     )
-    is_deleted = models.BooleanField(default=False, db_index=True)
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
@@ -60,7 +55,7 @@ class Shift(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    objects = ShiftQuerySet.as_manager()
+
     class Meta:
         ordering = ["date", "start_time"]
     def clean(self) -> None:

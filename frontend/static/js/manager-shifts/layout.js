@@ -2,7 +2,7 @@
   'use strict';
 
   const Config = window.ManagerShiftsConfig || {};
-const { getEl, MANAGER_PERIOD_NAV } = Config;
+const { MANAGER_PERIOD_NAV } = Config;
 
 function wireStickyOffsets() {
   const header = document.querySelector('.header');
@@ -17,19 +17,17 @@ function wireStickyOffsets() {
     const toolbarHeight = toolbar?.getBoundingClientRect().height || 0;
     root.style.setProperty('--toolbar-sticky-height', `${toolbarHeight}px`);
 
-    const legend = getEl('positionLegendCard');
-    const legendHeight = legend?.getBoundingClientRect().height || 0;
-    root.style.setProperty('--bottom-legend-height', `${legendHeight}px`);
+    const legendBarHeight = parseFloat(getComputedStyle(root).getPropertyValue('--legend-bar-height')) || 0;
 
     const activeView = document.querySelector('#weekView.card:not(.hidden), #monthView.card:not(.hidden)');
     const viewMargin = activeView ? parseFloat(getComputedStyle(activeView).marginTop) || 0 : 0;
 
-    const available = innerHeight - headerHeight - toolbarHeight - legendHeight - viewMargin * 2;
+    const available = innerHeight - headerHeight - toolbarHeight - legendBarHeight - viewMargin * 2;
     root.style.setProperty('--manager-calendar-fill-height', `${Math.max(320, Math.floor(available))}px`);
   };
 
   sync();
-  window.managerSyncStickyOffsets = sync;
+  window.ManagerShiftsLayout.syncLayout = sync;
 
   let resizeTimer;
   addEventListener('resize', () => {
@@ -61,6 +59,7 @@ window.goToToday = goToToday;
 
 window.ManagerShiftsLayout = {
   wireStickyOffsets,
+  syncLayout: () => {},
 };
 
 })();

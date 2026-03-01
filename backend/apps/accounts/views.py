@@ -75,7 +75,8 @@ def home(request: HttpRequest) -> HttpResponse:
 
 @require_http_methods(["GET"])
 def demo_login(request: HttpRequest, role: str) -> HttpResponse:
-
+    if not settings.DEBUG:
+        return redirect("login")
     demo_password = "demo12345!"
 
     barista, _ = Position.objects.get_or_create(name="Barista", defaults={"is_active": True})

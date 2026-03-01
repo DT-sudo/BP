@@ -9,11 +9,20 @@
 	  {% include "partials/header.html" with nav_active="employee_shifts" %}
 
 		  <main class="main-content main-content-tight-top">
-		    {% include "partials/employee_calendar_toolbar.html" with toolbar_variant="month_only" prev_aria_label="Previous period" next_aria_label="Next period" %}
+		    {% include "partials/employee_calendar_toolbar.html" with prev_aria_label="Previous period" next_aria_label="Next period" %}
 
 		    <div class="card mt-3" id="monthView">
 		      <div class="calendar-grid calendar-grid-month" id="employeeMonthGrid" aria-label="Month calendar"></div>
 	    </div>
+
+    <div class="card mt-3">
+      <div class="card-header card-header-tight">
+        <h3 class="card-title">Unavailable days</h3>
+      </div>
+      <div class="card-content">
+        <div class="date-chip-list" id="unavailableDaysList" aria-label="Unavailable days list"></div>
+      </div>
+    </div>
 
   </main>
 
@@ -26,9 +35,9 @@
         </button>
       </div>
       <div class="modal-body">
-        <div class="font-medium" id="monthPopupDate">Mon, Jan 13</div>
-        <div class="text-sm text-muted mt-1" id="monthPopupTime">06:00–14:00</div>
-        <div class="text-sm text-muted mt-2" id="monthPopupHours">Total: 8h</div>
+        <div class="font-medium" id="monthPopupDate"></div>
+        <div class="text-sm text-muted mt-1" id="monthPopupTime"></div>
+        <div class="text-sm text-muted mt-2" id="monthPopupHours"></div>
       </div>
       <div class="modal-footer">
         <button class="btn btn-outline" onclick="closeModal('monthPopupModal')">Close</button>
@@ -46,11 +55,11 @@
         </button>
       </div>
       <div class="modal-body">
-        <div class="font-medium" id="detailDate">Monday, January 13, 2025</div>
-        <div class="text-sm text-muted mt-1" id="detailTime">06:00–14:00</div>
+        <div class="font-medium" id="detailDate"></div>
+        <div class="text-sm text-muted mt-1" id="detailTime"></div>
         <div class="flex items-center gap-2 mt-3">
-          <span class="badge badge-default" id="detailPosition">Barista</span>
-          <span class="text-sm text-muted" id="detailHours">8 hours</span>
+          <span class="badge badge-default" id="detailPosition"></span>
+          <span class="text-sm text-muted" id="detailHours"></span>
         </div>
       </div>
       <div class="modal-footer">
@@ -58,14 +67,16 @@
       </div>
     </div>
   </div>
-  
+
 	  <script type="application/json" id="employeeShiftsData">{{ shifts_json|safe }}</script>
+	  <script type="application/json" id="employeeUnavailableData">{{ unavailable_json|safe }}</script>
 	  <div
 	    id="employeeShiftPage"
     data-anchor="{{ anchor|date:'Y-m-d' }}"
     data-start="{{ start|date:'Y-m-d' }}"
     data-end="{{ end|date:'Y-m-d' }}"
     data-today="{{ today|date:'Y-m-d' }}"
+    data-toggle-url="{{ toggle_url }}"
   ></div>
 
   {% include "partials/scripts.html" with include_calendar=1 page_script="js/employee-shifts.js" %}
