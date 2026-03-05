@@ -17,6 +17,7 @@ urlpatterns = [
     path("manager/positions/<int:position_id>/delete/", views.position_delete, name="position_delete"),
     
     path("employee/shifts/", views.employee_shifts_view, name="employee_shifts"),
+    
     path("employee/unavailability/", views.employee_unavailability_view, name="employee_unavailability"),
     path("employee/unavailability/toggle/", views.employee_unavailability_toggle, name="employee_unavailability_toggle"),
 ]
