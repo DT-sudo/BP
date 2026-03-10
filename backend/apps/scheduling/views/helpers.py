@@ -1,19 +1,16 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 
 from django.contrib import messages
-from django.db import transaction
+from django.core.exceptions import ValidationError
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect
 from django.urls import reverse
-from django.utils.http import url_has_allowed_host_and_scheme
 
-from apps.accounts.models import User, UserRole
-from django.core.exceptions import ValidationError
-from ..forms import ShiftForm
 from ..models import Shift
-from ..services import set_shift_assignments
+from ..use_cases import save_shift as save_shift_use_case
 
 
 def _parse_date(value: str | None, default: date) -> date:
@@ -48,26 +45,46 @@ def _month_bounds(anchor: date) -> tuple[date, date]:
     return start, next_month - timedelta(days=1)
 
 
-def _redirect_back(request: HttpRequest, fallback: str = "manager_shifts") -> HttpResponse:
-    """Redirect to HTTP_REFERER if safe, otherwise to fallback URL."""
-    ref = request.META.get("HTTP_REFERER")
-    if ref and url_has_allowed_host_and_scheme(
-        url=ref,
-        allowed_hosts={request.get_host()},
-        require_https=request.is_secure(),
-    ):
-        return redirect(ref)
-    return redirect(fallback)
+@dataclass(frozen=True)
+class PeriodContext:
+    view: str
+    anchor: date
+    start: date
+    end: date
+    label: str
+
+
+def _build_period_context(view_raw: str | None, anchor: date) -> PeriodContext:
+    view = (view_raw or "week").lower()
+    if view == "month":
+        start, end = _month_bounds(anchor)
+        label = anchor.strftime("%B %Y")
+        return PeriodContext(view="month", anchor=anchor, start=start, end=end, label=label)
+
+    start, end = _week_bounds(anchor)
+    if start.month == end.month and start.year == end.year:
+        label = f"{start.strftime('%d')}. - {end.strftime('%d')}. {start.strftime('%b')}"
+    else:
+        label = f"{start.strftime('%d')}. {start.strftime('%b')} - {end.strftime('%d')}. {end.strftime('%b')}"
+    return PeriodContext(view="week", anchor=anchor, start=start, end=end, label=label)
+
+def _redirect_with_message(
+    request: HttpRequest,
+    *,
+    level: int,
+    text: str,
+    to: str = "manager_shifts",
+) -> HttpResponse:
+    """Add flash message and redirect to target route/URL."""
+    messages.add_message(request, level, text)
+    return redirect(to)
 
 
 def _manager_shifts_url_showing_shift(request: HttpRequest, shift: Shift) -> str:
-    """Generate URL to manager_shifts page showing the given shift's date, preserving view."""
-    from urllib.parse import urlparse, parse_qs
-    ref = request.META.get("HTTP_REFERER", "")
-    view = "week"
-    if ref:
-        qs = parse_qs(urlparse(ref).query)
-        view = qs.get("view", ["week"])[0]
+    """Generate URL to manager_shifts page showing the given shift's date."""
+    view = (request.POST.get("return_view") or "week").strip().lower()
+    if view not in {"week", "month"}:
+        view = "week"
     return f"{reverse('manager_shifts')}?view={view}&date={shift.date.isoformat()}"
 
 
@@ -75,46 +92,19 @@ def _save_shift_from_post(
     request: HttpRequest,
     *,
     shift: Shift,
-    mode: str,
-    shift_id: int | None = None,
     success_message: str,
 ) -> HttpResponse:
-    """Validate and save shift using ShiftForm, handle errors gracefully."""
-    employees = User.objects.filter(role=UserRole.EMPLOYEE, is_active=True)
-
-    data = request.POST.copy()
-    data["position"] = data.get("position_id", "")
-
-    form = ShiftForm(data, instance=shift, employees=employees)
-
-    if form.is_valid():
-        try:
-            with transaction.atomic():
-                saved_shift = form.save()
-                employee_ids = form.cleaned_data.get("employee_ids") or []
-                set_shift_assignments(saved_shift, employee_ids)
-
-            messages.success(request, success_message)
-            return redirect(_manager_shifts_url_showing_shift(request, saved_shift))
-        except Exception as exc:
-            messages.error(request, f"Could not {mode} shift: {exc}")
-    else:
-        for field, errors in form.errors.items():
-            field_name = field.replace("_", " ").title()
-            messages.error(request, f"{field_name}: {errors[0]}")
-            break
-
-        request.session["shift_form_state"] = {
-            "mode": mode,
-            "shift_id": shift_id,
-            "date": request.POST.get("date"),
-            "start_time": request.POST.get("start_time"),
-            "end_time": request.POST.get("end_time"),
-            "position_id": request.POST.get("position_id"),
-            "capacity": request.POST.get("capacity"),
-            "publish": request.POST.get("publish") == "1",
-            "employee_ids": [int(e) for e in request.POST.getlist("employee_ids") if e.isdigit()],
-            "error_field": list(form.errors.keys())[0] if form.errors else None,
-        }
-
-    return _redirect_back(request)
+    result = save_shift_use_case(shift=shift, post_data=request.POST)
+    if result.ok:
+        saved_shift = result.shift
+        return _redirect_with_message(
+            request,
+            level=messages.SUCCESS,
+            text=success_message,
+            to=_manager_shifts_url_showing_shift(request, saved_shift),
+        )
+    return _redirect_with_message(
+        request,
+        level=messages.ERROR,
+        text=result.error or "Could not save shift.",
+    )

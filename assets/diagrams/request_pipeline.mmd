@@ -1,0 +1,28 @@
+flowchart LR
+    BROWSER(["Prohlížeč"])
+    MW["Middleware"]
+    URL["URL"]
+    DEC["accounts/decorators.py"]
+    AV["accounts/views.py"]
+    SV["scheduling/views/"]
+    SVC["services.py"]
+    UC["use_cases.py"]
+    ORM["ORM"]
+    DB[(SQLite)]
+
+    BROWSER -->|"HTTP požadavek"| MW
+    MW --> URL
+    URL --> DEC
+    URL -->|"login"| AV
+    DEC --> AV
+    DEC --> SV
+    SV --> SVC
+    SV --> UC
+    UC --> SVC
+    AV <--> ORM
+    SV <--> ORM
+    SVC <--> ORM
+    UC <--> ORM
+    ORM <--> DB
+    AV -->|"HTTP odpověď"| BROWSER
+    SV -->|"HTTP odpověď"| BROWSER

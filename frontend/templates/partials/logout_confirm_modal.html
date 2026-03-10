@@ -1,0 +1,17 @@
+<div class="modal-overlay hidden" id="logoutConfirmModal">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-header">
+      <h2 class="modal-title">Confirm logout</h2>
+      <button class="modal-close" type="button" aria-label="Close">
+        {% include "partials/icons/x.html" with size=20 %}
+      </button>
+    </div>
+    <div class="modal-body">
+      <p class="text-sm">Are you really want to log out?</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" type="button" id="logoutConfirmNo">No</button>
+      <button class="btn btn-primary" type="button" id="logoutConfirmYes">Yes</button>
+    </div>
+  </div>
+</div>

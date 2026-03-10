@@ -4,20 +4,16 @@ from . import views
 
 urlpatterns = [
     path("manager/shifts/", views.manager_shifts, name="manager_shifts"),
-    path("manager/shifts/create/", views.create_shift, name="create_shift"),
+    path("manager/shifts/create/", views.save_shift, name="create_shift"),
     path("manager/shifts/publish-all/", views.publish_all_shifts, name="publish_all_shifts"),
-    path("manager/shifts/<int:shift_id>/json/", views.shift_details, name="shift_details"),
-    path("manager/shifts/<int:shift_id>/update/", views.update_shift, name="update_shift"),
+    path("manager/shifts/<int:shift_id>/update/", views.save_shift, name="update_shift"),
     path("manager/shifts/<int:shift_id>/delete/", views.delete_shift, name="delete_shift"),
     path("manager/shifts/<int:shift_id>/publish/", views.publish_shift, name="publish_shift"),
     
-    path("manager/positions/json/", views.positions_list, name="positions_list"),
     path("manager/positions/create/", views.position_create, name="position_create"),
     path("manager/positions/<int:position_id>/update/", views.position_update, name="position_update"),
     path("manager/positions/<int:position_id>/delete/", views.position_delete, name="position_delete"),
     
     path("employee/shifts/", views.employee_shifts_view, name="employee_shifts"),
-    
-    path("employee/unavailability/", views.employee_unavailability_view, name="employee_unavailability"),
     path("employee/unavailability/toggle/", views.employee_unavailability_toggle, name="employee_unavailability_toggle"),
 ]

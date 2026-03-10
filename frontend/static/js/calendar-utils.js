@@ -37,8 +37,7 @@
     const url = new URL(window.location.href);
     const searchParams = url.searchParams;
 
-    for (const key of Object.keys(params)) {
-      const value = params[key];
+    for (const [key, value] of Object.entries(params)) {
       if (value == null || value === '') {
         searchParams.delete(key);
       } else {
@@ -50,11 +49,7 @@
   }
 
   function getPageElement(id) {
-    const element = document.getElementById(id);
-    if (element && element.dataset) {
-      return element;
-    }
-    return null;
+    return document.getElementById(id);
   }
 
   function normalizeView(view) {

@@ -13,7 +13,6 @@ class PositionForm(forms.ModelForm):
 
 
 class ShiftForm(forms.ModelForm):
-    """Form for creating and updating shifts with built-in validation."""
 
     publish = forms.BooleanField(required=False)
     employee_ids = forms.TypedMultipleChoiceField(

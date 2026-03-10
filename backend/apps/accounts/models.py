@@ -16,7 +16,6 @@ class UserRole(models.TextChoices):
 class User(AbstractUser):
     role = models.CharField(max_length=20, choices=UserRole.choices, default=UserRole.EMPLOYEE)
     employee_id = models.CharField(max_length=20, unique=True, default=generate_employee_id, editable=False)
-    phone = models.CharField(max_length=50, blank=True)
     position = models.ForeignKey(
         "scheduling.Position",
         on_delete=models.SET_NULL,
@@ -31,6 +30,6 @@ class User(AbstractUser):
     def is_employee(self) -> bool:
         return self.role == UserRole.EMPLOYEE
     @staticmethod
-    def generate_temporary_password(length: int = 14) -> str:
+    def generate_password(length: int = 14) -> str:
         alphabet = string.ascii_letters + string.digits
         return "".join(secrets.choice(alphabet) for _ in range(length))

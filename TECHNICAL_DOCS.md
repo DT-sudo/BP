@@ -230,7 +230,6 @@ Static method: `generate_temporary_password(length=14)` — cryptographically ra
 | `capacity` | `PositiveIntegerField` | ≥1; enforced in `clean()` |
 | `status` | `CharField(choices)` | `draft` / `published` |
 | `created_by` | `ForeignKey(User, PROTECT)` | Manager who created the shift |
-| `created_at` | `DateTimeField(auto_now_add)` | |
 | `updated_at` | `DateTimeField(auto_now)` | Updated on every `save()` |
 
 Property: `is_past` — compares `datetime.combine(date, end_time)` with `timezone.now()`.
@@ -250,7 +249,6 @@ DB constraint: `UniqueConstraint(shift, employee)` — last-resort duplicate gua
 |---|---|---|
 | `employee` | `ForeignKey(User, CASCADE)` | |
 | `date` | `DateField(db_index)` | Indexed for fast availability lookups |
-| `created_at` | `DateTimeField(auto_now_add)` | |
 
 DB constraint: `UniqueConstraint(employee, date)`.
 

@@ -5,10 +5,10 @@ import json
 from django.core.exceptions import ValidationError
 from django.core.serializers.json import DjangoJSONEncoder
 from django.http import HttpRequest, HttpResponse, JsonResponse
-from django.shortcuts import redirect, render
+from django.shortcuts import render
 from django.urls import reverse
 from django.utils import timezone
-from django.views.decorators.http import require_http_methods
+from django.views.decorators.http import require_GET, require_POST
 
 from apps.accounts.decorators import employee_required
 
@@ -18,7 +18,7 @@ from .helpers import _parse_date, _parse_required_date, _month_bounds
 
 
 @employee_required
-@require_http_methods(["GET"])
+@require_GET
 def employee_shifts_view(request: HttpRequest) -> HttpResponse:
 
     today = timezone.localdate()
@@ -67,18 +67,7 @@ def employee_shifts_view(request: HttpRequest) -> HttpResponse:
 
 
 @employee_required
-@require_http_methods(["GET"])
-def employee_unavailability_view(request: HttpRequest) -> HttpResponse:
-    """Availability page merged into My Shifts — redirect accordingly."""
-    date_param = request.GET.get("date")
-    target = reverse("employee_shifts")
-    if date_param:
-        target = f"{target}?date={date_param}"
-    return redirect(target)
-
-
-@employee_required
-@require_http_methods(["POST"])
+@require_POST
 def employee_unavailability_toggle(request: HttpRequest) -> JsonResponse:
 
     try:

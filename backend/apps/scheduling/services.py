@@ -1,86 +1,89 @@
 from __future__ import annotations
 
-from datetime import date, time
+from datetime import date
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
-from django.db import models, transaction
+from django.db import models
 from .models import Assignment, EmployeeUnavailability, Shift, ShiftStatus
 
-def _overlaps(start_a: time, end_a: time, start_b: time, end_b: time) -> bool:
-    
-    return start_a < end_b and end_a > start_b
+def _normalize_employee_ids(employee_ids: list[int]) -> list[int]:
+    return list(dict.fromkeys(employee_ids))
 
-def _manager_shifts_qs(
-    *,
-    manager_id: int,
-    start: date | None = None,
-    end: date | None = None,
-):
-    
-    qs = Shift.objects.filter(created_by_id=manager_id)
-    if start is not None:
-        qs = qs.filter(date__gte=start)
-    if end is not None:
-        qs = qs.filter(date__lte=end)
-    return qs
 
-def validate_shift_capacity(shift: Shift, desired_assigned_count: int) -> None:
-    
-    if desired_assigned_count > shift.capacity:
-        raise ValidationError("Cannot assign more employees than shift capacity.")
+def _check_position_match(shift: Shift, employee_ids: list[int]) -> None:
+    if not employee_ids:
+        return
 
-def validate_employee_no_overlap(employee_id: int, shift: Shift) -> None:
-    
-    overlapping = (
-        Shift.objects.filter(assignments__employee_id=employee_id, date=shift.date)
-        .exclude(id=shift.id)
-        .only("id", "start_time", "end_time", "position", "date")
-    )
-    for other in overlapping:
-        if _overlaps(shift.start_time, shift.end_time, other.start_time, other.end_time):
-            start = other.start_time.strftime("%H:%M")
-            end = other.end_time.strftime("%H:%M")
-            d = other.date.strftime("%b %d") if hasattr(other.date, "strftime") else str(other.date)
-            raise ValidationError(f"Employee already assigned to: {other.position} {start}–{end} ({d})")
-
-def validate_employee_available(employee_id: int, shift: Shift) -> None:
-    
-    if EmployeeUnavailability.objects.filter(employee_id=employee_id, date=shift.date).exists():
-        raise ValidationError(f"Employee is unavailable on {shift.date.isoformat()}.")
-
-def validate_employees_match_shift_position(shift: Shift, employee_ids: list[int]) -> None:
-    
     User = get_user_model()
-    valid_employee_ids = set(
+    valid_ids = set(
         User.objects.filter(
             id__in=employee_ids,
             role="employee",
             is_active=True,
             position_id=shift.position_id,
-        )
-        .values_list("id", flat=True)
+        ).values_list("id", flat=True)
     )
-    invalid = [eid for eid in employee_ids if eid not in valid_employee_ids]
-    if invalid:
+    if len(valid_ids) != len(employee_ids):
         raise ValidationError("Selected employees must match the shift position.")
 
-@transaction.atomic
-def set_shift_assignments(shift: Shift, employee_ids: list[int]) -> None:
-    
-    employee_ids = list(dict.fromkeys(employee_ids))
-    validate_employees_match_shift_position(shift, employee_ids)
 
-    current_count = len(employee_ids)
-    validate_shift_capacity(shift, current_count)
-    for employee_id in employee_ids:
-        validate_employee_available(employee_id, shift)
-        validate_employee_no_overlap(employee_id, shift)
+def _check_capacity(shift: Shift, employee_ids: list[int]) -> None:
+    if len(employee_ids) > shift.capacity:
+        raise ValidationError("Cannot assign more employees than shift capacity.")
 
-    Assignment.objects.filter(shift=shift).exclude(employee_id__in=employee_ids).delete()
-    existing = set(Assignment.objects.filter(shift=shift, employee_id__in=employee_ids).values_list("employee_id", flat=True))
-    to_create = [Assignment(shift=shift, employee_id=eid) for eid in employee_ids if eid not in existing]
-    Assignment.objects.bulk_create(to_create)
+
+def _check_availability(shift: Shift, employee_ids: list[int]) -> None:
+    if not employee_ids:
+        return
+    has_unavailable = EmployeeUnavailability.objects.filter(
+        employee_id__in=employee_ids,
+        date=shift.date,
+    ).exists()
+    if has_unavailable:
+        raise ValidationError(f"Employee is unavailable on {shift.date.isoformat()}.")
+
+
+def _check_no_overlap(shift: Shift, employee_ids: list[int]) -> None:
+    if not employee_ids:
+        return
+
+    conflict = (
+        Assignment.objects.filter(
+            employee_id__in=employee_ids,
+            shift__date=shift.date,
+            shift__start_time__lt=shift.end_time,
+            shift__end_time__gt=shift.start_time,
+        )
+        .exclude(shift_id=shift.id)
+        .select_related("shift__position")
+        .order_by("shift__start_time")
+        .first()
+    )
+    if not conflict:
+        return
+
+    overlapping = conflict.shift
+    start = overlapping.start_time.strftime("%H:%M")
+    end = overlapping.end_time.strftime("%H:%M")
+    day = overlapping.date.strftime("%b %d")
+    raise ValidationError(f"Employee already assigned to: {overlapping.position} {start}–{end} ({day})")
+
+
+def _sync_assignments(shift: Shift, employee_ids: list[int]) -> None:
+    Assignment.objects.filter(shift=shift).delete()
+    if not employee_ids:
+        return
+    Assignment.objects.bulk_create([Assignment(shift=shift, employee_id=eid) for eid in employee_ids])
+
+
+def assign_employees_to_shift(shift: Shift, employee_ids: list[int]) -> None:
+    employee_ids = _normalize_employee_ids(employee_ids)
+    _check_position_match(shift, employee_ids)
+    _check_capacity(shift, employee_ids)
+    _check_availability(shift, employee_ids)
+    _check_no_overlap(shift, employee_ids)
+    _sync_assignments(shift, employee_ids)
 
 
 def shifts_for_manager(
@@ -93,9 +96,7 @@ def shifts_for_manager(
     understaffed_only: bool = False,
 ):
     
-    qs = (
-        _manager_shifts_qs(manager_id=manager_id, start=start, end=end).select_related("position")
-    )
+    qs = Shift.objects.filter(created_by_id=manager_id, date__gte=start, date__lte=end).select_related("position")
     if position_ids:
         qs = qs.filter(position_id__in=position_ids)
     if status in (ShiftStatus.DRAFT, ShiftStatus.PUBLISHED):

@@ -1,0 +1,15 @@
+stateDiagram-v2
+    [*] --> DRAFT: Создание смены\npublish = false
+    DRAFT --> DRAFT: Сохранение изменений\npublish = false
+    DRAFT --> PUBLISHED: Публикация\npublish = true\n(индивидуально/массово)
+
+    note right of DRAFT
+      Видна только менеджеру
+      Можно планировать назначения
+    end note
+
+    note right of PUBLISHED
+      Видна сотрудникам
+      (в их календаре отображаются
+      только PUBLISHED смены)
+    end note

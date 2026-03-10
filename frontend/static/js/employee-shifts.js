@@ -17,23 +17,15 @@ function getShiftsData() {
 }
 
 function groupShiftsByDate(shifts) {
-  const grouped = new Map();
-  for (let i = 0; i < shifts.length; i++) {
-    const shift = shifts[i];
-    if (!grouped.has(shift.date)) {
-      grouped.set(shift.date, []);
-    }
-    grouped.get(shift.date).push(shift);
-  }
-  return grouped;
+  const m = new Map();
+  for (const s of shifts) (m.get(s.date) ?? m.set(s.date, []).get(s.date)).push(s);
+  return m;
 }
 
 function calculateHours(shift) {
-  const startParts = shift.start_time.split(':');
-  const endParts = shift.end_time.split(':');
-  const startMinutes = parseInt(startParts[0], 10) * 60 + parseInt(startParts[1], 10);
-  const endMinutes = parseInt(endParts[0], 10) * 60 + parseInt(endParts[1], 10);
-  return Math.max(0, (endMinutes - startMinutes) / 60);
+  const [sh, sm] = shift.start_time.split(':').map(Number);
+  const [eh, em] = shift.end_time.split(':').map(Number);
+  return Math.max(0, (eh * 60 + em - sh * 60 - sm) / 60);
 }
 
 // ── Unavailability data ───────────────────────────────────────────────────────
@@ -65,8 +57,7 @@ function renderUnavailableList() {
 
   const fragment = document.createDocumentFragment();
 
-  for (let i = 0; i < sorted.length; i++) {
-    const iso = sorted[i];
+  for (const iso of sorted) {
     const pretty = formatPrettyDate(iso);
 
     const chip = document.createElement('span');
@@ -78,10 +69,8 @@ function renderUnavailableList() {
     btn.setAttribute('tabindex', '0');
     btn.setAttribute('aria-label', 'Remove ' + pretty);
     btn.textContent = 'x';
-    (function (d) {
-      btn.onclick = function () { toggleUnavailability(d); };
-      btn.onkeydown = function (e) { if (e.key === 'Enter' || e.key === ' ') toggleUnavailability(d); };
-    })(iso);
+    btn.onclick = () => toggleUnavailability(iso);
+    btn.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') toggleUnavailability(iso); };
 
     const label = document.createElement('span');
     label.className = 'chip-text';
@@ -129,23 +118,9 @@ async function toggleUnavailability(isoDate) {
 // Kept in module scope so toggleUnavailability can trigger a re-render.
 let _currentConfig = null;
 
-function prevPeriod() {
-  if (window.calendarPrevPeriod) {
-    window.calendarPrevPeriod('employeeShiftPage', NAV_OPTIONS);
-  }
-}
-
-function nextPeriod() {
-  if (window.calendarNextPeriod) {
-    window.calendarNextPeriod('employeeShiftPage', NAV_OPTIONS);
-  }
-}
-
-function goToToday() {
-  if (window.calendarGoToToday) {
-    window.calendarGoToToday('employeeShiftPage', 'month');
-  }
-}
+function prevPeriod() { window.calendarPrevPeriod?.('employeeShiftPage', NAV_OPTIONS); }
+function nextPeriod() { window.calendarNextPeriod?.('employeeShiftPage', NAV_OPTIONS); }
+function goToToday()  { window.calendarGoToToday?.('employeeShiftPage', 'month'); }
 
 function renderMonthGrid(config, shifts) {
   const grid = document.getElementById('employeeMonthGrid');
@@ -168,26 +143,18 @@ function renderMonthGrid(config, shifts) {
       }
 
       // Render shift chips.
-      for (var s = 0; s < dayShifts.length; s++) {
-        var shift = dayShifts[s];
-        var chip = document.createElement('div');
+      for (const shift of dayShifts) {
+        const chip = document.createElement('div');
         chip.className = 'shift-chip ' + (shift.is_past ? 'shift-chip-past' : 'shift-chip-future');
         chip.textContent = shift.start_time + '-' + shift.end_time;
-        (function (shiftId) {
-          chip.onclick = function (event) {
-            event.stopPropagation();
-            openShiftPopup(shiftId, event);
-          };
-        })(shift.id);
+        chip.onclick = (e) => { e.stopPropagation(); openShiftPopup(shift.id); };
         cell.appendChild(chip);
       }
 
       // Cell click — navigate out-of-month cells, toggle unavailability for in-month future days.
       cell.onclick = function () {
         if (!info.inMonth) {
-          var url = new URL(window.location.href);
-          url.searchParams.set('date', info.iso);
-          window.location.href = url.toString();
+          window.navigateWith({ date: info.iso });
           return;
         }
         if (!isFuture || hasShift) return;
@@ -199,56 +166,42 @@ function renderMonthGrid(config, shifts) {
 
 // ── Shift popups ──────────────────────────────────────────────────────────────
 
-function openShiftDetails(shiftId) {
-  const shifts = getShiftsData();
-  let shift = null;
+function findShiftById(shiftId) {
+  return getShiftsData().find(s => s.id === shiftId) ?? null;
+}
 
-  for (let i = 0; i < shifts.length; i++) {
-    if (shifts[i].id === shiftId) {
-      shift = shifts[i];
-      break;
-    }
-  }
+function fillShiftSummary(shift, dateId, timeId, hoursId, hoursPrefix, hoursSuffix) {
+  const dateEl = document.getElementById(dateId);
+  const timeEl = document.getElementById(timeId);
+  const hoursEl = document.getElementById(hoursId);
+  if (dateEl) dateEl.textContent = shift.date;
+  if (timeEl) timeEl.textContent = shift.start_time + '-' + shift.end_time;
+  if (hoursEl) hoursEl.textContent = (hoursPrefix || '') + calculateHours(shift) + (hoursSuffix || '');
+}
+
+function openShiftDetails(shiftId) {
+  const shift = findShiftById(shiftId);
 
   if (!shift) {
     showToast('error', 'Not found', 'Shift not found.');
     return;
   }
 
-  document.getElementById('detailDate').textContent = shift.date;
-  document.getElementById('detailTime').textContent = shift.start_time + '-' + shift.end_time;
+  fillShiftSummary(shift, 'detailDate', 'detailTime', 'detailHours', '', ' hours');
   document.getElementById('detailPosition').textContent = shift.position;
-  document.getElementById('detailHours').textContent = calculateHours(shift) + ' hours';
 
   openModal('shiftDetailsModal');
 }
 
-let currentPopupShiftId = null;
+window.activeMonthPopupId = null;
 
-Object.defineProperty(window, 'activeMonthPopupId', {
-  get: function() { return currentPopupShiftId; }
-});
-
-function openShiftPopup(shiftId, event) {
-  event.stopPropagation();
-
-  const shifts = getShiftsData();
-  let shift = null;
-
-  for (let i = 0; i < shifts.length; i++) {
-    if (shifts[i].id === shiftId) {
-      shift = shifts[i];
-      break;
-    }
-  }
+function openShiftPopup(shiftId) {
+  const shift = findShiftById(shiftId);
 
   if (!shift) return;
 
-  currentPopupShiftId = shiftId;
-
-  document.getElementById('monthPopupDate').textContent = shift.date;
-  document.getElementById('monthPopupTime').textContent = shift.start_time + '-' + shift.end_time;
-  document.getElementById('monthPopupHours').textContent = 'Total: ' + calculateHours(shift) + 'h';
+  window.activeMonthPopupId = shiftId;
+  fillShiftSummary(shift, 'monthPopupDate', 'monthPopupTime', 'monthPopupHours', 'Total: ', 'h');
 
   openModal('monthPopupModal');
 }

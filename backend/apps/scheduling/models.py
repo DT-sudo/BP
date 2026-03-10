@@ -53,7 +53,6 @@ class Shift(models.Model):
         on_delete=models.PROTECT,
         related_name="created_shifts",
     )
-    created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -81,7 +80,6 @@ class Assignment(models.Model):
         on_delete=models.CASCADE,
         related_name="assignments"
     )
-
     class Meta:
         constraints = [
             models.UniqueConstraint(
@@ -100,7 +98,6 @@ class EmployeeUnavailability(models.Model):
         related_name="unavailability",
     )
     date = models.DateField(db_index=True)
-    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ["date"]

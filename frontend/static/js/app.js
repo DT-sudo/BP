@@ -35,7 +35,7 @@
   };
 
   async function parseJsonResponse(response) {
-    const payload = await response.json().catch(function () { return {}; });
+    const payload = await response.json().catch(() => ({}));
 
     if (response.ok) {
       return payload;
@@ -58,7 +58,7 @@
   }
 
   window.postFormJson = async function (url, data) {
-    const csrfToken = window.getCsrfToken ? window.getCsrfToken() : '';
+    const csrfToken = window.getCsrfToken?.() || '';
     const headers = {
       'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
       'Accept': 'application/json'
@@ -82,21 +82,11 @@
     const toast = document.createElement('div');
     toast.className = 'toast ' + (type || '');
 
-    let html = '<div class="toast-dot" aria-hidden="true"></div>';
-    html += '<div>';
-    html += '<div class="toast-title">' + (title || '') + '</div>';
-    if (description) {
-      html += '<div class="toast-desc">' + description + '</div>';
-    }
-    html += '</div>';
-    toast.innerHTML = html;
+    toast.innerHTML = `<div class="toast-dot" aria-hidden="true"></div><div><div class="toast-title">${title || ''}</div>${description ? `<div class="toast-desc">${description}</div>` : ''}</div>`;
 
     container.appendChild(toast);
 
-    const duration = (type === 'error') ? 5000 : 3000;
-    setTimeout(function () {
-      toast.remove();
-    }, duration);
+    setTimeout(() => toast.remove(), (type === 'error') ? 5000 : 3000);
   };
 
   function getZIndex(element) {
@@ -109,13 +99,7 @@
   }
 
   function getTopZIndex() {
-    const overlays = getOpenOverlays();
-    let maxZ = 5000;
-    for (const overlay of overlays) {
-      const z = getZIndex(overlay);
-      if (z > maxZ) maxZ = z;
-    }
-    return maxZ;
+    return Math.max(5000, ...getOpenOverlays().map(getZIndex));
   }
 
   window.openModal = function (id) {
@@ -129,34 +113,16 @@
   };
 
   window.closeModal = function (id) {
-    const element = getById(id);
-    if (element) {
-      element.classList.add('hidden');
-    }
+    getById(id)?.classList.add('hidden');
   };
 
   let pendingLogoutHref = null;
 
   function ensureLogoutModal() {
-    if (getById('logoutConfirmModal')) return;
-
-    const overlay = document.createElement('div');
-    overlay.className = 'modal-overlay hidden';
-    overlay.id = 'logoutConfirmModal';
-    overlay.innerHTML = '<div class="modal" style="max-width:480px">' +
-      '<div class="modal-header">' +
-      '<h2 class="modal-title">Confirm logout</h2>' +
-      '<button class="modal-close" type="button" aria-label="Close">' +
-      '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-      '<line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/>' +
-      '</svg></button></div>' +
-      '<div class="modal-body"><p class="text-sm">Are you really want to log out?</p></div>' +
-      '<div class="modal-footer">' +
-      '<button class="btn btn-outline" type="button" id="logoutConfirmNo">No</button>' +
-      '<button class="btn btn-primary" type="button" id="logoutConfirmYes">Yes</button>' +
-      '</div></div>';
-
-    document.body.appendChild(overlay);
+    const overlay = getById('logoutConfirmModal');
+    if (!overlay) return;
+    if (overlay.dataset.wired === '1') return;
+    overlay.dataset.wired = '1';
 
     function closeLogoutModal() {
       pendingLogoutHref = null;
@@ -172,9 +138,8 @@
     const yesBtn = overlay.querySelector('#logoutConfirmYes');
     if (yesBtn) {
       yesBtn.addEventListener('click', function () {
-        const href = pendingLogoutHref;
+        if (pendingLogoutHref) window.location.assign(pendingLogoutHref);
         pendingLogoutHref = null;
-        if (href) window.location.assign(href);
       });
     }
 
@@ -198,7 +163,7 @@
 
   function wireLogout() {
     document.addEventListener('click', function (event) {
-      const link = event.target.closest ? event.target.closest('a') : null;
+      const link = event.target.closest('a');
       if (!link) return;
 
       const href = link.getAttribute('href');
@@ -255,11 +220,7 @@
         menu.style.left = Math.round(leftPosition) + 'px';
         menu.style.right = 'auto';
 
-        function closeOnScroll() {
-          if (menu.classList.contains('open')) {
-            menu.classList.remove('open');
-          }
-        }
+        const closeOnScroll = () => menu.classList.remove('open');
         dropdown._closeOnScroll = closeOnScroll;
         addEventListener('scroll', closeOnScroll, true);
       } else {
@@ -314,19 +275,7 @@
   function closeTopModal() {
     const overlays = getOpenOverlays();
     if (!overlays.length) return false;
-
-    let topOverlay = overlays[0];
-    let topZ = getZIndex(topOverlay);
-
-    for (let i = 1; i < overlays.length; i++) {
-      const z = getZIndex(overlays[i]);
-      if (z > topZ) {
-        topZ = z;
-        topOverlay = overlays[i];
-      }
-    }
-
-    topOverlay.classList.add('hidden');
+    overlays.reduce((top, el) => getZIndex(el) > getZIndex(top) ? el : top).classList.add('hidden');
     return true;
   }
 
@@ -363,11 +312,8 @@
   }
 
   function wireMultiselectClose() {
-    document.addEventListener('click', function (event) {
-      const closest = event.target.closest ? event.target.closest('.multiselect') : null;
-      if (!closest) {
-        window.closeAllMultiselects('auto-close');
-      }
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest?.('.multiselect')) window.closeAllMultiselects('auto-close');
     });
   }
 

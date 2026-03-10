@@ -1,5 +1,3 @@
-const POSITION_SELECT_IDS = ['positionFilter', 'addPosition', 'editPosition'];
-
 const getById = window.getById || ((id) => document.getElementById(id));
 
 function getPageData() {
@@ -8,10 +6,7 @@ function getPageData() {
 }
 
 function closeAllDropdowns() {
-  const menus = document.querySelectorAll('.dropdown-menu');
-  for (let i = 0; i < menus.length; i++) {
-    menus[i].classList.remove('open');
-  }
+  for (const m of document.querySelectorAll('.dropdown-menu')) m.classList.remove('open');
 }
 
 function openWithDropdownClose(modalId) {
@@ -19,190 +14,58 @@ function openWithDropdownClose(modalId) {
   openModal(modalId);
 }
 
-function cancelAndClose(modalId, cleanup) {
-  if (cleanup) cleanup();
-  closeModal(modalId);
-}
-
-function applyFilters() {
-  let searchInput = getById('employeeSearch');
-  let positionSelect = getById('positionFilter');
-
-  let query = searchInput ? (searchInput.value || '').trim().toLowerCase() : '';
-  let position = positionSelect ? (positionSelect.value || 'all') : 'all';
-
-  let rows = document.querySelectorAll('.employee-row');
-  for (let i = 0; i < rows.length; i++) {
-    let row = rows[i];
-    let matchesPosition = (position === 'all' || row.dataset.position === position);
-    let matchesSearch = !query || row.innerText.toLowerCase().indexOf(query) >= 0;
-    row.style.display = (matchesPosition && matchesSearch) ? '' : 'none';
-  }
-}
-
-window.applyEmployeeFilters = applyFilters;
-
-function updatePositionFilterLabel() {
-  let label = getById('positionFilterMultiLabel');
-  if (!label) return;
-
-  let checked = document.querySelector('#positionFilterMulti input[name="employeePositionChoice"]:checked');
-
-  if (!checked || checked.value === 'all' || checked.value === '') {
-    label.textContent = 'All';
-  } else {
-    let parent = checked.parentElement;
-    label.textContent = parent ? (parent.textContent || '').trim() : 'Position';
-  }
-}
-
-function setPositionFilter(value) {
-  let select = getById('positionFilter');
-  if (select) {
-    select.value = value || 'all';
-  }
-  updatePositionFilterLabel();
-  applyFilters();
-
-  if (window.closeAllMultiselects) {
-    window.closeAllMultiselects();
-  }
-}
-
-let currentEditId = null;
 let pendingDelete = null;
+let pendingResetUrl = null;
 
-function countDigits(value) {
-  let matches = String(value || '').match(/\d/g);
-  return matches ? matches.length : 0;
-}
-
-function setFieldError(inputId, errorId, message) {
-  let input = getById(inputId);
-  let errorEl = getById(errorId);
-
-  if (input) {
-    input.classList.toggle('form-error', !!message);
-  }
-  if (errorEl) {
-    errorEl.textContent = message || '';
-    errorEl.classList.toggle('hidden', !message);
-  }
-}
-
-function validateEmployeeForm(prefix) {
-  let errors = {};
-  let fields = ['FullName', 'Email', 'Phone', 'Position'];
-
-  for (let i = 0; i < fields.length; i++) {
-    setFieldError(prefix + fields[i], prefix + fields[i] + 'Error', null);
-  }
-
-  let nameInput = getById(prefix + 'FullName');
-  let emailInput = getById(prefix + 'Email');
-  let phoneInput = getById(prefix + 'Phone');
-  let positionInput = getById(prefix + 'Position');
-
-  let name = nameInput ? nameInput.value.trim() : '';
-  let email = emailInput ? emailInput.value.trim() : '';
-  let phone = phoneInput ? phoneInput.value.trim() : '';
-  let position = positionInput ? positionInput.value : '';
-
-  if (!name) {
-    errors.FullName = 'Full name is required.';
-  }
-
-  if (!email) {
-    errors.Email = 'Email is required.';
-  } else if (emailInput && !emailInput.checkValidity()) {
-    errors.Email = 'Enter a valid email address.';
-  }
-
-  if (!phone) {
-    errors.Phone = 'Phone is required.';
-  } else if (countDigits(phone) < 7) {
-    errors.Phone = 'Enter a valid phone number.';
-  }
-
-  if (!position) {
-    errors.Position = 'Position is required.';
-  }
-
-  for (let field in errors) {
-    setFieldError(prefix + field, prefix + field + 'Error', errors[field]);
-  }
-
-  return Object.keys(errors).length === 0;
-}
-
-async function openEditEmployee(userId) {
-  let pageData = getPageData();
-  let url = pageData ? pageData.employeeDetailsUrlTemplate : null;
-  if (!url) return;
-
+function openEditEmployee(userId) {
   closeAllDropdowns();
 
-  try {
-    let response = await fetch(urlFromTemplate(url, userId), {
-      headers: { 'Accept': 'application/json' }
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to load employee.');
-    }
-
-    let data = await response.json();
-
-    currentEditId = userId;
-
-    let userIdInput = getById('editUserId');
-    if (userIdInput) userIdInput.value = userId;
-
-    let fullName = ((data.first_name || '') + ' ' + (data.last_name || '')).trim();
-    let nameInput = getById('editFullName');
-    if (nameInput) nameInput.value = fullName;
-
-    let emailInput = getById('editEmail');
-    if (emailInput) emailInput.value = data.email || '';
-
-    let phoneInput = getById('editPhone');
-    if (phoneInput) phoneInput.value = data.phone || '';
-
-    let positionInput = getById('editPosition');
-    if (positionInput) positionInput.value = data.position_id != null ? data.position_id : '';
-
-    validateEmployeeForm('edit');
-    openModal('editEmployeeModal');
-  } catch (error) {
-    showToast('error', 'Error', error.message || 'Could not open employee.');
+  const pageData = getPageData();
+  const updateUrlTemplate = pageData ? pageData.employeeUpdateUrlTemplate : '';
+  const form = getById('editEmployeeForm');
+  const row = document.querySelector(`.employee-row[data-user-id="${userId}"]`);
+  if (!updateUrlTemplate || !form || !row) {
+    showToast('error', 'Error', 'Could not open employee.');
+    return;
   }
+
+  form.action = urlFromTemplate(updateUrlTemplate, userId);
+
+  const nameInput = getById('editFullName');
+  if (nameInput) nameInput.value = (row.dataset.fullName || '').trim();
+
+  const emailInput = getById('editEmail');
+  if (emailInput) emailInput.value = row.dataset.email || '';
+
+  const positionInput = getById('editPosition');
+  if (positionInput) positionInput.value = row.dataset.position || '';
+
+  openModal('editEmployeeModal');
 }
 
 function openDeleteEmployee(userId, employeeId, email) {
   pendingDelete = {
     userId: userId,
     employeeId: employeeId || '',
-    email: email || ''
+    email: email || '',
   };
 
-  let label = getById('deleteEmployeeLabel');
+  const label = getById('deleteEmployeeLabel');
   if (label) {
-    label.textContent = (pendingDelete.employeeId + ' (' + pendingDelete.email + ')').trim();
+    label.textContent = `${pendingDelete.employeeId} (${pendingDelete.email})`.trim();
   }
 
   openWithDropdownClose('deleteEmployeeModal');
 }
 
 function cancelDeleteEmployee() {
-  cancelAndClose('deleteEmployeeModal', function () {
-    pendingDelete = null;
-  });
+  pendingDelete = null;
+  closeModal('deleteEmployeeModal');
 }
 
 function confirmDeleteEmployee() {
-  let pageData = getPageData();
-  let url = pageData ? pageData.employeeDeleteUrlTemplate : null;
-  let form = getById('deleteEmployeeForm');
+  const url = getPageData()?.employeeDeleteUrlTemplate || '';
+  const form = getById('deleteEmployeeForm');
 
   if (!url || !form || !pendingDelete || !pendingDelete.userId) return;
 
@@ -211,285 +74,100 @@ function confirmDeleteEmployee() {
   form.submit();
 }
 
-async function saveEmployeeEdits() {
-  let pageData = getPageData();
-  let url = pageData ? pageData.employeeUpdateUrlTemplate : null;
-
-  if (!url || !currentEditId) return;
-  if (!validateEmployeeForm('edit')) return;
-
-  function getValue(id) {
-    let input = getById(id);
-    return input ? input.value.trim() : '';
-  }
-
-  try {
-    let payload = await postFormJson(urlFromTemplate(url, currentEditId), {
-      full_name: getValue('editFullName'),
-      email: getValue('editEmail'),
-      phone: getValue('editPhone'),
-      position: getValue('editPosition')
-    });
-
-    let employee = payload.employee;
-    if (!employee) {
-      throw new Error('Update failed.');
-    }
-
-    let row = document.querySelector('.employee-row[data-user-id="' + employee.id + '"]');
-    if (row) {
-      row.dataset.position = employee.position_id != null ? employee.position_id : '';
-
-      let cells = row.querySelectorAll('td');
-      if (cells[2]) cells[2].textContent = employee.full_name || '';
-
-      if (cells[3]) {
-        if (employee.position) {
-          cells[3].innerHTML = '<span class="badge badge-default">' + employee.position + '</span>';
-        } else {
-          cells[3].innerHTML = '<span class="text-sm text-muted">—</span>';
-        }
-      }
-
-      if (cells[4]) cells[4].textContent = employee.email || '';
-      if (cells[5]) cells[5].textContent = employee.phone || '—';
-    }
-
-    closeModal('editEmployeeModal');
-    applyFilters();
-    showToast('success', 'Employee updated', 'Saved.');
-  } catch (error) {
-    showToast('error', 'Could not update employee', error.message || 'Could not save changes.');
-  }
-}
-
-let pendingResetUrl = null;
-
 function openResetPassword(employeeId, login, url) {
   pendingResetUrl = url;
 
-  let label = getById('resetEmployeeLabel');
+  const label = getById('resetEmployeeLabel');
   if (label) {
-    label.textContent = employeeId + ' (' + login + ')';
+    label.textContent = `${employeeId} (${login})`;
   }
 
   openWithDropdownClose('resetPasswordModal');
 }
 
 function cancelResetPassword() {
-  cancelAndClose('resetPasswordModal', function () {
-    pendingResetUrl = null;
-  });
+  pendingResetUrl = null;
+  closeModal('resetPasswordModal');
 }
 
 function confirmResetPassword() {
-  let form = getById('resetPasswordForm');
+  const form = getById('resetPasswordForm');
   if (!form || !pendingResetUrl) return;
 
   form.action = pendingResetUrl;
   form.submit();
 }
 
-function updatePositionSelects(positionId, positionName) {
-  let positionIdStr = String(positionId);
+function wireTemplateActions() {
+  document.addEventListener('click', function (event) {
+    const actionEl = event.target.closest('[data-action]');
+    if (!actionEl) return;
 
-  for (let i = 0; i < POSITION_SELECT_IDS.length; i++) {
-    let selectId = POSITION_SELECT_IDS[i];
-    let select = getById(selectId);
-    if (!select) continue;
+    const action = actionEl.dataset.action || '';
+    if (!action) return;
 
-    let existingOption = select.querySelector('option[value="' + positionIdStr + '"]');
-
-    if (positionName === null) {
-      if (existingOption) {
-        existingOption.remove();
-      }
-    } else {
-      if (!existingOption) {
-        existingOption = document.createElement('option');
-        existingOption.value = positionIdStr;
-        select.appendChild(existingOption);
-      }
-      existingOption.textContent = positionName;
-    }
-  }
-}
-
-async function addPosition() {
-  let pageData = getPageData();
-  let url = pageData ? pageData.positionCreateUrl : null;
-  if (!url) return;
-
-  let nameInput = getById('newPositionName');
-  let name = nameInput ? nameInput.value.trim() : '';
-
-  if (!name) {
-    showToast('error', 'Position name required', 'Please enter a position name.');
-    return;
-  }
-
-  try {
-    let result = await postFormJson(url, { name: name, is_active: 'on' });
-    let positionId = result.id;
-
-    let row = document.createElement('tr');
-    row.dataset.positionId = positionId;
-    row.innerHTML = '<td class="position-name"></td>' +
-      '<td class="position-actions-cell">' +
-      '<button class="btn btn-outline btn-sm" type="button" onclick="renamePosition(this)">Rename</button>' +
-      '<button class="btn btn-ghost btn-icon" type="button" onclick="deletePosition(this)" aria-label="Delete position" title="Delete" style="color:var(--destructive)">' +
-      '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-      '<path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/>' +
-      '</svg></button></td>';
-
-    let nameCell = row.querySelector('.position-name');
-    if (nameCell) nameCell.textContent = name;
-
-    let tbody = getById('positionTbody');
-    if (tbody) tbody.appendChild(row);
-
-    updatePositionSelects(positionId, name);
-
-    if (nameInput) nameInput.value = '';
-
-    showToast('success', 'Position added', name + ' added.');
-  } catch (error) {
-    showToast('error', 'Could not add position', error.message);
-  }
-}
-
-async function renamePosition(button) {
-  let pageData = getPageData();
-  let url = pageData ? pageData.positionUpdateUrlTemplate : null;
-  if (!url) return;
-
-  let row = button.closest('tr');
-  let positionId = row ? row.dataset.positionId : null;
-  let nameCell = row ? row.querySelector('.position-name') : null;
-  let currentName = nameCell ? nameCell.textContent : '';
-
-  let newName = prompt('Rename position:', currentName);
-  if (!newName || !positionId) return;
-
-  try {
-    await postFormJson(urlFromTemplate(url, positionId), {
-      name: newName,
-      is_active: 'on'
-    });
-
-    if (nameCell) nameCell.textContent = newName;
-    updatePositionSelects(positionId, newName);
-
-    showToast('success', 'Position renamed', 'Updated.');
-  } catch (error) {
-    showToast('error', 'Could not rename position', error.message);
-  }
-}
-
-let pendingPositionDelete = null;
-
-function deletePosition(button) {
-  let row = button.closest('tr');
-  let positionId = row ? row.dataset.positionId : null;
-  let nameCell = row ? row.querySelector('.position-name') : null;
-  let positionName = nameCell ? nameCell.textContent : 'Position';
-
-  if (!positionId) return;
-
-  pendingPositionDelete = {
-    positionId: positionId,
-    positionName: positionName,
-    row: row
-  };
-
-  let nameEl = getById('deletePositionName');
-  if (nameEl) nameEl.textContent = positionName;
-
-  openModal('deletePositionModal');
-}
-
-function cancelDeletePosition() {
-  cancelAndClose('deletePositionModal', function () {
-    pendingPositionDelete = null;
-  });
-}
-
-async function confirmDeletePosition() {
-  let pageData = getPageData();
-  let url = pageData ? pageData.positionDeleteUrlTemplate : null;
-
-  if (!url || !pendingPositionDelete || !pendingPositionDelete.positionId) return;
-
-  try {
-    await postFormJson(urlFromTemplate(url, pendingPositionDelete.positionId), {});
-
-    if (pendingPositionDelete.row) {
-      pendingPositionDelete.row.remove();
+    if (action === 'open-modal') {
+      const modalId = actionEl.dataset.modalId || '';
+      if (modalId) openWithDropdownClose(modalId);
+      return;
     }
 
-    updatePositionSelects(pendingPositionDelete.positionId, null);
-
-    let escapedId = pendingPositionDelete.positionId.replace(/["\\]/g, '\\$&');
-    let radio = document.querySelector('#positionFilterMulti input[name="employeePositionChoice"][value="' + escapedId + '"]');
-
-    if (radio) {
-      let radioLabel = radio.closest('label');
-      if (radioLabel) radioLabel.remove();
-
-      if (radio.checked) {
-        setPositionFilter('all');
-      } else {
-        updatePositionFilterLabel();
-      }
+    if (action === 'close-modal') {
+      const modalId = actionEl.dataset.modalId || '';
+      if (modalId) closeModal(modalId);
+      return;
     }
 
-    pendingPositionDelete = null;
-    closeModal('deletePositionModal');
-    showToast('success', 'Position deleted', 'Deleted.');
-  } catch (error) {
-    showToast('error', 'Cannot delete position', error.message);
-  }
-}
+    if (action === 'toggle-dropdown') {
+      toggleDropdown(actionEl);
+      return;
+    }
 
-function bindOnce(element, key, setupFn) {
-  if (!element || element.dataset[key]) return;
-  element.dataset[key] = '1';
-  setupFn(element);
-}
+    if (action === 'edit-employee') {
+      const userId = parseInt(actionEl.dataset.userId || '', 10);
+      if (Number.isFinite(userId)) openEditEmployee(userId);
+      return;
+    }
 
-function init() {
-  updatePositionFilterLabel();
-  applyFilters();
+    if (action === 'reset-password') {
+      openResetPassword(
+        actionEl.dataset.employeeId || '',
+        actionEl.dataset.login || '',
+        actionEl.dataset.url || '',
+      );
+      return;
+    }
 
-  bindOnce(getById('addEmployeeForm'), 'validated', function (form) {
-    form.addEventListener('submit', function (event) {
-      if (!validateEmployeeForm('add')) {
-        event.preventDefault();
-        event.stopPropagation();
+    if (action === 'delete-employee') {
+      const userId = parseInt(actionEl.dataset.userId || '', 10);
+      if (Number.isFinite(userId)) {
+        openDeleteEmployee(userId, actionEl.dataset.employeeId || '', actionEl.dataset.email || '');
       }
-    });
+      return;
+    }
+
+    if (action === 'copy-text') {
+      const targetId = actionEl.dataset.copyTarget || '';
+      if (targetId) copyText(targetId);
+    }
   });
 
-  bindOnce(getById('newPositionName'), 'enterWired', function (input) {
-    input.addEventListener('keydown', function (event) {
-      if (event.key === 'Enter') {
-        event.preventDefault();
-        addPosition();
-      }
-    });
-  });
+  document.addEventListener('submit', function (event) {
+    const form = event.target;
+    if (!(form instanceof HTMLFormElement)) return;
 
-  bindOnce(getById('deletePositionModal'), 'backdropWired', function (modal) {
-    modal.addEventListener('click', function (event) {
-      if (event.target === modal) {
-        pendingPositionDelete = null;
-      }
-    });
+    const question = form.dataset.confirm;
+    if (!question) return;
+
+    if (!window.confirm(question)) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
   });
 }
 
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', init);
+  document.addEventListener('DOMContentLoaded', wireTemplateActions);
 } else {
-  init();
+  wireTemplateActions();
 }

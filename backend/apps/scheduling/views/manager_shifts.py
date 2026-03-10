@@ -4,80 +4,90 @@ import json
 
 from django.contrib import messages
 from django.core.serializers.json import DjangoJSONEncoder
-from django.db import models
-from django.http import HttpRequest, HttpResponse, JsonResponse
-from django.shortcuts import get_object_or_404, redirect, render
+from django.db.models import Count, Prefetch
+from django.http import HttpRequest, HttpResponse
+from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
-from django.views.decorators.http import require_http_methods
+from django.views.decorators.http import require_GET, require_POST
 
 from apps.accounts.decorators import manager_required
 from apps.accounts.models import User, UserRole
 
-from ..models import Position, Shift, ShiftStatus
+from ..models import Assignment, Position, Shift
 from ..services import shifts_for_manager
+from ..use_cases import publish_shift as publish_shift_use_case, publish_shifts_in_period
 from .helpers import (
+    PeriodContext,
+    _build_period_context,
     _parse_date,
-    _week_bounds,
-    _month_bounds,
-    _redirect_back,
+    _redirect_with_message,
     _manager_shifts_url_showing_shift,
     _save_shift_from_post,
 )
 
 
-def _serialize_shifts(shifts):
-    """Serialize shift model instances to a list of dicts for JSON output."""
-    result = []
-    for s in shifts:
-        assigned_ids = [a.employee_id for a in s.assignments.all()]
-        result.append({
-            "id": s.id,
-            "date": s.date.isoformat(),
-            "start_time": s.start_time.strftime("%H:%M"),
-            "end_time": s.end_time.strftime("%H:%M"),
-            "position": s.position.name,
-            "position_id": s.position_id,
-            "capacity": s.capacity,
-            "assigned_count": len(assigned_ids),
-            "assigned_employee_ids": assigned_ids,
-            "status": s.status,
-            "is_past": s.is_past,
-        })
-    return result
+def _build_shift_payload(shift_qs):
+    shifts = (
+        shift_qs.annotate(assigned_count=Count("assignments"))
+        .prefetch_related(
+            Prefetch(
+                "assignments",
+                queryset=Assignment.objects.only("employee_id"),
+                to_attr="prefetched_assignments",
+            )
+        )
+    )
+
+    now_local = timezone.localtime()
+    today = now_local.date()
+    current_time = now_local.time().replace(tzinfo=None)
+
+    payload = []
+    for shift in shifts:
+        assigned_ids = [a.employee_id for a in getattr(shift, "prefetched_assignments", [])]
+        shift_date = shift.date
+        shift_end = shift.end_time
+        is_past = shift_date < today or (shift_date == today and shift_end < current_time)
+        payload.append(
+            {
+                "id": shift.id,
+                "date": shift_date.isoformat(),
+                "start_time": shift.start_time.strftime("%H:%M"),
+                "end_time": shift_end.strftime("%H:%M"),
+                "position": shift.position.name,
+                "position_id": shift.position_id,
+                "capacity": shift.capacity,
+                "assigned_count": shift.assigned_count,
+                "assigned_employee_ids": assigned_ids,
+                "status": shift.status,
+                "is_past": is_past,
+            }
+        )
+    return payload
 
 
-def _serialize_employees(employees):
-    """Serialize employees list for JSON."""
+def _build_employee_payload(employee_qs):
     return [
         {
             "id": e.id,
-            "name": e.get_full_name() or e.username,
+            "name": (e.get_full_name() or "").strip() or e.username,
             "position_id": e.position_id,
             "position": e.position.name if e.position else "",
         }
-        for e in employees
+        for e in employee_qs
     ]
 
+
+def _get_manager_shift_or_404(request: HttpRequest, shift_id: int) -> Shift:
+    return get_object_or_404(Shift.objects, pk=shift_id, created_by=request.user)
+
 @manager_required
-@require_http_methods(["GET", "POST"])
+@require_GET
 def manager_shifts(request: HttpRequest) -> HttpResponse:
     
     today = timezone.localdate()
-    view = (request.GET.get("view") or "week").lower()
     anchor = _parse_date(request.GET.get("date"), today)
-
-    if view == "month":
-        start, end = _month_bounds(anchor)
-        period_label = anchor.strftime("%B %Y")
-    else:
-        view = "week"
-        start, end = _week_bounds(anchor)
-        if start.month == end.month and start.year == end.year:
-            period_label = f"{start.strftime('%d')}. - {end.strftime('%d')}. {start.strftime('%b')}"
-        else:
-            period_label = f"{start.strftime('%d')}. {start.strftime('%b')} - {end.strftime('%d')}. {end.strftime('%b')}"
-
-    request.session["manager_shifts_last_url"] = request.get_full_path()
+    period: PeriodContext = _build_period_context(request.GET.get("view") or "week", anchor)
 
     positions = Position.objects.filter(is_active=True).order_by("name")
     selected_positions = [int(p) for p in request.GET.getlist("positions") if p.isdigit()]
@@ -86,160 +96,93 @@ def manager_shifts(request: HttpRequest) -> HttpResponse:
 
     shift_qs = shifts_for_manager(
         manager_id=request.user.id,
-        start=start,
-        end=end,
+        start=period.start,
+        end=period.end,
         position_ids=selected_positions or None,
         status=status or None,
         understaffed_only=understaffed,
-    ).prefetch_related("assignments")
-
-    employees = list(
-        User.objects.filter(role=UserRole.EMPLOYEE, is_active=True)
-        .select_related("position")
-        .order_by("last_name", "first_name", "username")
     )
 
-    shift_form_state = request.session.pop("shift_form_state", None)
+    employee_qs = User.objects.filter(role=UserRole.EMPLOYEE, is_active=True).select_related("position").order_by(
+        "last_name", "first_name", "username"
+    )
+    employees = list(employee_qs)
 
     return render(
         request,
         "manager/manager-shifts.html",
         {
-            "view": view,
-            "anchor": anchor,
-            "start": start,
-            "end": end,
-            "period_label": period_label,
+            "view": period.view,
+            "anchor": period.anchor,
+            "start": period.start,
+            "end": period.end,
+            "period_label": period.label,
             "today": today,
             "positions": positions,
             "employees": employees,
             "selected_positions": selected_positions,
             "status": status,
             "understaffed": understaffed,
-            "shifts_json": json.dumps(_serialize_shifts(shift_qs), cls=DjangoJSONEncoder),
-            "employees_json": json.dumps(_serialize_employees(employees), cls=DjangoJSONEncoder),
-            "shift_form_state_json": json.dumps(shift_form_state, cls=DjangoJSONEncoder) if shift_form_state else "",
+            "shifts_json": json.dumps(_build_shift_payload(shift_qs), cls=DjangoJSONEncoder),
+            "employees_json": json.dumps(_build_employee_payload(employees), cls=DjangoJSONEncoder),
         },
     )
 
 
 @manager_required
-@require_http_methods(["POST"])
-def create_shift(request: HttpRequest) -> HttpResponse:
-    
-    shift = Shift(created_by=request.user)
+@require_POST
+def save_shift(request: HttpRequest, shift_id: int | None = None) -> HttpResponse:
+    is_update = shift_id is not None
+    shift = _get_manager_shift_or_404(request, shift_id) if is_update else Shift(created_by=request.user)
     return _save_shift_from_post(
         request,
         shift=shift,
-        mode="create",
-        success_message="Shift created.",
+        success_message="Shift updated." if is_update else "Shift created.",
     )
 
 @manager_required
-@require_http_methods(["POST"])
-def update_shift(request: HttpRequest, shift_id: int) -> HttpResponse:
-    
-    shift = get_object_or_404(Shift.objects, pk=shift_id, created_by=request.user)
-    return _save_shift_from_post(
-        request,
-        shift=shift,
-        mode="update",
-        shift_id=shift_id,
-        success_message="Shift updated.",
-    )
-
-@manager_required
-@require_http_methods(["POST"])
+@require_POST
 def delete_shift(request: HttpRequest, shift_id: int) -> HttpResponse:
     
-    shift = get_object_or_404(Shift.objects, pk=shift_id, created_by=request.user)
+    shift = _get_manager_shift_or_404(request, shift_id)
     shift.delete()
-    messages.success(request, "Shift deleted.")
-    return _redirect_back(request)
+    return _redirect_with_message(request, level=messages.SUCCESS, text="Shift deleted.")
 
 
 @manager_required
-@require_http_methods(["POST"])
+@require_POST
 def publish_all_shifts(request: HttpRequest) -> HttpResponse:
     """Publish all draft shifts in the visible date range."""
     today = timezone.localdate()
-    view = (request.POST.get("view") or "week").lower()
     anchor = _parse_date(request.POST.get("date"), today)
-    
-    if view == "month":
-        start, end = _month_bounds(anchor)
-    else:
-        start, end = _week_bounds(anchor)
-    
-    drafts = Shift.objects.filter(
-        created_by=request.user,
-        status=ShiftStatus.DRAFT,
-        date__gte=start,
-        date__lte=end,
+    period = _build_period_context(request.POST.get("view") or "week", anchor)
+
+    count = publish_shifts_in_period(
+        manager_id=request.user.id,
+        start=period.start,
+        end=period.end,
     )
-    
-    # Exclude shifts with unavailable employees
-    blocked_ids = list(
-        drafts.filter(assignments__employee__unavailability__date=models.F("date"))
-        .values_list("id", flat=True)
-        .distinct()
-    )
-    
-    publishable = drafts.exclude(id__in=blocked_ids)
-    count = publishable.update(status=ShiftStatus.PUBLISHED)
-    
     if count:
-        messages.success(request, f"Published {count} shift{'s' if count != 1 else ''}.")
-    else:
-        messages.info(request, "No draft shifts to publish.")
-    
-    return _redirect_back(request, "manager_shifts")
+        return _redirect_with_message(
+            request,
+            level=messages.SUCCESS,
+            text=f"Published {count} shift{'s' if count != 1 else ''}.",
+            to="manager_shifts",
+        )
+    return _redirect_with_message(
+        request,
+        level=messages.INFO,
+        text="No draft shifts to publish.",
+        to="manager_shifts",
+    )
 
 
 @manager_required
-@require_http_methods(["POST"])
+@require_POST
 def publish_shift(request: HttpRequest, shift_id: int) -> HttpResponse:
     
-    shift = get_object_or_404(Shift.objects, pk=shift_id, created_by=request.user)
-    if shift.status != ShiftStatus.PUBLISHED:
-        if shift.assignments.filter(employee__unavailability__date=shift.date).exists():
-            messages.error(request, "Cannot publish shift: one or more assigned employees are unavailable that day.")
-            return redirect(_manager_shifts_url_showing_shift(request, shift))
-        shift.status = ShiftStatus.PUBLISHED
-        shift.save(update_fields=["status", "updated_at"])
-        messages.success(request, "Shift published.")
-    else:
-        messages.info(request, "Shift is already published.")
-    return redirect(_manager_shifts_url_showing_shift(request, shift))
-
-@manager_required
-@require_http_methods(["GET"])
-def shift_details(request: HttpRequest, shift_id: int) -> JsonResponse:
-    
-    shift = get_object_or_404(
-        Shift.objects.select_related("position"),
-        pk=shift_id,
-        created_by=request.user,
-    )
-    assigned = (
-        User.objects.filter(assignments__shift=shift, role=UserRole.EMPLOYEE)
-        .select_related("position")
-        .order_by("last_name", "first_name")
-    )
-    return JsonResponse({
-        "id": shift.id,
-        "date": shift.date.isoformat(),
-        "start_time": shift.start_time.strftime("%H:%M"),
-        "end_time": shift.end_time.strftime("%H:%M"),
-        "position_id": shift.position_id,
-        "position": shift.position.name,
-        "status": shift.status,
-        "capacity": shift.capacity,
-        "assigned_count": shift.assignments.count(),
-        "assigned_employees": [
-            {"id": e.id, "name": e.get_full_name() or e.username, "employee_id": e.employee_id}
-            for e in assigned
-        ],
-        "created_by": shift.created_by.get_full_name() or shift.created_by.username,
-        "updated_at": shift.updated_at.isoformat(),
-    })
+    shift = _get_manager_shift_or_404(request, shift_id)
+    target_url = _manager_shifts_url_showing_shift(request, shift)
+    if publish_shift_use_case(shift=shift):
+        return _redirect_with_message(request, level=messages.SUCCESS, text="Shift published.", to=target_url)
+    return _redirect_with_message(request, level=messages.INFO, text="Shift is already published.", to=target_url)

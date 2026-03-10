@@ -1,22 +1,23 @@
 (function() {
   'use strict';
 
-  const Config = window.ManagerShiftsConfig || {};
-const Time = window.ManagerShiftsTime || {};
-const LaneLayout = window.ManagerShiftsLaneLayout || {};
-const PositionPalette = window.ManagerShiftsPositionPalette || {};
-const Sidebar = window.ManagerShiftsSidebar || {};
+  const ManagerShifts = window.ManagerShifts || {};
+  const Config = ManagerShifts.Config || {};
+  const Time = ManagerShifts.Time || {};
+  const LaneLayout = ManagerShifts.LaneLayout || {};
+  const PositionPalette = ManagerShifts.PositionPalette || {};
+  const Sidebar = ManagerShifts.Sidebar || {};
 
-const { getEl, escapeHtml, TIME_GRID_HOUR_HEIGHT_PX } = Config;
-const { parseTimeToMinutes, formatDurationMinutes } = Time;
-const { computeShiftLaneLayout, applyTimedShiftChipVertical } = LaneLayout;
-const { applyPositionPaletteToElement } = PositionPalette;
-const { applyEmployeeShiftHighlight } = Sidebar;
+  const { getEl, TIME_GRID_HOUR_HEIGHT_PX } = Config;
+  const { parseTimeToMinutes, formatDurationMinutes } = Time;
+  const { computeShiftLaneLayout, applyTimedShiftChipVertical } = LaneLayout;
+  const { applyPositionPaletteToElement } = PositionPalette;
+  const { applyEmployeeShiftHighlight } = Sidebar;
 
-const toISODate = window.toISODate;
-const navigateWith = window.navigateWith;
-const weekdayLabel = window.weekdayLabel;
-const dayNumber = window.dayNumber;
+  const toISODate = window.toISODate;
+  const navigateWith = window.navigateWith;
+  const weekdayLabel = window.weekdayLabel;
+  const dayNumber = window.dayNumber;
 
 function renderShiftChip(shift) {
   const chip = document.createElement('div');
@@ -28,18 +29,36 @@ function renderShiftChip(shift) {
 
   const time = `${shift.start_time}-${shift.end_time}`;
   const duration = formatDurationMinutes(parseTimeToMinutes(shift.end_time) - parseTimeToMinutes(shift.start_time));
-  chip.innerHTML = `
-    <div class="shift-chip-header">
-      <span class="shift-chip-position-name" title="${escapeHtml(shift.position)}">${escapeHtml(shift.position)}</span>
-      <span class="shift-chip-qty">${shift.assigned_count}/${shift.capacity}</span>
-    </div>
-    <div class="shift-chip-time">${time}</div>
-    <div class="shift-chip-duration-row">${duration}</div>
-  `;
+  const header = document.createElement('div');
+  header.className = 'shift-chip-header';
+
+  const position = document.createElement('span');
+  position.className = 'shift-chip-position-name';
+  position.title = String(shift.position || '');
+  position.textContent = String(shift.position || '');
+
+  const qty = document.createElement('span');
+  qty.className = 'shift-chip-qty';
+  qty.textContent = `${shift.assigned_count}/${shift.capacity}`;
+
+  header.appendChild(position);
+  header.appendChild(qty);
+
+  const timeEl = document.createElement('div');
+  timeEl.className = 'shift-chip-time';
+  timeEl.textContent = time;
+
+  const durationEl = document.createElement('div');
+  durationEl.className = 'shift-chip-duration-row';
+  durationEl.textContent = duration;
+
+  chip.appendChild(header);
+  chip.appendChild(timeEl);
+  chip.appendChild(durationEl);
 
   chip.addEventListener('click', (e) => {
     e.stopPropagation();
-    window.openShiftDetails?.(shift.id);
+    window.ManagerShifts?.Actions?.openShiftDetails?.(shift.id);
   });
   return chip;
 }
@@ -52,20 +71,39 @@ function renderMonthShiftChip(shift) {
   chip.dataset.shiftId = String(shift.id);
   if (shift.status !== 'draft') applyPositionPaletteToElement(chip, shift.position_id);
 
-  chip.innerHTML = `
-    <div class="manager-month-shift-row">
-      <span class="manager-month-shift-main" title="${escapeHtml(shift.position)} ${escapeHtml(shift.start_time)}-${escapeHtml(shift.end_time)}">
-        <span class="manager-month-shift-name">${escapeHtml(shift.position)}</span>
-        <span class="manager-month-shift-sep">•</span>
-        <span class="manager-month-shift-time">${escapeHtml(shift.start_time)}-${escapeHtml(shift.end_time)}</span>
-      </span>
-      <span class="manager-month-shift-qty">${shift.assigned_count}/${shift.capacity}</span>
-    </div>
-  `;
+  const row = document.createElement('div');
+  row.className = 'manager-month-shift-row';
+
+  const main = document.createElement('span');
+  main.className = 'manager-month-shift-main';
+  main.title = `${shift.position || ''} ${shift.start_time || ''}-${shift.end_time || ''}`.trim();
+
+  const name = document.createElement('span');
+  name.className = 'manager-month-shift-name';
+  name.textContent = String(shift.position || '');
+
+  const sep = document.createElement('span');
+  sep.className = 'manager-month-shift-sep';
+  sep.textContent = '•';
+
+  const time = document.createElement('span');
+  time.className = 'manager-month-shift-time';
+  time.textContent = `${shift.start_time}-${shift.end_time}`;
+
+  const qty = document.createElement('span');
+  qty.className = 'manager-month-shift-qty';
+  qty.textContent = `${shift.assigned_count}/${shift.capacity}`;
+
+  main.appendChild(name);
+  main.appendChild(sep);
+  main.appendChild(time);
+  row.appendChild(main);
+  row.appendChild(qty);
+  chip.appendChild(row);
 
   chip.addEventListener('click', (e) => {
     e.stopPropagation();
-    window.openShiftDetails?.(shift.id);
+    window.ManagerShifts?.Actions?.openShiftDetails?.(shift.id);
   });
 
   return chip;
@@ -170,22 +208,12 @@ function renderWeekGrid(config, shifts) {
 function renderMonthGrid(config, shifts) {
   const grid = getEl('monthGrid');
   if (!grid) return;
-  grid.innerHTML = '';
-
-  const anchorDate = new Date(`${config.anchor}T00:00:00`);
-
-  const anchorMonth = anchorDate.getMonth();
-  const anchorYear = anchorDate.getFullYear();
-  const firstOfMonth = new Date(anchorYear, anchorMonth, 1);
-  const startDow = firstOfMonth.getDay();
-  const gridStart = new Date(firstOfMonth);
-  gridStart.setDate(firstOfMonth.getDate() - startDow);
 
   const byDate = new Map();
-  shifts.forEach((s) => {
-    const dateKey = s.date;
-    if (!byDate.has(dateKey)) byDate.set(dateKey, []);
-    byDate.get(dateKey).push(s);
+  (Array.isArray(shifts) ? shifts : []).forEach((s) => {
+    if (!s?.date) return;
+    if (!byDate.has(s.date)) byDate.set(s.date, []);
+    byDate.get(s.date).push(s);
   });
 
   byDate.forEach((list) => {
@@ -197,39 +225,16 @@ function renderMonthGrid(config, shifts) {
     );
   });
 
-  ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].forEach((label) => {
-    const header = document.createElement('div');
-    header.className = 'calendar-header-cell';
-    header.textContent = label;
-    grid.appendChild(header);
+  window.calendarRenderMonthGrid(grid, {
+    anchorISO: config.anchor,
+    todayISO: config.today,
+    onCell(cell, { iso }) {
+      const shiftList = document.createElement('div');
+      shiftList.className = 'manager-month-shift-list';
+      (byDate.get(iso) || []).forEach((s) => shiftList.appendChild(renderMonthShiftChip(s)));
+      cell.appendChild(shiftList);
+    },
   });
-
-  for (let i = 0; i < 42; i++) {
-    const d = new Date(gridStart);
-    d.setDate(gridStart.getDate() + i);
-    const iso = toISODate(d);
-
-    const cell = document.createElement('div');
-    cell.className = 'calendar-cell';
-    cell.dataset.date = iso;
-    if (iso === config.today) cell.classList.add('calendar-cell-today');
-    if (d.getMonth() !== anchorMonth) cell.classList.add('calendar-cell-other-month');
-
-    const dateEl = document.createElement('div');
-    dateEl.className = 'calendar-date';
-    dateEl.textContent = String(d.getDate());
-    cell.appendChild(dateEl);
-
-    const list = document.createElement('div');
-    list.className = 'manager-month-shift-list';
-
-    (byDate.get(iso) || []).forEach((s) => {
-      list.appendChild(renderMonthShiftChip(s));
-    });
-
-    cell.appendChild(list);
-    grid.appendChild(cell);
-  }
 
   applyEmployeeShiftHighlight();
 }
@@ -247,11 +252,11 @@ function wireCalendarClicks(containerId) {
       return;
     }
     const start = cell.dataset.hour || '';
-    window.openCreateShiftModal?.(cell.dataset.date, start || undefined);
+    window.ManagerShifts?.Actions?.openCreateShiftModal?.(cell.dataset.date, start || undefined);
   });
 }
 
-window.ManagerShiftsCalendar = {
+ManagerShifts.Calendar = {
   renderWeekGrid,
   renderMonthGrid,
   wireCalendarClicks,

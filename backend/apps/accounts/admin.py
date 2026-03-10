@@ -9,8 +9,8 @@ admin.site.unregister(Group)
 @admin.register(User)
 class CustomUserAdmin(UserAdmin):
     fieldsets = UserAdmin.fieldsets + (
-        ("ShiftSync", {"fields": ("role", "employee_id", "phone", "position")}),
+        ("ShiftSync", {"fields": ("role", "employee_id", "position")}),
     )
     readonly_fields = ("employee_id",)
-    list_display = ("username", "email", "role", "employee_id", "phone", "position", "is_staff")
+    list_display = ("username", "email", "role", "employee_id", "position", "is_staff")
     list_filter = ("role", "position", "is_staff")

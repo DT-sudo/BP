@@ -13,7 +13,7 @@ organized into logical modules:
 ├── employee.py          - Employee shifts and unavailability views
 
 Import Pattern:
-    from apps.scheduling.views import manager_shifts, create_shift, ...
+    from apps.scheduling.views import manager_shifts, save_shift, ...
     
 Or import the entire package:
     from apps.scheduling import views
@@ -25,17 +25,14 @@ Or import the entire package:
 # Manager shift views
 from .manager_shifts import (
     manager_shifts,
-    create_shift,
-    update_shift,
+    save_shift,
     delete_shift,
     publish_shift,
     publish_all_shifts,
-    shift_details,
 )
 
 # Manager resource views (positions)
 from .manager_resources import (
-    positions_list,
     position_create,
     position_update,
     position_delete,
@@ -44,26 +41,21 @@ from .manager_resources import (
 # Employee views
 from .employee import (
     employee_shifts_view,
-    employee_unavailability_view,
     employee_unavailability_toggle,
 )
 
 __all__ = [
     # Manager shifts
     "manager_shifts",
-    "create_shift",
-    "update_shift",
+    "save_shift",
     "delete_shift",
     "publish_shift",
     "publish_all_shifts",
-    "shift_details",
     # Manager resources
-    "positions_list",
     "position_create",
     "position_update",
     "position_delete",
     # Employee
     "employee_shifts_view",
-    "employee_unavailability_view",
     "employee_unavailability_toggle",
 ]

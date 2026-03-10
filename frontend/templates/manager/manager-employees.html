@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  {% include "partials/head.html" with page_title="ShiftSync - Employee Management" page_description="ShiftSync - Manage employees" %}
+  {% include "partials/head.html" with page_title="Employee Management" page_description="Manage employees" %}
 	</head>
 	<body>
 	  {% include "partials/toast_messages.html" %}
@@ -12,28 +12,12 @@
     <!-- Top controls -->
     <div class="card page-toolbar-card">
       <div class="employees-toolbar">
-        <div class="employees-toolbar-group">
-        <div class="filter-group filter-group-grow">
-          <input class="form-input" id="employeeSearch" placeholder="Search" oninput="applyEmployeeFilters()" value="{{ q|default:'' }}">
-        </div>
-
-        <div class="filter-group">
-          <label class="form-label" for="positionFilter">Position:</label>
-          <select id="positionFilter" onchange="applyEmployeeFilters()" class="form-select">
-            <option value="all" {% if not position %}selected{% endif %}>All</option>
-            {% for p in positions %}
-              <option value="{{ p.id }}" {% if position == p.id|stringformat:'s' %}selected{% endif %}>{{ p.name }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        </div>
-
         <div class="filters-row">
-          <button class="btn btn-primary" type="button" onclick="openModal('addEmployeeModal')">
+          <button class="btn btn-primary" type="button" data-action="open-modal" data-modal-id="addEmployeeModal">
             {% include "partials/icons/plus.html" with size=16 %}
             Add employee
           </button>
-          <button class="btn btn-outline" type="button" onclick="openModal('positionModal')">Manage positions</button>
+          <button class="btn btn-outline" type="button" data-action="open-modal" data-modal-id="positionModal">Manage positions</button>
         </div>
       </div>
     </div>
@@ -48,7 +32,6 @@
             <col style="width: 220px;">
             <col style="width: 160px;">
             <col style="width: 240px;">
-            <col style="width: 160px;">
             <col style="width: 80px;">
           </colgroup>
           <thead>
@@ -58,13 +41,18 @@
               <th>Full name</th>
               <th>Position</th>
               <th>Email</th>
-              <th>Phone</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody id="employeeTbody">
             {% for e in employees %}
-              <tr class="employee-row" data-position="{{ e.position_id|default:'' }}" data-user-id="{{ e.id }}">
+              <tr
+                class="employee-row"
+                data-position="{{ e.position_id|default:'' }}"
+                data-user-id="{{ e.id }}"
+                data-full-name="{{ e.get_full_name|default:e.username|escape }}"
+                data-email="{{ e.email|default:''|escape }}"
+              >
                 <td>
                   {% with fi=e.first_name|slice:":1" li=e.last_name|slice:":1" %}
                     <div class="employee-avatar">
@@ -86,28 +74,27 @@
                   {% endif %}
                 </td>
                 <td class="text-sm">{{ e.email }}</td>
-                <td class="text-sm">{{ e.phone|default:"—" }}</td>
                 <td class="table-actions-cell">
                   <div class="dropdown dropdown-fixed">
-                    <button class="btn btn-ghost btn-icon" type="button" onclick="toggleDropdown(this)" aria-label="Row actions">
+                    <button class="btn btn-ghost btn-icon" type="button" data-action="toggle-dropdown" aria-label="Row actions">
                       {% include "partials/icons/more_vertical.html" with size=18 %}
                     </button>
                     <div class="dropdown-menu">
-                      <button class="dropdown-item" type="button" onclick="openEditEmployee({{ e.id }})">View/Edit</button>
-                      <button class="dropdown-item" type="button" onclick="openResetPassword('{{ e.employee_id }}','{{ e.email }}','{% url 'reset_employee_password' e.id %}')">Reset password</button>
+                      <button class="dropdown-item" type="button" data-action="edit-employee" data-user-id="{{ e.id }}">View/Edit</button>
+                      <button class="dropdown-item" type="button" data-action="reset-password" data-employee-id="{{ e.employee_id }}" data-login="{{ e.email }}" data-url="{% url 'reset_employee_password' e.id %}">Reset password</button>
                       <div class="dropdown-divider"></div>
-                      <button class="dropdown-item dropdown-item-destructive" type="button" onclick="openDeleteEmployee({{ e.id }}, '{{ e.employee_id }}', '{{ e.email }}')">Delete</button>
+                      <button class="dropdown-item dropdown-item-destructive" type="button" data-action="delete-employee" data-user-id="{{ e.id }}" data-employee-id="{{ e.employee_id }}" data-email="{{ e.email }}">Delete</button>
                     </div>
                   </div>
                 </td>
               </tr>
             {% empty %}
               <tr>
-                <td colspan="7">
+                <td colspan="6">
                   <div class="empty-state" style="padding: 2rem;">
                     <div class="empty-state-title">No employees yet</div>
                     <div class="empty-state-description">Add your first employee to start assigning shifts.</div>
-                    <button class="btn btn-primary" type="button" onclick="openModal('addEmployeeModal')">+ Add employee</button>
+                    <button class="btn btn-primary" type="button" data-action="open-modal" data-modal-id="addEmployeeModal">+ Add employee</button>
                   </div>
                 </td>
               </tr>
@@ -124,11 +111,11 @@
     <div class="modal">
       <div class="modal-header">
         <h2 class="modal-title">Add New Employee</h2>
-        <button class="modal-close" onclick="closeModal('addEmployeeModal')" aria-label="Close">
+        <button class="modal-close" type="button" data-action="close-modal" data-modal-id="addEmployeeModal" aria-label="Close">
           {% include "partials/icons/x.html" %} 
         </button>
       </div>
-      <form method="post" action="{% url 'manager_employees' %}" id="addEmployeeForm" novalidate>
+      <form method="post" action="{% url 'manager_employees_create' %}" id="addEmployeeForm" novalidate>
         {% csrf_token %}
         <div class="modal-body">
           <div class="form-group">
@@ -144,12 +131,6 @@
           </div>
 
           <div class="form-group">
-            <label class="form-label" for="addPhone">Phone *</label>
-            <input type="tel" class="form-input" id="addPhone" name="phone" placeholder="+1 (555) 123-4567" required>
-            <div class="form-error-message hidden" id="addPhoneError"></div>
-          </div>
-
-          <div class="form-group">
             <label class="form-label" for="addPosition">Position *</label>
             <select class="form-select" id="addPosition" name="position" required>
               <option value="">Select position...</option>
@@ -159,11 +140,11 @@
           </div>
 
           <p class="text-sm text-muted">
-            Security: A temporary password is generated automatically and shown <strong>only once</strong> after creation.
+            A password is generated automatically and shown <strong>only once</strong> after creation.
           </p>
         </div>
         <div class="modal-footer">
-          <button class="btn btn-outline" type="button" onclick="closeModal('addEmployeeModal')">Cancel</button>
+          <button class="btn btn-outline" type="button" data-action="close-modal" data-modal-id="addEmployeeModal">Cancel</button>
           <button class="btn btn-primary" type="submit">Create employee</button>
         </div>
       </form>
@@ -175,43 +156,33 @@
     <div class="modal">
       <div class="modal-header">
         <h2 class="modal-title">View/Edit Employee</h2>
-        <button class="modal-close" onclick="closeModal('editEmployeeModal')" aria-label="Close">
+        <button class="modal-close" type="button" data-action="close-modal" data-modal-id="editEmployeeModal" aria-label="Close">
           {% include "partials/icons/x.html" %}
         </button>
       </div>
-      <form id="editEmployeeForm" class="modal-body" onsubmit="return false;">
+      <form id="editEmployeeForm" class="modal-body" method="post" action="{% url 'manager_employees' %}">
         {% csrf_token %}
-        <input type="hidden" id="editUserId" value="">
         <div class="form-group">
           <label class="form-label" for="editFullName">Full name *</label>
-          <input type="text" class="form-input" id="editFullName" value="" required>
-          <div class="form-error-message hidden" id="editFullNameError"></div>
+          <input type="text" class="form-input" id="editFullName" name="full_name" value="" required>
         </div>
 
         <div class="form-group">
           <label class="form-label" for="editEmail">Email / Login *</label>
-          <input type="email" class="form-input" id="editEmail" value="" required>
-          <div class="form-error-message hidden" id="editEmailError"></div>
-        </div>
-
-        <div class="form-group">
-          <label class="form-label" for="editPhone">Phone *</label>
-          <input type="tel" class="form-input" id="editPhone" value="" required>
-          <div class="form-error-message hidden" id="editPhoneError"></div>
+          <input type="email" class="form-input" id="editEmail" name="email" value="" required>
         </div>
 
         <div class="form-group">
           <label class="form-label" for="editPosition">Position *</label>
-          <select class="form-select" id="editPosition" required>
+          <select class="form-select" id="editPosition" name="position" required>
             <option value="">Select position...</option>
             {% include "partials/options/positions.html" %}
           </select>
-          <div class="form-error-message hidden" id="editPositionError"></div>
         </div>
 
       </form>
       <div class="modal-footer">
-        <button class="btn btn-primary" type="button" onclick="saveEmployeeEdits()">Save</button>
+        <button class="btn btn-primary" type="submit" form="editEmployeeForm">Save</button>
       </div>
     </div>
   </div>
@@ -228,7 +199,7 @@
       <div class="modal" style="max-width: 560px;">
         <div class="modal-header">
           <h2 class="modal-title">Credentials (shown once)</h2>
-          <button class="modal-close" onclick="closeModal('credentialsModal')" aria-label="Close">
+          <button class="modal-close" type="button" data-action="close-modal" data-modal-id="credentialsModal" aria-label="Close">
             {% include "partials/icons/x.html" %}
           </button>
         </div>
@@ -237,13 +208,13 @@
             <div class="text-sm text-muted">Login</div>
             <div class="flex items-center justify-between mt-1">
               <div class="font-medium" id="credLogin">{{ creds.login }}</div>
-              <button class="btn btn-ghost btn-sm" type="button" onclick="copyText('credLogin')">Copy</button>
+              <button class="btn btn-ghost btn-sm" type="button" data-action="copy-text" data-copy-target="credLogin">Copy</button>
             </div>
 
-            <div class="text-sm text-muted mt-3">Temporary password</div>
+            <div class="text-sm text-muted mt-3">Password</div>
             <div class="flex items-center justify-between mt-1">
-              <div class="font-medium" id="credPassword">{{ creds.temporary_password }}</div>
-              <button class="btn btn-ghost btn-sm" type="button" onclick="copyText('credPassword')">Copy</button>
+              <div class="font-medium" id="credPassword">{{ creds.password }}</div>
+              <button class="btn btn-ghost btn-sm" type="button" data-action="copy-text" data-copy-target="credPassword">Copy</button>
             </div>
           </div>
 
@@ -252,7 +223,7 @@
           </p>
         </div>
         <div class="modal-footer">
-          <button class="btn btn-primary" type="button" onclick="closeModal('credentialsModal')">Done</button>
+          <button class="btn btn-primary" type="button" data-action="close-modal" data-modal-id="credentialsModal">Done</button>
         </div>
       </div>
     </div>
@@ -263,17 +234,19 @@
 	    <div class="modal modal-lg">
       <div class="modal-header">
         <h2 class="modal-title">Manage positions</h2>
-        <button class="modal-close" onclick="closeModal('positionModal')" aria-label="Close">
+        <button class="modal-close" type="button" data-action="close-modal" data-modal-id="positionModal" aria-label="Close">
           {% include "partials/icons/x.html" %}
         </button>
       </div>
       <div class="modal-body">
         <div class="card mt-4">
           <div class="card-content-compact">
-          <div class="flex gap-2">
-            <input class="form-input" id="newPositionName" placeholder="New position name (e.g., Barista)">
-            <button class="btn btn-primary btn-sm" onclick="addPosition()">Add position</button>
-          </div>
+            <form class="flex gap-2" method="post" action="{% url 'position_create' %}">
+              {% csrf_token %}
+              <input class="form-input" id="newPositionName" name="name" placeholder="New position name (e.g., Barista)" required>
+              <input type="hidden" name="is_active" value="on">
+              <button class="btn btn-primary btn-sm" type="submit">Add position</button>
+            </form>
           </div>
         </div>
 
@@ -285,15 +258,25 @@
                 <th style="width: 180px;">Actions</th>
               </tr>
             </thead>
-	            <tbody id="positionTbody">
+	            <tbody>
 		              {% for p in positions %}
-		                <tr data-position-id="{{ p.id }}">
+		                <tr>
 		                  <td class="position-name">{{ p.name }}</td>
 		                  <td class="position-actions-cell">
-		                    <button class="btn btn-outline btn-sm" type="button" onclick="renamePosition(this)">Rename</button>
-		                    <button class="btn btn-ghost btn-icon btn-icon-destructive" type="button" onclick="deletePosition(this)" aria-label="Delete position" title="Delete">
-		                      {% include "partials/icons/trash.html" with size=18 %}
-		                    </button>
+                        <form method="post" action="{% url 'position_update' p.id %}" class="flex items-center gap-2">
+                          {% csrf_token %}
+                          <input class="form-input form-input-sm" type="text" name="name" value="{{ p.name }}" maxlength="100" required aria-label="Position name">
+                          {% if p.is_active %}
+                            <input type="hidden" name="is_active" value="on">
+                          {% endif %}
+                          <button class="btn btn-outline btn-sm" type="submit">Save</button>
+                        </form>
+                        <form method="post" action="{% url 'position_delete' p.id %}" data-confirm="Delete position {{ p.name|escapejs }}?">
+                          {% csrf_token %}
+                          <button class="btn btn-ghost btn-icon btn-icon-destructive" type="submit" aria-label="Delete position" title="Delete">
+                            {% include "partials/icons/trash.html" with size=18 %}
+                          </button>
+                        </form>
 		                  </td>
 		                </tr>
 		              {% empty %}
@@ -305,22 +288,14 @@
 
       </div>
       <div class="modal-footer">
-        <button class="btn btn-outline" onclick="closeModal('positionModal')">Done</button>
+        <button class="btn btn-outline" type="button" data-action="close-modal" data-modal-id="positionModal">Done</button>
       </div>
 	    </div>
 	  </div>
 
-  <!-- Delete Position Confirm Modal -->
-  {% include "partials/confirm_modal.html" with modal_id="deletePositionModal" title="Delete position" message="Are you sure you want to delete this position:" message_detail_id="deletePositionName" confirm_text="Yes, delete" cancel_text="No" cancel_action="cancelDeletePosition()" confirm_action="confirmDeletePosition()" destructive=True modal_size="520px" %}
-
-	  <div
-	    id="managerEmployeesPage"
-	    data-position-create-url="{% url 'position_create' %}"
-	    data-position-update-url-template="{% url 'position_update' 0 %}"
-    data-position-delete-url-template="{% url 'position_delete' 0 %}"
-    data-employee-details-url-template="{% url 'employee_details' 0 %}"
+  <div
+    id="managerEmployeesPage"
     data-employee-update-url-template="{% url 'employee_update' 0 %}"
-    data-employee-reset-password-url-template="{% url 'reset_employee_password' 0 %}"
     data-employee-delete-url-template="{% url 'employee_delete' 0 %}"
   ></div>
   <form id="resetPasswordForm" method="post">

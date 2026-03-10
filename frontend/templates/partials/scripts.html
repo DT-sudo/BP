@@ -4,17 +4,10 @@
   <script src="{% static 'js/calendar-utils.js' %}?v={% now 'U' %}"></script>
 {% endif %}
 {% if page_script == "js/manager-shifts.js" %}
-  <script src="{% static 'js/manager-shifts/config.js' %}?v={% now 'U' %}"></script>
-  <script src="{% static 'js/manager-shifts/time-utils.js' %}?v={% now 'U' %}"></script>
-  <script src="{% static 'js/manager-shifts/lane-layout.js' %}?v={% now 'U' %}"></script>
-  <script src="{% static 'js/manager-shifts/position-palette.js' %}?v={% now 'U' %}"></script>
-  <script src="{% static 'js/manager-shifts/filters.js' %}?v={% now 'U' %}"></script>
-  <script src="{% static 'js/manager-shifts/employee-picker.js' %}?v={% now 'U' %}"></script>
-  <script src="{% static 'js/manager-shifts/sidebar.js' %}?v={% now 'U' %}"></script>
+  <script src="{% static 'js/manager-shifts/core.js' %}?v={% now 'U' %}"></script>
+  <script src="{% static 'js/manager-shifts/ui.js' %}?v={% now 'U' %}"></script>
   <script src="{% static 'js/manager-shifts/calendar.js' %}?v={% now 'U' %}"></script>
-  <script src="{% static 'js/manager-shifts/shift-modal.js' %}?v={% now 'U' %}"></script>
-  <script src="{% static 'js/manager-shifts/layout.js' %}?v={% now 'U' %}"></script>
-  <script src="{% static 'js/manager-shifts/index.js' %}?v={% now 'U' %}"></script>
+  <script src="{% static 'js/manager-shifts/modal-form.js' %}?v={% now 'U' %}"></script>
 {% elif page_script %}
   <script src="{% static page_script %}?v={% now 'U' %}"></script>
 {% endif %}

@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 manage.py migrate scheduling)",
+      "Bash(python3 -c \"import matplotlib; import networkx\")",
+      "Bash(python3 -c \"import matplotlib\")",
+      "Bash(python3 -c \"import graphviz\")",
+      "Bash(python3 -c \"import PIL\")",
+      "Bash(pip3 install matplotlib --quiet)",
+      "Bash(python3 /Users/dt/Desktop/BP_main/BP_proj/assets/render_graph.py)",
+      "Bash(python3 -c \":*)",
+      "Bash(sed -i '' 's/ShiftSync - Shift Management/Shift Management/g' /Users/dt/Desktop/BP_main/BP_proj/frontend/templates/manager/manager-shifts.html)",
+      "Bash(__NEW_LINE_dd40048d131e2c70__ sed -i '' 's/ShiftSync - Employee Management/Employee Management/g; s/ShiftSync - Manage employees/Manage employees/g' /Users/dt/Desktop/BP_main/BP_proj/frontend/templates/manager/manager-employees.html)",
+      "Bash(__NEW_LINE_dd40048d131e2c70__ sed -i '' 's/ShiftSync - My Shifts/My Shifts/g; s/ShiftSync - Employee shift calendar/Employee shift calendar/g' /Users/dt/Desktop/BP_main/BP_proj/frontend/templates/employee/employee-shifts.html)",
+      "Bash(python3 manage.py check)"
+    ]
+  }
+}

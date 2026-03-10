@@ -5,11 +5,9 @@ from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import AuthenticationForm
 from django.conf import settings
-from django.db import models
-from django.http import HttpRequest, HttpResponse, JsonResponse
+from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
-from django.utils.http import url_has_allowed_host_and_scheme
-from django.views.decorators.http import require_http_methods
+from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
 from apps.scheduling.models import Position
 
@@ -17,29 +15,25 @@ from .decorators import manager_required
 from .forms import CreateEmployeeForm, UpdateEmployeeForm
 from .models import User, UserRole
 
-def _employee_payload(employee: User) -> dict[str, object]:
-    return {
-        "id": employee.id,
-        "employee_id": employee.employee_id,
-        "first_name": employee.first_name,
-        "last_name": employee.last_name,
-        "full_name": employee.get_full_name() or employee.username,
-        "email": employee.email,
-        "phone": employee.phone,
-        "position_id": employee.position_id,
-        "position": employee.position.name if employee.position else "",
-    }
 
-def _get_employee_or_404(user_id: int, *, with_position: bool = False) -> User:
-    qs = User.objects
-    if with_position:
-        qs = qs.select_related("position")
+def _redirect_with_message(
+    request: HttpRequest,
+    *,
+    level: int,
+    text: str,
+    to: str = "manager_employees",
+) -> HttpResponse:
+    messages.add_message(request, level, text)
+    return redirect(to)
+
+def _get_employee_or_404(user_id: int) -> User:
+    qs = User.objects.select_related("position")
     return get_object_or_404(qs, pk=user_id, role=UserRole.EMPLOYEE)
 
-def _store_one_time_credentials(request: HttpRequest, employee: User, temp_password: str) -> None:
+def _store_one_time_credentials(request: HttpRequest, employee: User, password: str) -> None:
     request.session["one_time_credentials"] = {
         "login": employee.email,
-        "temporary_password": temp_password,
+        "password": password,
         "employee_id": employee.employee_id,
     }
 
@@ -63,137 +57,62 @@ def logout_view(request: HttpRequest) -> HttpResponse:
 @login_required
 def home(request: HttpRequest) -> HttpResponse:
     if request.user.is_manager:
-        last = request.session.get("manager_shifts_last_url")
-        if isinstance(last, str) and url_has_allowed_host_and_scheme(
-            url=last,
-            allowed_hosts={request.get_host()},
-            require_https=request.is_secure(),
-        ):
-            return redirect(last)
         return redirect("manager_shifts")
     return redirect("employee_shifts")
 
-@require_http_methods(["GET"])
-def demo_login(request: HttpRequest, role: str) -> HttpResponse:
-    if not settings.DEBUG:
-        return redirect("login")
-    demo_password = "demo12345!"
-
-    barista, _ = Position.objects.get_or_create(name="Barista", defaults={"is_active": True})
-
-    manager, _ = User.objects.get_or_create(
-        username="manager_demo@example.com",
-        defaults={
-            "email": "manager_demo@example.com",
-            "first_name": "Demo",
-            "last_name": "Manager",
-            "role": UserRole.MANAGER,
-            "is_staff": True,
-        },
-    )
-    manager.role = UserRole.MANAGER
-    manager.email = manager.email or "manager_demo@example.com"
-    manager.is_staff = True
-    manager.set_password(demo_password)
-    manager.save()
-
-    employee, _ = User.objects.get_or_create(
-        username="employee_demo@example.com",
-        defaults={
-            "email": "employee_demo@example.com",
-            "first_name": "Demo",
-            "last_name": "Employee",
-            "role": UserRole.EMPLOYEE,
-            "position": barista,
-        },
-    )
-    employee.role = UserRole.EMPLOYEE
-    employee.email = employee.email or "employee_demo@example.com"
-    employee.position = employee.position or barista
-    employee.set_password(demo_password)
-    employee.save()
-    user = manager if role == "manager" else employee
-    login(request, user, backend="django.contrib.auth.backends.ModelBackend")
-    return redirect("home")
-
 @manager_required
-@require_http_methods(["GET", "POST"])
+@require_GET
 def manager_employees(request: HttpRequest) -> HttpResponse:
-    if request.method == "POST":
-        form = CreateEmployeeForm(request.POST)
-        if form.is_valid():
-            employee = form.save(commit=False)
-            temp_password = User.generate_temporary_password()
-            employee.set_password(temp_password)
-            employee.save()
-            _store_one_time_credentials(request, employee, temp_password)
-            messages.success(request, "Employee created.")
-            return redirect("manager_employees")
-        messages.error(request, "Please fix the errors and try again.")
-    else:
-        form = CreateEmployeeForm()
-
-    q = (request.GET.get("q") or "").strip()
-    position_id = (request.GET.get("position") or "").strip()
-
+    form = CreateEmployeeForm()
     creds = request.session.pop("one_time_credentials", None)
 
-    employees = User.objects.filter(role=UserRole.EMPLOYEE).select_related("position").order_by("last_name", "first_name")
-    if q:
-        employees = employees.filter(
-            models.Q(employee_id__icontains=q)
-            | models.Q(first_name__icontains=q)
-            | models.Q(last_name__icontains=q)
-            | models.Q(email__icontains=q)
-            | models.Q(phone__icontains=q)
-        )
-    if position_id:
-        employees = employees.filter(position_id=position_id)
-
+    employees = User.objects.filter(role=UserRole.EMPLOYEE).select_related("position")
     positions = Position.objects.order_by("name")
     return render(
         request,
         "manager/manager-employees.html",
-        {"employees": employees, "positions": positions, "form": form, "q": q, "position": position_id, "creds": creds},
+        {"employees": employees, "positions": positions, "form": form, "creds": creds},
     )
 
 @manager_required
-@require_http_methods(["GET"])
-def employee_details(request: HttpRequest, user_id: int) -> JsonResponse:
-    employee = _get_employee_or_404(user_id, with_position=True)
-    return JsonResponse(_employee_payload(employee))
+@require_POST
+def manager_employees_create(request: HttpRequest) -> HttpResponse:
+    form = CreateEmployeeForm(request.POST)
+    if not form.is_valid():
+        return _redirect_with_message(request, level=messages.ERROR, text="Please fix the errors and try again.")
+
+    employee = form.save(commit=False)
+    password = User.generate_password()
+    employee.set_password(password)
+    employee.save()
+    _store_one_time_credentials(request, employee, password)
+    return _redirect_with_message(request, level=messages.SUCCESS, text="Employee created.")
 
 @manager_required
-@require_http_methods(["POST"])
-def employee_update(request: HttpRequest, user_id: int) -> JsonResponse:
+@require_POST
+def employee_update(request: HttpRequest, user_id: int) -> HttpResponse:
     employee = _get_employee_or_404(user_id)
     form = UpdateEmployeeForm(request.POST, instance=employee)
     if not form.is_valid():
-        return JsonResponse({"ok": False, "errors": form.errors}, status=400)
-    updated = form.save()
-    return JsonResponse(
-        {
-            "ok": True,
-            "employee": _employee_payload(updated),
-        }
-    )
+        return _redirect_with_message(request, level=messages.ERROR, text="Could not update employee.")
+    form.save()
+    return _redirect_with_message(request, level=messages.SUCCESS, text="Employee updated.")
 
 @manager_required
-@require_http_methods(["POST"])
+@require_POST
 def reset_employee_password(request: HttpRequest, user_id: int) -> HttpResponse:
     employee = _get_employee_or_404(user_id)
-    temp_password = User.generate_temporary_password()
-    employee.set_password(temp_password)
+    password = User.generate_password()
+    employee.set_password(password)
     employee.save(update_fields=["password"])
 
-    _store_one_time_credentials(request, employee, temp_password)
-    return redirect("manager_employees")
+    _store_one_time_credentials(request, employee, password)
+    return _redirect_with_message(request, level=messages.SUCCESS, text="Password reset.")
 
 @manager_required
-@require_http_methods(["POST"])
+@require_POST
 def employee_delete(request: HttpRequest, user_id: int) -> HttpResponse:
     employee = _get_employee_or_404(user_id)
     label = employee.get_full_name() or employee.username
     employee.delete()
-    messages.success(request, f"Deleted employee: {label}.")
-    return redirect("manager_employees")
+    return _redirect_with_message(request, level=messages.SUCCESS, text=f"Deleted employee: {label}.")

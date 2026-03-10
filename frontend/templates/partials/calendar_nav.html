@@ -1,9 +1,9 @@
 <div class="calendar-nav">
-  <button class="btn btn-outline btn-icon" type="button" onclick="prevPeriod()" aria-label="{{ prev_aria_label|default:'Previous period' }}">
+  <button class="btn btn-outline btn-icon" type="button" onclick="{% if nav_namespace %}{{ nav_namespace }}.prevPeriod(){% else %}prevPeriod(){% endif %}" aria-label="{{ prev_aria_label|default:'Previous period' }}">
     {% include "partials/icons/chevron_left.html" with size=16 %}
   </button>
-  <button class="btn btn-outline btn-sm" type="button" onclick="goToToday()">Today</button>
-  <button class="btn btn-outline btn-icon" type="button" onclick="nextPeriod()" aria-label="{{ next_aria_label|default:'Next period' }}">
+  <button class="btn btn-outline btn-sm" type="button" onclick="{% if nav_namespace %}{{ nav_namespace }}.goToToday(){% else %}goToToday(){% endif %}">Today</button>
+  <button class="btn btn-outline btn-icon" type="button" onclick="{% if nav_namespace %}{{ nav_namespace }}.nextPeriod(){% else %}nextPeriod(){% endif %}" aria-label="{{ next_aria_label|default:'Next period' }}">
     {% include "partials/icons/chevron_right.html" with size=16 %}
   </button>
 </div>

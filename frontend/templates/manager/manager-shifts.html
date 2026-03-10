@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  {% include "partials/head.html" with page_title="ShiftSync - Shift Management" page_description="ShiftSync - Manage employee shifts" %}
+  {% include "partials/head.html" with page_title="Shift Management" page_description="ShiftSync - Manage employee shifts" %}
 	</head>
 	<body class="manager-shifts-page">
 	  {% include "partials/toast_messages.html" %}
@@ -22,7 +22,7 @@
 	            <div class="filter-group">
 	              <label class="form-label mb-0">Position:</label>
 	              <div class="multiselect" id="positionMulti">
-	                <button class="btn btn-outline btn-sm multiselect-trigger" type="button" onclick="toggleMulti('positionMulti')" aria-haspopup="true" aria-expanded="false">
+	                <button class="btn btn-outline btn-sm multiselect-trigger" type="button" data-action="toggle-multi" data-multi-id="positionMulti" aria-haspopup="true" aria-expanded="false">
 	                  <span id="positionMultiLabel">All positions</span>
 	                  {% include "partials/icons/chevron_down.html" with size=16 %}
 	                </button>
@@ -38,7 +38,6 @@
 		                        {% else %}
 		                          checked
 		                        {% endif %}
-		                        onchange="updatePositionMulti(); markPositionMultiDirty()"
 		                      >
 		                      {{ p.name }}
 		                    </label>
@@ -46,9 +45,9 @@
 		                    <div class="text-sm text-muted multiselect-hint">No positions yet. Add positions in Employees → Manage positions.</div>
 		                  {% endfor %}
 		                  <div class="multiselect-actions multiselect-actions-right">
-		                    <button class="btn btn-ghost btn-sm" type="button" onclick="selectAllPositions(false); markPositionMultiDirty(); updatePositionMulti()">Clear</button>
-		                    <button class="btn btn-ghost btn-sm" type="button" onclick="selectAllPositions(true); markPositionMultiDirty(); updatePositionMulti()">All</button>
-		                    <button class="btn btn-primary btn-sm" type="button" onclick="submitFilters()">Apply</button>
+		                    <button class="btn btn-ghost btn-sm" type="button" data-action="position-clear">Clear</button>
+		                    <button class="btn btn-ghost btn-sm" type="button" data-action="position-all">All</button>
+		                    <button class="btn btn-primary btn-sm" type="submit">Apply</button>
 		                  </div>
 		                </div>
 		              </div>
@@ -56,7 +55,7 @@
 
 	            <div class="filter-group">
 	              <label class="form-label mb-0">Status:</label>
-              <select name="status" onchange="submitFilters()" class="form-select">
+              <select name="status" class="form-select">
                 <option value="" {% if not status %}selected{% endif %}>All</option>
                 <option value="draft" {% if status == 'draft' %}selected{% endif %}>Draft</option>
                 <option value="published" {% if status == 'published' %}selected{% endif %}>Published</option>
@@ -65,7 +64,7 @@
 
             <div class="filter-group">
               <label class="form-label mb-0">Show:</label>
-              <select name="show" onchange="submitFilters()" class="form-select">
+              <select name="show" class="form-select">
                 <option value="" {% if not understaffed %}selected{% endif %}>All</option>
                 <option value="understaffed" {% if understaffed %}selected{% endif %}>Understaffed</option>
               </select>
@@ -78,22 +77,22 @@
         </div>
 
 	        <div class="shifts-toolbar-right">
-		          {% include "partials/calendar_nav.html" with prev_aria_label="Previous period" next_aria_label="Next period" %}
+		          {% include "partials/calendar_nav.html" with prev_aria_label="Previous period" next_aria_label="Next period" nav_namespace="ManagerShifts.Nav" %}
 
             <div class="multiselect min-w-0" id="viewMulti">
-	              <button class="btn btn-outline btn-sm multiselect-trigger" type="button" onclick="toggleMulti('viewMulti')" aria-haspopup="true" aria-expanded="false">
+	              <button class="btn btn-outline btn-sm multiselect-trigger" type="button" data-action="toggle-multi" data-multi-id="viewMulti" aria-haspopup="true" aria-expanded="false">
 	                <span id="viewMultiLabel">
 	                  {% if view == 'week' %}Week{% else %}Month{% endif %}
 	                </span>
 	                {% include "partials/icons/chevron_down.html" with size=16 %}
 	              </button>
               <div class="multiselect-menu" role="menu" aria-label="View">
-                <label class="multiselect-item"><input type="radio" name="viewChoice" value="week" {% if view == 'week' %}checked{% endif %} onchange="switchView(this.value)"> Week</label>
-                <label class="multiselect-item"><input type="radio" name="viewChoice" value="month" {% if view == 'month' %}checked{% endif %} onchange="switchView(this.value)"> Month</label>
+                <label class="multiselect-item"><input type="radio" name="viewChoice" value="week" {% if view == 'week' %}checked{% endif %} data-action="switch-view"> Week</label>
+                <label class="multiselect-item"><input type="radio" name="viewChoice" value="month" {% if view == 'month' %}checked{% endif %} data-action="switch-view"> Month</label>
               </div>
             </div>
 
-	          <button class="btn btn-primary" type="button" onclick="openCreateShiftModal()">
+	          <button class="btn btn-primary" type="button" data-action="open-create-shift">
 	            {% include "partials/icons/plus.html" with size=16 %}
 	            Add
 	          </button>
@@ -151,7 +150,7 @@
       <div class="modal">
       <div class="modal-header">
         <h2 class="modal-title" id="createShiftTitle">Create Shift</h2>
-        <button class="modal-close" onclick="closeModal('createShiftModal')" aria-label="Close">
+        <button class="modal-close" type="button" data-action="close-modal" data-modal-id="createShiftModal" aria-label="Close">
           {% include "partials/icons/x.html" %}
         </button>
       </div>
@@ -159,19 +158,20 @@
       <div class="modal-body">
         <form id="createShiftForm" method="post" action="{% url 'create_shift' %}" data-create-action="{% url 'create_shift' %}">
           {% csrf_token %}
+          <input type="hidden" name="return_view" value="{{ view }}">
           {% include "partials/shift_form_fields.html" with employees=employees %}
         </form>
       </div>
 
       <div class="modal-footer">
-        <button class="btn btn-outline" onclick="closeModal('createShiftModal')">Cancel</button>
+        <button class="btn btn-outline" type="button" data-action="close-modal" data-modal-id="createShiftModal">Cancel</button>
         <button class="btn btn-primary" id="createShiftSubmit" type="submit" form="createShiftForm">Create Shift</button>
       </div>
     </div>
   </div>
 
   <!-- Delete Shift Confirm Modal -->
-  {% include "partials/confirm_modal.html" with modal_id="deleteShiftConfirmModal" title="Delete shift" message="Delete this shift: <strong id='deleteShiftConfirmTitle'></strong> ?" confirm_text="Yes, delete" cancel_action="cancelDeleteShift()" confirm_action="confirmDeleteShift()" destructive=True %}
+  {% include "partials/confirm_modal.html" with modal_id="deleteShiftConfirmModal" title="Delete shift" message="Delete this shift: <strong id='deleteShiftConfirmTitle'></strong> ?" confirm_text="Yes, delete" cancel_action="ManagerShifts.Actions.cancelDeleteShift()" confirm_action="ManagerShifts.Actions.confirmDeleteShift()" destructive=True %}
 
   <!-- Shift Details Modal -->
   <div class="modal-overlay hidden" id="shiftDetailsModal">
@@ -181,7 +181,7 @@
           <h2 class="modal-title" id="detailsTitle">Shift Details</h2>
           <span class="badge badge-outline" id="detailsStatus"></span>
         </div>
-        <button class="modal-close" onclick="closeModal('shiftDetailsModal')" aria-label="Close">
+        <button class="modal-close" type="button" data-action="close-modal" data-modal-id="shiftDetailsModal" aria-label="Close">
           {% include "partials/icons/x.html" %}
         </button>
       </div>
@@ -213,35 +213,31 @@
         </div>
       </div>
       <div class="modal-footer">
-        <button class="btn btn-destructive" onclick="deleteShift()">Delete</button>
-        <button class="btn btn-primary hidden" id="publishShiftBtn" onclick="publishShift()">Publish</button>
-        <button class="btn btn-outline" onclick="editShift()">Edit</button>
+        <button class="btn btn-destructive" type="button" data-action="shift-delete">Delete</button>
+        <button class="btn btn-primary hidden" id="publishShiftBtn" type="button" data-action="shift-publish">Publish</button>
+        <button class="btn btn-outline" type="button" data-action="shift-edit">Edit</button>
       </div>
     </div>
   </div>
 
   <script type="application/json" id="managerShiftsData">{{ shifts_json|safe }}</script>
   <script type="application/json" id="managerEmployeesData">{{ employees_json|safe }}</script>
-  {% if shift_form_state_json %}
-    <script type="application/json" id="shiftFormState">{{ shift_form_state_json|safe }}</script>
-  {% endif %}
   <div
     id="managerShiftPage"
     data-view="{{ view }}"
     data-anchor="{{ anchor|date:'Y-m-d' }}"
     data-start="{{ start|date:'Y-m-d' }}"
     data-today="{{ today|date:'Y-m-d' }}"
-    data-shift-details-url-template="{% url 'shift_details' 0 %}"
     data-shift-update-url-template="{% url 'update_shift' 0 %}"
     data-shift-delete-url-template="{% url 'delete_shift' 0 %}"
     data-shift-publish-url-template="{% url 'publish_shift' 0 %}"
-    data-positions-list-url="{% url 'positions_list' %}"
   ></div>
   <form id="deleteShiftForm" method="post">
     {% csrf_token %}
   </form>
   <form id="publishShiftForm" method="post">
     {% csrf_token %}
+    <input type="hidden" name="return_view" value="{{ view }}">
   </form>
 
   {% include "partials/scripts.html" with include_calendar=1 page_script="js/manager-shifts.js" %}

@@ -1,15 +1,11 @@
 from __future__ import annotations
 
-import re
-
 from django import forms
 from django.core.exceptions import ValidationError
 
 from apps.scheduling.models import Position
 
 from .models import User, UserRole
-
-PHONE_RE = re.compile(r"[0-9+()\-\s]{6,25}")
 
 def _split_full_name(full_name: str) -> tuple[str, str]:
     parts = (full_name or "").split()
@@ -22,22 +18,13 @@ class EmployeeBaseForm(forms.ModelForm):
 
     class Meta:
         model = User
-        fields = ["email", "phone", "position"]
+        fields = ["email", "position"]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["email"].required = True
-        self.fields["phone"].required = True
         self.fields["position"].queryset = Position.objects.order_by("name")
         self.fields["position"].required = True
-
-    def clean_phone(self):
-        phone = (self.cleaned_data.get("phone") or "").strip()
-        if not phone:
-            raise ValidationError("Phone is required.")
-        if not PHONE_RE.fullmatch(phone):
-            raise ValidationError("Enter a valid phone number.")
-        return phone
 
     def clean_email(self):
         email = (self.cleaned_data.get("email") or "").strip().lower()
@@ -78,6 +65,4 @@ class CreateEmployeeForm(EmployeeBaseForm):
         return user
 
 class UpdateEmployeeForm(EmployeeBaseForm):
-    """Update an existing employee. Inherits all validation from EmployeeBaseForm.
-    Kept separate from CreateEmployeeForm so that save() does not overwrite role/is_staff.
-    """
+    pass
