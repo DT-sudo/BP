@@ -25,7 +25,7 @@
   <label class="form-label" for="shiftPositionMulti">Position *</label>
   <select class="hidden" id="shiftPosition" name="position_id" required data-action="shift-position-change" aria-hidden="true" tabindex="-1">
     <option value="">Select position...</option>
-    {% include "partials/options/positions.html" %}
+    {% include "partials/positions.html" %}
   </select>
   <div class="multiselect multiselect-full" id="shiftPositionMulti">
     <button class="btn btn-outline btn-sm multiselect-trigger" id="shiftPositionMultiTrigger" type="button" data-action="toggle-multi" data-multi-id="shiftPositionMulti" aria-haspopup="true" aria-expanded="false">
@@ -67,8 +67,3 @@
   </div>
 </div>
 
-<label class="switch mt-3">
-  <input type="checkbox" id="publishImmediatelyCustom" name="publish" value="1">
-  <span class="switch-slider" aria-hidden="true"></span>
-  <span class="text-sm">Publish</span>
-</label>

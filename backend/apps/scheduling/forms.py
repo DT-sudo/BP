@@ -38,7 +38,11 @@ class ShiftForm(forms.ModelForm):
 
     def save(self, commit=True):
         instance = super().save(commit=False)
-        instance.status = ShiftStatus.PUBLISHED if self.cleaned_data.get("publish") else ShiftStatus.DRAFT
+        publish_requested = self.cleaned_data.get("publish")
+        if publish_requested or instance.status == ShiftStatus.PUBLISHED:
+            instance.status = ShiftStatus.PUBLISHED
+        else:
+            instance.status = ShiftStatus.DRAFT
         if commit:
             instance.save()
         return instance

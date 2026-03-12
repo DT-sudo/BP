@@ -9,7 +9,18 @@
 	  {% include "partials/header.html" with nav_active="employee_shifts" %}
 
 		  <main class="main-content main-content-tight-top">
-		    {% include "partials/employee_calendar_toolbar.html" with prev_aria_label="Previous period" next_aria_label="Next period" %}
+		    <div class="card page-toolbar-card">
+		      <div class="shifts-toolbar">
+		        <div class="shifts-toolbar-left">
+		        </div>
+		        <div class="shifts-toolbar-center">
+		          <div class="calendar-period" id="periodLabel">{{ period_label }}</div>
+		        </div>
+		        <div class="shifts-toolbar-right">
+		          {% include "partials/calendar_nav.html" with prev_aria_label="Previous period" next_aria_label="Next period" %}
+		        </div>
+		      </div>
+		    </div>
 
 		    <div class="card mt-3" id="monthView">
 		      <div class="calendar-grid calendar-grid-month" id="employeeMonthGrid" aria-label="Month calendar"></div>

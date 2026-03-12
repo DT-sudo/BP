@@ -31,8 +31,6 @@ function resetCreateShiftModal() {
   sv('shiftPosition', '');
   updateShiftPositionMultiLabel();
 
-  sv('publishImmediatelyCustom', false, 'checked');
-
   clearAllEmployeeSelections();
   updateEmployeeMulti();
 }
@@ -251,8 +249,6 @@ function editShift() {
     for (const o of positionSelect.options) o.selected = String(o.value) === String(positionId);
   }
   updateShiftPositionMultiLabel();
-
-  getEl('publishImmediatelyCustom').checked = activeShiftData.status === 'published';
 
   filterEmployeePicker();
   const selectedIds = new Set((activeShiftData.assigned_employees || []).map((e) => String(e.id)));
